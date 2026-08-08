@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Clinic Management AI",
-    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check. Sprint 3: Xác thực (JWT) + RBAC. Chạy 'Auth > Login' trước để đặt biến {{token}}; token được áp tự động cho mọi request qua Bearer cấp collection.",
+    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check. Sprint 3: Xác thực (JWT) + RBAC. Sprint 4: Lịch khám (đặt lịch, check-in, vòng đời trạng thái). Chạy 'Auth > Login' trước để đặt biến {{token}}; token được áp tự động cho mọi request qua Bearer cấp collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -13,7 +13,8 @@
     { "key": "token", "value": "" },
     { "key": "patientId", "value": "" },
     { "key": "specialtyId", "value": "22222222-2222-2222-2222-222222222222" },
-    { "key": "doctorId", "value": "" }
+    { "key": "doctorId", "value": "" },
+    { "key": "appointmentId", "value": "" }
   ],
   "item": [
     {
@@ -281,6 +282,124 @@
             "method": "DELETE",
             "header": [],
             "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "description": "Đặt lịch, hàng đợi & vòng đời trạng thái. Cần {{patientId}} và {{doctorId}} (chạy Create patient / Create doctor trước).",
+      "item": [
+        {
+          "name": "Create appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.code === 201);",
+                  "const body = pm.response.json();",
+                  "if (body.success) pm.collectionVariables.set('appointmentId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/appointments", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"doctorId\": \"{{doctorId}}\",\n  \"startTime\": \"2026-08-10T08:00:00Z\",\n  \"endTime\": \"2026-08-10T08:30:00Z\",\n  \"reason\": \"Khám tổng quát\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List appointments (filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments?page=1&pageSize=20&date=2026-08-10&doctorId={{doctorId}}&status=0",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "appointments" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "date", "value": "2026-08-10" },
+                { "key": "doctorId", "value": "{{doctorId}}" },
+                { "key": "status", "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get appointment by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] }
+          }
+        },
+        {
+          "name": "Reschedule appointment",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"2026-08-10T09:00:00Z\",\n  \"endTime\": \"2026-08-10T09:30:00Z\",\n  \"reason\": \"Đổi giờ\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/check-in", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "check-in" ] }
+          }
+        },
+        {
+          "name": "Start",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/start", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "start" ] }
+          }
+        },
+        {
+          "name": "Complete",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/complete", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "complete" ] }
+          }
+        },
+        {
+          "name": "Cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/cancel", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "cancel" ] }
+          }
+        },
+        {
+          "name": "No-show",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/no-show", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "no-show" ] }
+          }
+        },
+        {
+          "name": "Delete appointment (soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] }
           }
         }
       ]

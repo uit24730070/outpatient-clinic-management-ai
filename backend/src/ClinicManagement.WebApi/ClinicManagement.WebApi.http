@@ -137,3 +137,68 @@ Content-Type: application/json
 ### Xoá mềm bác sĩ
 DELETE {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
 Authorization: Bearer {{token}}
+
+######################## Lịch khám ########################
+# Thay patientId/doctorId bằng Id thật (lấy từ danh sách Bệnh nhân/Bác sĩ).
+
+### Đặt lịch khám (lưu Id vào biến qua tên request "appt")
+# @name appt
+POST {{host}}/api/appointments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "11111111-1111-1111-1111-111111111111",
+  "doctorId": "22222222-2222-2222-2222-222222222222",
+  "startTime": "2026-08-10T08:00:00Z",
+  "endTime": "2026-08-10T08:30:00Z",
+  "reason": "Khám tổng quát"
+}
+
+### Lấy Id lịch vừa tạo
+@appointmentId = {{appt.response.body.$.data.id}}
+
+### Danh sách/hàng đợi (lọc theo ngày + bác sĩ + trạng thái)
+GET {{host}}/api/appointments?date=2026-08-10&status=0
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Chi tiết lịch
+GET {{host}}/api/appointments/{{appointmentId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Đổi khung giờ/lý do (reschedule)
+PUT {{host}}/api/appointments/{{appointmentId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "startTime": "2026-08-10T09:00:00Z",
+  "endTime": "2026-08-10T09:30:00Z",
+  "reason": "Đổi giờ"
+}
+
+### Check-in (Scheduled -> CheckedIn)
+POST {{host}}/api/appointments/{{appointmentId}}/check-in
+Authorization: Bearer {{token}}
+
+### Bắt đầu khám (CheckedIn -> InProgress)
+POST {{host}}/api/appointments/{{appointmentId}}/start
+Authorization: Bearer {{token}}
+
+### Hoàn tất (InProgress -> Completed)
+POST {{host}}/api/appointments/{{appointmentId}}/complete
+Authorization: Bearer {{token}}
+
+### Huỷ lịch
+POST {{host}}/api/appointments/{{appointmentId}}/cancel
+Authorization: Bearer {{token}}
+
+### Không đến
+POST {{host}}/api/appointments/{{appointmentId}}/no-show
+Authorization: Bearer {{token}}
+
+### Xoá mềm lịch
+DELETE {{host}}/api/appointments/{{appointmentId}}
+Authorization: Bearer {{token}}
