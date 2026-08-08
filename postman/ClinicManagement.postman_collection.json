@@ -1,16 +1,60 @@
 {
   "info": {
     "name": "Clinic Management AI",
-    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check.",
+    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check. Sprint 3: Xác thực (JWT) + RBAC. Chạy 'Auth > Login' trước để đặt biến {{token}}; token được áp tự động cho mọi request qua Bearer cấp collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5006" },
+    { "key": "token", "value": "" },
     { "key": "patientId", "value": "" },
     { "key": "specialtyId", "value": "22222222-2222-2222-2222-222222222222" },
     { "key": "doctorId", "value": "" }
   ],
   "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.code === 200);",
+                  "const body = pm.response.json();",
+                  "if (body.success) pm.collectionVariables.set('token', body.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "login" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Me (current user)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "me" ] }
+          }
+        }
+      ]
+    },
     {
       "name": "Ops",
       "item": [

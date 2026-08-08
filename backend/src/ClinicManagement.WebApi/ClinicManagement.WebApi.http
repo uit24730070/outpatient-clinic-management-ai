@@ -1,7 +1,30 @@
 @host = http://localhost:5006
 
+######################## Xác thực ########################
+
+### Đăng nhập (lưu token vào biến @token qua tên request "login")
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+
+### Lấy token từ phản hồi login ở trên
+@token = {{login.response.body.$.data.accessToken}}
+
+### Thông tin người dùng hiện tại
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+######################## Bệnh nhân ########################
+# Các endpoint dưới đây yêu cầu header Authorization: Bearer {{token}}.
+
 ### Tạo bệnh nhân
 POST {{host}}/api/patients
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -14,14 +37,17 @@ Content-Type: application/json
 
 ### Danh sách bệnh nhân (phân trang + tìm kiếm)
 GET {{host}}/api/patients?page=1&pageSize=20&search=Nguyễn
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Chi tiết bệnh nhân
 GET {{host}}/api/patients/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Cập nhật bệnh nhân
 PUT {{host}}/api/patients/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -34,6 +60,7 @@ Content-Type: application/json
 
 ### Xoá mềm bệnh nhân
 DELETE {{host}}/api/patients/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 
 ######################## Vận hành ########################
 
@@ -44,6 +71,7 @@ GET {{host}}/health
 
 ### Tạo chuyên khoa
 POST {{host}}/api/specialties
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -53,10 +81,12 @@ Content-Type: application/json
 
 ### Danh sách chuyên khoa
 GET {{host}}/api/specialties?page=1&pageSize=20&search=
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Cập nhật chuyên khoa
 PUT {{host}}/api/specialties/11111111-1111-1111-1111-111111111111
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -66,11 +96,13 @@ Content-Type: application/json
 
 ### Xoá mềm chuyên khoa
 DELETE {{host}}/api/specialties/11111111-1111-1111-1111-111111111111
+Authorization: Bearer {{token}}
 
 ######################## Bác sĩ ########################
 
 ### Tạo bác sĩ (specialtyId là chuyên khoa seed sẵn: Tim mạch)
 POST {{host}}/api/doctors
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -82,14 +114,17 @@ Content-Type: application/json
 
 ### Danh sách bác sĩ (phân trang + tìm kiếm)
 GET {{host}}/api/doctors?page=1&pageSize=20&search=
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Chi tiết bác sĩ
 GET {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Cập nhật bác sĩ
 PUT {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -101,3 +136,4 @@ Content-Type: application/json
 
 ### Xoá mềm bác sĩ
 DELETE {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
