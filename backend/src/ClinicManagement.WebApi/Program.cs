@@ -1,11 +1,17 @@
 using ClinicManagement.Application;
 using ClinicManagement.Infrastructure;
+using ClinicManagement.Infrastructure.Persistence;
 using ClinicManagement.Shared.Contracts;
 using ClinicManagement.WebApi.Filters;
 using ClinicManagement.WebApi.Middleware;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logging có cấu trúc (Serilog): đọc cấu hình từ appsettings, ghi ra console.
+builder.Host.UseSerilog((context, loggerConfig) =>
+    loggerConfig.ReadFrom.Configuration(context.Configuration));
 
 const string CorsPolicy = "FrontendCors";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -14,6 +20,10 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 // Đăng ký dịch vụ theo từng lớp.
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Health check: kiểm tra kết nối tới CSDL qua DbContext.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>(name: "database");
 
 builder.Services.AddControllers(options =>
 {
@@ -55,6 +65,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Ghi log tóm tắt mỗi request HTTP (method, path, status, thời lượng).
+app.UseSerilogRequestLogging();
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -70,5 +83,8 @@ app.UseCors(CorsPolicy);
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Endpoint health check: GET /health -> "Healthy" khi DB kết nối được.
+app.MapHealthChecks("/health");
 
 app.Run();
