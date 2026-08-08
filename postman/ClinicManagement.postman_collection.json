@@ -1,0 +1,80 @@
+{
+  "info": {
+    "name": "Clinic Management AI",
+    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Quản lý Bệnh nhân.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5006" },
+    { "key": "patientId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Create patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.code === 201);",
+                  "const body = pm.response.json();",
+                  "if (body.success) pm.collectionVariables.set('patientId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/patients", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn A\",\n  \"dateOfBirth\": \"1990-05-20\",\n  \"gender\": 1,\n  \"phoneNumber\": \"0912345678\",\n  \"address\": \"Hà Nội\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List patients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients?page=1&pageSize=20&search=",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "patients" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get patient by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/patients/{{patientId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients", "{{patientId}}" ] }
+          }
+        },
+        {
+          "name": "Update patient",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/patients/{{patientId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients", "{{patientId}}" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn An\",\n  \"dateOfBirth\": \"1990-05-20\",\n  \"gender\": 1,\n  \"phoneNumber\": \"0900000000\",\n  \"address\": \"TP.HCM\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

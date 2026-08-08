@@ -1,6 +1,33 @@
-@ClinicManagement.WebApi_HostAddress = http://localhost:5006
+@host = http://localhost:5006
 
-GET {{ClinicManagement.WebApi_HostAddress}}/weatherforecast/
+### Tạo bệnh nhân
+POST {{host}}/api/patients
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn A",
+  "dateOfBirth": "1990-05-20",
+  "gender": 1,
+  "phoneNumber": "0912345678",
+  "address": "Hà Nội"
+}
+
+### Danh sách bệnh nhân (phân trang + tìm kiếm)
+GET {{host}}/api/patients?page=1&pageSize=20&search=Nguyễn
 Accept: application/json
 
-###
+### Chi tiết bệnh nhân
+GET {{host}}/api/patients/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Cập nhật bệnh nhân
+PUT {{host}}/api/patients/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn An",
+  "dateOfBirth": "1990-05-20",
+  "gender": 1,
+  "phoneNumber": "0900000000",
+  "address": "TP.HCM"
+}
