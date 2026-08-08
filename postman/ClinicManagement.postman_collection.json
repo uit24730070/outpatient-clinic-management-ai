@@ -968,6 +968,83 @@
               ]
             }
           }
+        },
+        {
+          "name": "Ask patient (RAG)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.code === 200);",
+                  "const body = pm.response.json();",
+                  "pm.test('có answer + sources', () => body.success && typeof body.data.answer === 'string' && Array.isArray(body.data.sources));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Bệnh nhân từng dùng kháng sinh gì?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/{{patientId}}/ai-ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{patientId}}",
+                "ai-ask"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reindex embeddings (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.code === 200);",
+                  "const body = pm.response.json();",
+                  "pm.test('có indexed', () => body.success && typeof body.data.indexed === 'number');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/reindex",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "reindex"
+              ]
+            }
+          }
         }
       ]
     }

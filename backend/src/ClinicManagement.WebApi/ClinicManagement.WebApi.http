@@ -268,3 +268,18 @@ Authorization: Bearer {{token}}
 POST {{host}}/api/patients/11111111-1111-1111-1111-111111111111/ai-summary
 Authorization: Bearer {{token}}
 Accept: application/json
+
+### Hỏi đáp có ngữ cảnh (RAG) trên bệnh án — trả câu trả lời + nguồn phiếu
+# Dev bật Ai:UseFakeEmbedding = true → embedding tất định, không gọi mạng.
+POST {{host}}/api/patients/11111111-1111-1111-1111-111111111111/ai-ask
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "question": "Bệnh nhân từng dùng kháng sinh gì?"
+}
+
+### Backfill embedding cho toàn bộ phiếu khám (Admin — bảo trì)
+POST {{host}}/api/ai/reindex
+Authorization: Bearer {{token}}
+Accept: application/json
