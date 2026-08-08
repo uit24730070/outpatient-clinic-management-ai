@@ -145,6 +145,9 @@ input, select, textarea {
 /* Alerts */
 .alert { padding: 0.6rem 0.85rem; border-radius: 6px; }
 .alert--error { background: #fee2e2; color: var(--error); }
+.alert--warning { background: #fef3c7; color: #92400e; }
+
+.text-muted { color: var(--muted); font-size: 0.85rem; }
 
 /* User info trong header */
 .layout__user {

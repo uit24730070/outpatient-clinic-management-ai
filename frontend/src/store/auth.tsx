@@ -1,14 +1,17 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { getStoredUser, login as loginRequest, logout as logoutStore } from '../services/authService'
-import { UserRole, type AuthUser, type LoginRequest } from '../types/auth'
+import type { AuthUser, LoginRequest } from '../types/auth'
+import { canManageStaff, canRecordEncounter as canRecordEncounterFor } from '../config/access'
 
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
-  /** Có quyền ghi (tạo/sửa/xoá) danh mục nghiệp vụ: Admin hoặc Lễ tân. */
+  /** Có quyền ghi (tạo/sửa/xoá) danh mục nghiệp vụ: Admin hoặc Lễ tân (khớp Roles.ManageStaff). */
   canManage: boolean
-  /** Có quyền ghi bệnh án (phiếu khám/đơn thuốc): Bác sĩ hoặc Admin (ADR 0006). */
+  /** Có quyền ghi bệnh án (phiếu khám/đơn thuốc): Bác sĩ hoặc Admin (ADR 0006, Roles.RecordEncounter). */
   canRecordEncounter: boolean
+  /** Hồ sơ bác sĩ của người đăng nhập (nếu có) — dùng lọc "phiếu/lịch của tôi". */
+  doctorId: string | null
   login: (request: LoginRequest) => Promise<void>
   logout: () => void
 }
@@ -31,8 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     isAuthenticated: user !== null,
-    canManage: user?.role === UserRole.Admin || user?.role === UserRole.Receptionist,
-    canRecordEncounter: user?.role === UserRole.Admin || user?.role === UserRole.Doctor,
+    canManage: canManageStaff(user?.role),
+    canRecordEncounter: canRecordEncounterFor(user?.role),
+    doctorId: user?.doctorId ?? null,
     login,
     logout,
   }), [user, login, logout])
