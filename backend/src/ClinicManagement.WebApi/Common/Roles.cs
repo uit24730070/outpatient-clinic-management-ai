@@ -12,4 +12,7 @@ public static class Roles
 
     /// <summary>Nhóm được phép ghi (tạo/sửa/xoá) danh mục nghiệp vụ: Admin và Lễ tân.</summary>
     public const string ManageStaff = Admin + "," + Receptionist;
+
+    /// <summary>Nhóm được phép ghi bệnh án (phiếu khám/đơn thuốc): Bác sĩ và Admin (xem ADR 0006).</summary>
+    public const string RecordEncounter = Admin + "," + Doctor;
 }

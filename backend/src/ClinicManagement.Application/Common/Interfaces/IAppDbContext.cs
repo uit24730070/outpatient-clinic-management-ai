@@ -1,5 +1,6 @@
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Doctors;
+using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
@@ -17,6 +18,7 @@ public interface IAppDbContext
     DbSet<Doctor> Doctors { get; }
     DbSet<User> Users { get; }
     DbSet<Appointment> Appointments { get; }
+    DbSet<Encounter> Encounters { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

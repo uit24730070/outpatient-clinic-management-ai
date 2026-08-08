@@ -2,6 +2,7 @@ using System.Reflection;
 using ClinicManagement.Application.Appointments;
 using ClinicManagement.Application.Auth;
 using ClinicManagement.Application.Doctors;
+using ClinicManagement.Application.Encounters;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Specialties;
 using FluentValidation;
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ISpecialtyService, SpecialtyService>();
         services.AddScoped<IDoctorService, DoctorService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<IAuthService, AuthService>();
         return services;
     }

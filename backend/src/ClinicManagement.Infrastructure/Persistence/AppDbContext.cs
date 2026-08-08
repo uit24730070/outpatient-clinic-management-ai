@@ -3,6 +3,7 @@ using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
+using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
@@ -19,6 +20,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Doctor> Doctors => Set<Doctor>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<Encounter> Encounters => Set<Encounter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
