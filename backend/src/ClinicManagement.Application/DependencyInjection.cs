@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPatientSummaryService, PatientSummaryService>();
+        services.AddScoped<IEncounterEmbeddingIndexer, EncounterEmbeddingIndexer>();
+        services.AddScoped<IPatientQuestionService, PatientQuestionService>();
         return services;
     }
 }

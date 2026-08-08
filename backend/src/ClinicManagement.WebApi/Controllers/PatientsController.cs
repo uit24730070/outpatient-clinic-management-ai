@@ -1,4 +1,5 @@
 using ClinicManagement.Application.Ai;
+using ClinicManagement.Application.Ai.Dtos;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Patients.Dtos;
 using ClinicManagement.WebApi.Common;
@@ -13,11 +14,16 @@ public sealed class PatientsController : ApiControllerBase
 {
     private readonly IPatientService _patients;
     private readonly IPatientSummaryService _summaries;
+    private readonly IPatientQuestionService _questions;
 
-    public PatientsController(IPatientService patients, IPatientSummaryService summaries)
+    public PatientsController(
+        IPatientService patients,
+        IPatientSummaryService summaries,
+        IPatientQuestionService questions)
     {
         _patients = patients;
         _summaries = summaries;
+        _questions = questions;
     }
 
     /// <summary>Tạo hồ sơ bệnh nhân mới.</summary>
@@ -73,6 +79,15 @@ public sealed class PatientsController : ApiControllerBase
     public async Task<IActionResult> AiSummary(Guid id, CancellationToken ct)
     {
         var result = await _summaries.SummarizeAsync(id, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Hỏi đáp có ngữ cảnh (RAG) trên bệnh án — truy hồi phiếu liên quan rồi trả lời (Bác sĩ/Admin).</summary>
+    [Authorize(Roles = Roles.RecordEncounter)]
+    [HttpPost("{id:guid}/ai-ask")]
+    public async Task<IActionResult> AiAsk(Guid id, [FromBody] AskPatientRequest request, CancellationToken ct)
+    {
+        var result = await _questions.AnswerAsync(id, request.Question, ct);
         return ToResponse(result);
     }
 }

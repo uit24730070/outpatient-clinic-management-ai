@@ -1,3 +1,4 @@
+using ClinicManagement.Application.Ai;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Encounters.Dtos;
 using ClinicManagement.Domain.Appointments;
@@ -11,8 +12,14 @@ public sealed class EncounterService : IEncounterService
 {
     private const int MaxPageSize = 100;
     private readonly IAppDbContext _db;
+    // Best-effort: sinh/cập nhật embedding sau khi ghi phiếu (null trong unit test → bỏ qua).
+    private readonly IEncounterEmbeddingIndexer? _embeddingIndexer;
 
-    public EncounterService(IAppDbContext db) => _db = db;
+    public EncounterService(IAppDbContext db, IEncounterEmbeddingIndexer? embeddingIndexer = null)
+    {
+        _db = db;
+        _embeddingIndexer = embeddingIndexer;
+    }
 
     public async Task<Result<EncounterDto>> CreateAsync(
         CreateEncounterRequest request, CancellationToken ct = default)
@@ -47,6 +54,7 @@ public sealed class EncounterService : IEncounterService
 
         _db.Encounters.Add(encounter);
         await _db.SaveChangesAsync(ct);
+        await IndexEmbeddingAsync(encounter.Id, ct);
 
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
@@ -114,6 +122,7 @@ public sealed class EncounterService : IEncounterService
             return Result.Failure<EncounterDto>(replace.Error);
 
         await _db.SaveChangesAsync(ct);
+        await IndexEmbeddingAsync(encounter.Id, ct);
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
 
@@ -138,8 +147,13 @@ public sealed class EncounterService : IEncounterService
             return Result.Failure<EncounterDto>(closeAppointment.Error);
 
         await _db.SaveChangesAsync(ct);
+        await IndexEmbeddingAsync(encounter.Id, ct);
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
+
+    /// <summary>Lập chỉ mục embedding cho phiếu (best-effort; bỏ qua khi chưa cấu hình indexer).</summary>
+    private Task IndexEmbeddingAsync(Guid encounterId, CancellationToken ct) =>
+        _embeddingIndexer?.IndexAsync(encounterId, ct) ?? Task.CompletedTask;
 
     /// <summary>Ánh xạ truy vấn Phiếu khám sang DTO kèm tên bệnh nhân/bác sĩ (subquery) và cụm đơn thuốc.</summary>
     private IQueryable<EncounterDto> Project(IQueryable<Encounter> query) =>

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using ClinicManagement.Application.Common.Interfaces;
+using ClinicManagement.Domain.Ai;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
@@ -21,9 +22,13 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
+    public DbSet<EncounterEmbedding> EncounterEmbeddings => Set<EncounterEmbedding>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Bật extension pgvector (migration sinh CREATE EXTENSION vector).
+        modelBuilder.HasPostgresExtension("vector");
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         // Global query filter: mặc định ẩn mọi bản ghi đã xoá mềm (e => !e.IsDeleted).

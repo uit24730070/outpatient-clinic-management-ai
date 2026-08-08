@@ -20,9 +20,10 @@ public static class DependencyInjection
                 "Thiếu chuỗi kết nối 'Default' trong cấu hình.");
 
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString, npg => npg.UseVector()));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IEncounterEmbeddingStore, PgEncounterEmbeddingStore>();
 
         // Xác thực: cấu hình JWT + băm mật khẩu + phát token.
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
@@ -50,6 +51,26 @@ public static class DependencyInjection
         else
         {
             services.AddSingleton<IChatCompletionService, FakeChatCompletionService>();
+        }
+
+        // Embedding cho RAG: client Voyage thật khi có khoá, ngược lại fake (vector tất định).
+        if (aiSettings.IsRealEmbeddingConfigured)
+        {
+            services.AddSingleton<IEmbeddingService>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AiSettings>>();
+                var http = new HttpClient
+                {
+                    BaseAddress = new Uri(opts.Value.EmbeddingBaseUrl),
+                    Timeout = TimeSpan.FromSeconds(opts.Value.TimeoutSeconds)
+                };
+                return new VoyageEmbeddingService(http, opts);
+            });
+        }
+        else
+        {
+            services.AddSingleton<IEmbeddingService>(
+                new FakeEmbeddingService(AiSettings.EmbeddingDimensions));
         }
 
         return services;
