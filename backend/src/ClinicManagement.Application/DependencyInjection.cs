@@ -1,4 +1,5 @@
 using System.Reflection;
+using ClinicManagement.Application.Ai;
 using ClinicManagement.Application.Appointments;
 using ClinicManagement.Application.Auth;
 using ClinicManagement.Application.Doctors;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IPatientSummaryService, PatientSummaryService>();
         return services;
     }
 }

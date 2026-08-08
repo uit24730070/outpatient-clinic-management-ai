@@ -1,3 +1,4 @@
+using ClinicManagement.Application.Ai;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Patients.Dtos;
 using ClinicManagement.WebApi.Common;
@@ -11,8 +12,13 @@ namespace ClinicManagement.WebApi.Controllers;
 public sealed class PatientsController : ApiControllerBase
 {
     private readonly IPatientService _patients;
+    private readonly IPatientSummaryService _summaries;
 
-    public PatientsController(IPatientService patients) => _patients = patients;
+    public PatientsController(IPatientService patients, IPatientSummaryService summaries)
+    {
+        _patients = patients;
+        _summaries = summaries;
+    }
 
     /// <summary>Tạo hồ sơ bệnh nhân mới.</summary>
     [Authorize(Roles = Roles.ManageStaff)]
@@ -58,6 +64,15 @@ public sealed class PatientsController : ApiControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await _patients.DeleteAsync(id, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Tóm tắt lịch sử khám của bệnh nhân bằng AI (đọc bệnh án — chỉ Bác sĩ/Admin).</summary>
+    [Authorize(Roles = Roles.RecordEncounter)]
+    [HttpPost("{id:guid}/ai-summary")]
+    public async Task<IActionResult> AiSummary(Guid id, CancellationToken ct)
+    {
+        var result = await _summaries.SummarizeAsync(id, ct);
         return ToResponse(result);
     }
 }

@@ -1,9 +1,12 @@
+using ClinicManagement.Application.Common.Ai;
 using ClinicManagement.Application.Common.Interfaces;
+using ClinicManagement.Infrastructure.Ai;
 using ClinicManagement.Infrastructure.Authentication;
 using ClinicManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace ClinicManagement.Infrastructure;
 
@@ -25,6 +28,29 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        // Trợ lý AI/LLM: chọn hiện thực theo cấu hình (fake khi thiếu khoá hoặc bật UseFake).
+        services.Configure<AiSettings>(configuration.GetSection(AiSettings.SectionName));
+        var aiSettings = configuration.GetSection(AiSettings.SectionName).Get<AiSettings>() ?? new AiSettings();
+
+        if (aiSettings.IsRealClientConfigured)
+        {
+            // Giữ một HttpClient dùng lại toàn vòng đời (tránh cạn socket) — không cần AddHttpClient.
+            services.AddSingleton<IChatCompletionService>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AiSettings>>();
+                var http = new HttpClient
+                {
+                    BaseAddress = new Uri(opts.Value.BaseUrl),
+                    Timeout = TimeSpan.FromSeconds(opts.Value.TimeoutSeconds)
+                };
+                return new ClaudeChatCompletionService(http, opts);
+            });
+        }
+        else
+        {
+            services.AddSingleton<IChatCompletionService, FakeChatCompletionService>();
+        }
 
         return services;
     }
