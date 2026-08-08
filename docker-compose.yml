@@ -1,0 +1,24 @@
+# =============================================================================
+# Clinic Management AI — Docker Compose (SKELETON — Sprint 0)
+#
+# LƯU Ý: Sprint 0 CHỦ Ý CHƯA triển khai Docker. File này chỉ là khung định
+# hướng. Các service (database, backend, frontend) sẽ được bổ sung ở các sprint
+# sau khi nghiệp vụ bắt đầu được phát triển. Các block dưới đây được để dạng
+# comment và KHÔNG hoạt động cho tới khi được hiện thực.
+# =============================================================================
+
+services: {}
+
+# services:
+#   database:
+#     image: postgres:16
+#     # cấu hình sẽ được bổ sung ở sprint sau
+#
+#   backend:
+#     # build từ ./backend — bổ sung ở sprint sau
+#
+#   frontend:
+#     # build từ ./frontend — bổ sung ở sprint sau
+
+# volumes:
+#   postgres_data:

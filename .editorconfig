@@ -1,0 +1,37 @@
+# EditorConfig — https://editorconfig.org
+# Đồng nhất coding style giữa các thành viên và IDE.
+root = true
+
+# --- Mặc định cho mọi file ---------------------------------------------------
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# --- C# / .NET ---------------------------------------------------------------
+[*.{cs,csx}]
+indent_size = 4
+# Quy ước đặt tên & style .NET
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+csharp_prefer_braces = true:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+
+[*.{csproj,props,targets}]
+indent_size = 2
+
+# --- Frontend (TS/JS/JSON/CSS) ----------------------------------------------
+[*.{ts,tsx,js,jsx,json,css,scss,html}]
+indent_size = 2
+
+# --- Markdown ----------------------------------------------------------------
+[*.md]
+trim_trailing_whitespace = false
+
+# --- YAML --------------------------------------------------------------------
+[*.{yml,yaml}]
+indent_size = 2
