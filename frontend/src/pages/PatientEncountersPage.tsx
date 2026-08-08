@@ -2,15 +2,16 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { listEncounters } from '../services/encounterService'
 import { getPatient } from '../services/patientService'
-import { summarizePatient } from '../services/aiService'
+import { summarizePatient, askPatient } from '../services/aiService'
 import { toApiException } from '../services/apiClient'
 import { useAuth } from '../store/auth'
+import { type FormEvent } from 'react'
 import {
   encounterStatusClass,
   encounterStatusLabels,
   type Encounter,
 } from '../types/encounter'
-import type { PatientSummary } from '../types/ai'
+import type { PatientSummary, PatientAnswer } from '../types/ai'
 import type { PagedResult } from '../types/common'
 
 const PAGE_SIZE = 10
@@ -48,6 +49,27 @@ export default function PatientEncountersPage() {
       setSummarizing(false)
     }
   }, [id])
+
+  // Hỏi đáp có ngữ cảnh (RAG).
+  const [question, setQuestion] = useState('')
+  const [answer, setAnswer] = useState<PatientAnswer | null>(null)
+  const [asking, setAsking] = useState(false)
+  const [askError, setAskError] = useState<string | null>(null)
+
+  const ask = useCallback(async (e: FormEvent) => {
+    e.preventDefault()
+    if (!id || !question.trim()) return
+    setAsking(true)
+    setAskError(null)
+    setAnswer(null)
+    try {
+      setAnswer(await askPatient(id, question.trim()))
+    } catch (err) {
+      setAskError(toApiException(err).message)
+    } finally {
+      setAsking(false)
+    }
+  }, [id, question])
 
   useEffect(() => {
     if (!id) return
@@ -102,6 +124,46 @@ export default function PatientEncountersPage() {
               <p className="muted ai-summary__meta">
                 Dựa trên {summary.encounterCount} phiếu khám gần nhất · model: {summary.model}.
                 Thông tin tham khảo, không thay thế đánh giá của bác sĩ.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {canRecordEncounter && (
+        <div className="ai-summary">
+          <h2 className="ai-summary__title">Hỏi đáp trên bệnh án (RAG)</h2>
+          <form className="ai-ask" onSubmit={(e) => void ask(e)}>
+            <input
+              className="input ai-ask__input"
+              placeholder="Đặt câu hỏi tự do, ví dụ: Bệnh nhân từng dùng kháng sinh gì?"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+            />
+            <button className="btn btn--primary" type="submit" disabled={asking || !question.trim()}>
+              {asking ? 'Đang hỏi…' : 'Hỏi AI'}
+            </button>
+          </form>
+          {asking && <p>Đang truy hồi phiếu liên quan và tổng hợp câu trả lời…</p>}
+          {askError && <p className="alert alert--error">{askError}</p>}
+          {answer && (
+            <>
+              <p className="ai-summary__text">{answer.answer}</p>
+              {answer.sources.length > 0 && (
+                <div className="ai-ask__sources">
+                  <p className="muted">Nguồn được trích ({answer.sources.length} phiếu):</p>
+                  <ul>
+                    {answer.sources.map((s, i) => (
+                      <li key={s.encounterId}>
+                        Nguồn {i + 1}: {formatDate(s.createdAt)} — {s.diagnosis}{' '}
+                        <span className="muted">(tương đồng {(s.similarity * 100).toFixed(0)}%)</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <p className="muted ai-summary__meta">
+                model: {answer.model}. Thông tin tham khảo, không thay thế đánh giá của bác sĩ.
               </p>
             </>
           )}
