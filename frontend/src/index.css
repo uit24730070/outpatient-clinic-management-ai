@@ -174,3 +174,23 @@ input, select, textarea {
 }
 .login-card h1 { margin: 0; font-size: 1.4rem; }
 .login-hint { margin: 0.25rem 0 0.5rem; color: var(--muted); font-size: 0.9rem; }
+
+/* Nhóm nút bên phải tiêu đề trang */
+.page-head__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Khối tóm tắt bằng AI */
+.ai-summary {
+  background: var(--bg-soft, #f8fafc);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.ai-summary__title { margin: 0 0 0.5rem; font-size: 1.05rem; }
+.ai-summary__text { white-space: pre-wrap; margin: 0 0 0.5rem; }
+.ai-summary__meta { font-size: 0.85rem; margin: 0; }

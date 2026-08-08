@@ -2,12 +2,15 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { listEncounters } from '../services/encounterService'
 import { getPatient } from '../services/patientService'
+import { summarizePatient } from '../services/aiService'
 import { toApiException } from '../services/apiClient'
+import { useAuth } from '../store/auth'
 import {
   encounterStatusClass,
   encounterStatusLabels,
   type Encounter,
 } from '../types/encounter'
+import type { PatientSummary } from '../types/ai'
 import type { PagedResult } from '../types/common'
 
 const PAGE_SIZE = 10
@@ -20,12 +23,31 @@ function formatDate(iso: string): string {
 
 export default function PatientEncountersPage() {
   const { id } = useParams<{ id: string }>()
+  const { canRecordEncounter } = useAuth()
   const [patientName, setPatientName] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Encounter> | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [summary, setSummary] = useState<PatientSummary | null>(null)
+  const [summarizing, setSummarizing] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+
+  const summarize = useCallback(async () => {
+    if (!id) return
+    setSummarizing(true)
+    setSummaryError(null)
+    setSummary(null)
+    try {
+      setSummary(await summarizePatient(id))
+    } catch (err) {
+      setSummaryError(toApiException(err).message)
+    } finally {
+      setSummarizing(false)
+    }
+  }, [id])
 
   useEffect(() => {
     if (!id) return
@@ -59,8 +81,32 @@ export default function PatientEncountersPage() {
     <section>
       <div className="page-head">
         <h1>Lịch sử khám {patientName && `— ${patientName}`}</h1>
-        <Link className="btn" to="/patients">← Bệnh nhân</Link>
+        <div className="page-head__actions">
+          {canRecordEncounter && (
+            <button className="btn btn--primary" disabled={summarizing} onClick={() => void summarize()}>
+              {summarizing ? 'Đang tóm tắt…' : '✨ Tóm tắt bằng AI'}
+            </button>
+          )}
+          <Link className="btn" to="/patients">← Bệnh nhân</Link>
+        </div>
       </div>
+
+      {canRecordEncounter && (summarizing || summaryError || summary) && (
+        <div className="ai-summary">
+          <h2 className="ai-summary__title">Tóm tắt bằng AI</h2>
+          {summarizing && <p>Đang phân tích lịch sử khám…</p>}
+          {summaryError && <p className="alert alert--error">{summaryError}</p>}
+          {summary && (
+            <>
+              <p className="ai-summary__text">{summary.summary}</p>
+              <p className="muted ai-summary__meta">
+                Dựa trên {summary.encounterCount} phiếu khám gần nhất · model: {summary.model}.
+                Thông tin tham khảo, không thay thế đánh giá của bác sĩ.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {error && <p className="alert alert--error">{error}</p>}
       {loading && <p>Đang tải…</p>}
