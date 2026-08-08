@@ -1,10 +1,12 @@
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Patients.Dtos;
 using ClinicManagement.WebApi.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClinicManagement.WebApi.Controllers;
 
+[Authorize]
 [Route("api/patients")]
 public sealed class PatientsController : ApiControllerBase
 {
@@ -13,6 +15,7 @@ public sealed class PatientsController : ApiControllerBase
     public PatientsController(IPatientService patients) => _patients = patients;
 
     /// <summary>Tạo hồ sơ bệnh nhân mới.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken ct)
     {
@@ -41,6 +44,7 @@ public sealed class PatientsController : ApiControllerBase
     }
 
     /// <summary>Cập nhật thông tin bệnh nhân.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePatientRequest request, CancellationToken ct)
     {
@@ -49,6 +53,7 @@ public sealed class PatientsController : ApiControllerBase
     }
 
     /// <summary>Ngừng sử dụng (xoá mềm) hồ sơ bệnh nhân.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

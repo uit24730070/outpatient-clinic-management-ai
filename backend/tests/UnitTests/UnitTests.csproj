@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ClinicManagement.Domain\ClinicManagement.Domain.csproj" />
     <ProjectReference Include="..\..\src\ClinicManagement.Application\ClinicManagement.Application.csproj" />
+    <ProjectReference Include="..\..\src\ClinicManagement.Infrastructure\ClinicManagement.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\ClinicManagement.Shared\ClinicManagement.Shared.csproj" />
   </ItemGroup>
 

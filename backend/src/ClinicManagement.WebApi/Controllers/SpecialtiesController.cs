@@ -1,10 +1,12 @@
 using ClinicManagement.Application.Specialties;
 using ClinicManagement.Application.Specialties.Dtos;
 using ClinicManagement.WebApi.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClinicManagement.WebApi.Controllers;
 
+[Authorize]
 [Route("api/specialties")]
 public sealed class SpecialtiesController : ApiControllerBase
 {
@@ -13,6 +15,7 @@ public sealed class SpecialtiesController : ApiControllerBase
     public SpecialtiesController(ISpecialtyService specialties) => _specialties = specialties;
 
     /// <summary>Tạo chuyên khoa mới.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSpecialtyRequest request, CancellationToken ct)
     {
@@ -41,6 +44,7 @@ public sealed class SpecialtiesController : ApiControllerBase
     }
 
     /// <summary>Cập nhật thông tin chuyên khoa.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSpecialtyRequest request, CancellationToken ct)
     {
@@ -49,6 +53,7 @@ public sealed class SpecialtiesController : ApiControllerBase
     }
 
     /// <summary>Ngừng sử dụng (xoá mềm) chuyên khoa.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
