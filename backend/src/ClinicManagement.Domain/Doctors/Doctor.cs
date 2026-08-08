@@ -32,6 +32,13 @@ public class Doctor : Entity
     public string? PhoneNumber { get; private set; }
     public string? Email { get; private set; }
 
+    /// <summary>
+    /// Tài khoản đăng nhập (<see cref="Users.User"/>) gắn với hồ sơ bác sĩ này, nếu có.
+    /// Nullable: một hồ sơ bác sĩ có thể chưa gắn tài khoản. Duy nhất: một tài khoản ↔ tối đa một hồ sơ.
+    /// Cho phép lọc "phiếu/lịch của tôi" theo bác sĩ đăng nhập (ADR 0009).
+    /// </summary>
+    public Guid? UserId { get; private set; }
+
     /// <summary>Cập nhật các trường có thể chỉnh sửa của hồ sơ bác sĩ.</summary>
     public void UpdateDetails(
         string fullName,
@@ -44,4 +51,10 @@ public class Doctor : Entity
         PhoneNumber = phoneNumber;
         Email = email;
     }
+
+    /// <summary>Gắn hồ sơ bác sĩ với một tài khoản đăng nhập.</summary>
+    public void AssignUser(Guid userId) => UserId = userId;
+
+    /// <summary>Gỡ liên kết tài khoản khỏi hồ sơ bác sĩ.</summary>
+    public void UnassignUser() => UserId = null;
 }

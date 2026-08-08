@@ -40,14 +40,30 @@ public sealed class AuthService : IAuthService
             return InvalidCredentials;
 
         var token = _tokenGenerator.Generate(user);
-        return new AuthResultDto(token.AccessToken, token.ExpiresAt, UserDto.FromEntity(user));
+        var doctorId = await GetLinkedDoctorIdAsync(user.Id, ct);
+        return new AuthResultDto(token.AccessToken, token.ExpiresAt, UserDto.FromEntity(user, doctorId));
     }
 
     public async Task<Result<UserDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
-        return user is null
-            ? Error.NotFound("User.NotFound", $"Không tìm thấy người dùng với Id {id}.")
-            : UserDto.FromEntity(user);
+        if (user is null)
+            return Error.NotFound("User.NotFound", $"Không tìm thấy người dùng với Id {id}.");
+
+        var doctorId = await GetLinkedDoctorIdAsync(user.Id, ct);
+        return UserDto.FromEntity(user, doctorId);
+    }
+
+    /// <summary>
+    /// Tra cứu server-side hồ sơ bác sĩ gắn với tài khoản (nếu có).
+    /// Lộ doctorId qua đây thay vì nhét claim JWT để tránh vấn đề token cũ thiếu claim (ADR 0009).
+    /// </summary>
+    private async Task<Guid?> GetLinkedDoctorIdAsync(Guid userId, CancellationToken ct)
+    {
+        return await _db.Doctors
+            .AsNoTracking()
+            .Where(d => d.UserId == userId)
+            .Select(d => (Guid?)d.Id)
+            .FirstOrDefaultAsync(ct);
     }
 }

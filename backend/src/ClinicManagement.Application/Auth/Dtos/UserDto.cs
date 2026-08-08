@@ -8,12 +8,16 @@ public sealed record UserDto(
     string Username,
     string FullName,
     string Role,
-    string? Email)
+    string? Email,
+    // Hồ sơ bác sĩ gắn với tài khoản (nếu là user Bác sĩ đã liên kết); null nếu chưa gắn
+    // hoặc không phải bác sĩ. Cho phép FE lọc "phiếu/lịch của tôi" (ADR 0009).
+    Guid? DoctorId)
 {
-    public static UserDto FromEntity(User user) => new(
+    public static UserDto FromEntity(User user, Guid? doctorId = null) => new(
         user.Id,
         user.Username,
         user.FullName,
         user.Role.ToString(),
-        user.Email);
+        user.Email,
+        doctorId);
 }
