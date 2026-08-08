@@ -1,27 +1,16 @@
-using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Patients.Dtos;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Shared.Results;
-using Microsoft.EntityFrameworkCore;
+using UnitTests.Common;
 
 namespace UnitTests.Patients;
 
 public sealed class PatientServiceTests
 {
-    // DbContext tối giản cho test, dùng provider InMemory — không phụ thuộc Infrastructure/Npgsql.
-    private sealed class TestDbContext : DbContext, IAppDbContext
-    {
-        public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
-        public DbSet<Patient> Patients => Set<Patient>();
-    }
-
     private static PatientService CreateService(out TestDbContext db)
     {
-        var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        db = new TestDbContext(options);
+        db = TestDbContext.CreateInMemory();
         return new PatientService(db);
     }
 
@@ -120,5 +109,47 @@ public sealed class PatientServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(1, result.Value.Page);      // page < 1 -> 1
         Assert.Equal(20, result.Value.PageSize);  // pageSize quá lớn -> mặc định 20
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldReturnNotFound_WhenMissing()
+    {
+        var service = CreateService(out _);
+
+        var result = await service.DeleteAsync(Guid.NewGuid());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.NotFound, result.Error.Type);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldHidePatient_FromListAndGetById()
+    {
+        var service = CreateService(out _);
+        var created = await service.CreateAsync(ValidRequest());
+
+        var deleted = await service.DeleteAsync(created.Value.Id);
+        Assert.True(deleted.IsSuccess);
+
+        // Không còn xuất hiện ở danh sách.
+        var list = await service.GetListAsync(page: 1, pageSize: 10, search: null);
+        Assert.Equal(0, list.Value.TotalCount);
+
+        // Không truy xuất được theo Id.
+        var getById = await service.GetByIdAsync(created.Value.Id);
+        Assert.True(getById.IsFailure);
+        Assert.Equal(ErrorType.NotFound, getById.Error.Type);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldNotReuseCode_AfterSoftDelete()
+    {
+        var service = CreateService(out _);
+        var first = await service.CreateAsync(ValidRequest("A"));
+        await service.DeleteAsync(first.Value.Id);
+
+        // Mã bản ghi đã xoá vẫn được tính -> mã mới không trùng.
+        var second = await service.CreateAsync(ValidRequest("B"));
+        Assert.Equal("BN-000002", second.Value.Code);
     }
 }

@@ -1,0 +1,130 @@
+using ClinicManagement.Application.Common.Interfaces;
+using ClinicManagement.Application.Doctors.Dtos;
+using ClinicManagement.Domain.Doctors;
+using ClinicManagement.Shared.Results;
+using Microsoft.EntityFrameworkCore;
+
+namespace ClinicManagement.Application.Doctors;
+
+public sealed class DoctorService : IDoctorService
+{
+    private const int MaxPageSize = 100;
+    private readonly IAppDbContext _db;
+
+    public DoctorService(IAppDbContext db) => _db = db;
+
+    public async Task<Result<DoctorDto>> CreateAsync(CreateDoctorRequest request, CancellationToken ct = default)
+    {
+        if (!await SpecialtyExistsAsync(request.SpecialtyId, ct))
+            return Error.Validation("Doctor.SpecialtyNotFound",
+                $"Chuyên khoa với Id {request.SpecialtyId} không tồn tại.");
+
+        var code = await GenerateCodeAsync(ct);
+        var doctor = new Doctor(
+            code,
+            request.FullName.Trim(),
+            request.SpecialtyId,
+            NormalizeOptional(request.PhoneNumber),
+            NormalizeOptional(request.Email));
+
+        _db.Doctors.Add(doctor);
+        await _db.SaveChangesAsync(ct);
+
+        return (await ProjectByIdAsync(doctor.Id, ct))!;
+    }
+
+    public async Task<Result<PagedResult<DoctorDto>>> GetListAsync(
+        int page, int pageSize, string? search, CancellationToken ct = default)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
+
+        var query = _db.Doctors.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(d =>
+                d.FullName.ToLower().Contains(term) ||
+                d.Code.ToLower().Contains(term) ||
+                (d.PhoneNumber != null && d.PhoneNumber.ToLower().Contains(term)));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await Project(query.OrderByDescending(d => d.CreatedAt))
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<DoctorDto>(items, page, pageSize, total);
+    }
+
+    public async Task<Result<DoctorDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var dto = await ProjectByIdAsync(id, ct);
+        return dto is null
+            ? Error.NotFound("Doctor.NotFound", $"Không tìm thấy bác sĩ với Id {id}.")
+            : dto;
+    }
+
+    public async Task<Result<DoctorDto>> UpdateAsync(
+        Guid id, UpdateDoctorRequest request, CancellationToken ct = default)
+    {
+        var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (doctor is null)
+            return Error.NotFound("Doctor.NotFound", $"Không tìm thấy bác sĩ với Id {id}.");
+
+        if (!await SpecialtyExistsAsync(request.SpecialtyId, ct))
+            return Error.Validation("Doctor.SpecialtyNotFound",
+                $"Chuyên khoa với Id {request.SpecialtyId} không tồn tại.");
+
+        doctor.UpdateDetails(
+            request.FullName.Trim(),
+            request.SpecialtyId,
+            NormalizeOptional(request.PhoneNumber),
+            NormalizeOptional(request.Email));
+
+        await _db.SaveChangesAsync(ct);
+        return (await ProjectByIdAsync(doctor.Id, ct))!;
+    }
+
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (doctor is null)
+            return Result.Failure(Error.NotFound("Doctor.NotFound", $"Không tìm thấy bác sĩ với Id {id}."));
+
+        doctor.MarkAsDeleted();
+        await _db.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+
+    /// <summary>Ánh xạ truy vấn Bác sĩ sang DTO kèm tên chuyên khoa (subquery, null nếu khoa đã bị xoá).</summary>
+    private IQueryable<DoctorDto> Project(IQueryable<Doctor> query) =>
+        query.Select(d => new DoctorDto(
+            d.Id,
+            d.Code,
+            d.FullName,
+            d.SpecialtyId,
+            _db.Specialties.Where(s => s.Id == d.SpecialtyId).Select(s => s.Name).FirstOrDefault(),
+            d.PhoneNumber,
+            d.Email,
+            d.CreatedAt,
+            d.UpdatedAt));
+
+    private async Task<DoctorDto?> ProjectByIdAsync(Guid id, CancellationToken ct) =>
+        await Project(_db.Doctors.AsNoTracking().Where(d => d.Id == id)).FirstOrDefaultAsync(ct);
+
+    private async Task<bool> SpecialtyExistsAsync(Guid specialtyId, CancellationToken ct) =>
+        await _db.Specialties.AnyAsync(s => s.Id == specialtyId, ct);
+
+    /// <summary>Sinh mã bác sĩ dạng BS-000001, đếm cả bản ghi đã xoá mềm để tránh trùng mã.</summary>
+    private async Task<string> GenerateCodeAsync(CancellationToken ct)
+    {
+        var count = await _db.Doctors.IgnoreQueryFilters().CountAsync(ct);
+        return $"BS-{count + 1:D6}";
+    }
+
+    private static string? NormalizeOptional(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
