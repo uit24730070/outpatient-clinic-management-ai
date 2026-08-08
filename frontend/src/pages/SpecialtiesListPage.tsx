@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteSpecialty, listSpecialties } from '../services/specialtyService'
 import { toApiException } from '../services/apiClient'
+import { useAuth } from '../store/auth'
 import type { PagedResult } from '../types/common'
 import type { Specialty } from '../types/specialty'
 
 const PAGE_SIZE = 10
 
 export default function SpecialtiesListPage() {
+  const { canManage } = useAuth()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Specialty> | null>(null)
@@ -51,7 +53,7 @@ export default function SpecialtiesListPage() {
     <section>
       <div className="page-head">
         <h1>Quản lý chuyên khoa</h1>
-        <Link className="btn btn--primary" to="/specialties/new">+ Thêm chuyên khoa</Link>
+        {canManage && <Link className="btn btn--primary" to="/specialties/new">+ Thêm chuyên khoa</Link>}
       </div>
 
       <form className="toolbar" onSubmit={onSearchSubmit}>
@@ -86,8 +88,12 @@ export default function SpecialtiesListPage() {
                   <td>{s.name}</td>
                   <td>{s.description ?? '—'}</td>
                   <td className="table__actions">
-                    <Link to={`/specialties/${s.id}/edit`}>Sửa</Link>
-                    <button className="link-btn link-btn--danger" onClick={() => onDelete(s)}>Xoá</button>
+                    {canManage ? (
+                      <>
+                        <Link to={`/specialties/${s.id}/edit`}>Sửa</Link>
+                        <button className="link-btn link-btn--danger" onClick={() => onDelete(s)}>Xoá</button>
+                      </>
+                    ) : '—'}
                   </td>
                 </tr>
               ))}

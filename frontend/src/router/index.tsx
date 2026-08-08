@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
+import RequireAuth from './RequireAuth'
+import LoginPage from '../pages/LoginPage'
 import PatientsListPage from '../pages/PatientsListPage'
 import PatientFormPage from '../pages/PatientFormPage'
 import SpecialtiesListPage from '../pages/SpecialtiesListPage'
@@ -8,20 +10,26 @@ import DoctorsListPage from '../pages/DoctorsListPage'
 import DoctorFormPage from '../pages/DoctorFormPage'
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
-    path: '/',
-    element: <MainLayout />,
+    element: <RequireAuth />,
     children: [
-      { index: true, element: <Navigate to="/patients" replace /> },
-      { path: 'patients', element: <PatientsListPage /> },
-      { path: 'patients/new', element: <PatientFormPage /> },
-      { path: 'patients/:id/edit', element: <PatientFormPage /> },
-      { path: 'doctors', element: <DoctorsListPage /> },
-      { path: 'doctors/new', element: <DoctorFormPage /> },
-      { path: 'doctors/:id/edit', element: <DoctorFormPage /> },
-      { path: 'specialties', element: <SpecialtiesListPage /> },
-      { path: 'specialties/new', element: <SpecialtyFormPage /> },
-      { path: 'specialties/:id/edit', element: <SpecialtyFormPage /> },
+      {
+        path: '/',
+        element: <MainLayout />,
+        children: [
+          { index: true, element: <Navigate to="/patients" replace /> },
+          { path: 'patients', element: <PatientsListPage /> },
+          { path: 'patients/new', element: <PatientFormPage /> },
+          { path: 'patients/:id/edit', element: <PatientFormPage /> },
+          { path: 'doctors', element: <DoctorsListPage /> },
+          { path: 'doctors/new', element: <DoctorFormPage /> },
+          { path: 'doctors/:id/edit', element: <DoctorFormPage /> },
+          { path: 'specialties', element: <SpecialtiesListPage /> },
+          { path: 'specialties/new', element: <SpecialtyFormPage /> },
+          { path: 'specialties/:id/edit', element: <SpecialtyFormPage /> },
+        ],
+      },
     ],
   },
 ])

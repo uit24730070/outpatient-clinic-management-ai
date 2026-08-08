@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteDoctor, listDoctors } from '../services/doctorService'
 import { toApiException } from '../services/apiClient'
+import { useAuth } from '../store/auth'
 import type { PagedResult } from '../types/common'
 import type { Doctor } from '../types/doctor'
 
 const PAGE_SIZE = 10
 
 export default function DoctorsListPage() {
+  const { canManage } = useAuth()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Doctor> | null>(null)
@@ -51,7 +53,7 @@ export default function DoctorsListPage() {
     <section>
       <div className="page-head">
         <h1>Quản lý bác sĩ</h1>
-        <Link className="btn btn--primary" to="/doctors/new">+ Thêm bác sĩ</Link>
+        {canManage && <Link className="btn btn--primary" to="/doctors/new">+ Thêm bác sĩ</Link>}
       </div>
 
       <form className="toolbar" onSubmit={onSearchSubmit}>
@@ -92,8 +94,12 @@ export default function DoctorsListPage() {
                   <td>{d.phoneNumber ?? '—'}</td>
                   <td>{d.email ?? '—'}</td>
                   <td className="table__actions">
-                    <Link to={`/doctors/${d.id}/edit`}>Sửa</Link>
-                    <button className="link-btn link-btn--danger" onClick={() => onDelete(d)}>Xoá</button>
+                    {canManage ? (
+                      <>
+                        <Link to={`/doctors/${d.id}/edit`}>Sửa</Link>
+                        <button className="link-btn link-btn--danger" onClick={() => onDelete(d)}>Xoá</button>
+                      </>
+                    ) : '—'}
                   </td>
                 </tr>
               ))}

@@ -126,3 +126,32 @@ input, select, textarea {
 /* Alerts */
 .alert { padding: 0.6rem 0.85rem; border-radius: 6px; }
 .alert--error { background: #fee2e2; color: var(--error); }
+
+/* User info trong header */
+.layout__user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.layout__user-name { font-size: 0.85rem; color: var(--muted); }
+
+/* Trang đăng nhập */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-soft);
+}
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+.login-card h1 { margin: 0; font-size: 1.4rem; }
+.login-hint { margin: 0.25rem 0 0.5rem; color: var(--muted); font-size: 0.9rem; }
