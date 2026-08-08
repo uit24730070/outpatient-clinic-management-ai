@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Clinic Management AI",
-    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check. Sprint 3: Xác thực (JWT) + RBAC. Sprint 4: Lịch khám (đặt lịch, check-in, vòng đời trạng thái). Chạy 'Auth > Login' trước để đặt biến {{token}}; token được áp tự động cho mọi request qua Bearer cấp collection.",
+    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check. Sprint 3: Xác thực (JWT) + RBAC. Sprint 4: Lịch khám (đặt lịch, check-in, vòng đời trạng thái). Sprint 5: Khám bệnh & Bệnh án (phiếu khám + đơn thuốc + lịch sử). Chạy 'Auth > Login' trước để đặt biến {{token}}; token được áp tự động cho mọi request qua Bearer cấp collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -14,7 +14,8 @@
     { "key": "patientId", "value": "" },
     { "key": "specialtyId", "value": "22222222-2222-2222-2222-222222222222" },
     { "key": "doctorId", "value": "" },
-    { "key": "appointmentId", "value": "" }
+    { "key": "appointmentId", "value": "" },
+    { "key": "encounterId", "value": "" }
   ],
   "item": [
     {
@@ -400,6 +401,90 @@
             "method": "DELETE",
             "header": [],
             "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Encounters",
+      "description": "Khám bệnh & bệnh án. Thứ tự: Create appointment → Check-in → Start (đưa lịch về InProgress) → Create encounter. Ghi phiếu cần vai trò Bác sĩ/Admin.",
+      "item": [
+        {
+          "name": "Create encounter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.code === 201);",
+                  "const body = pm.response.json();",
+                  "if (body.success) pm.collectionVariables.set('encounterId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/encounters", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"symptoms\": \"Sốt, ho, đau họng\",\n  \"diagnosis\": \"Viêm họng cấp\",\n  \"notes\": \"Nghỉ ngơi, uống nhiều nước\",\n  \"prescriptionItems\": [\n    { \"drugName\": \"Paracetamol\", \"dosage\": \"500mg\", \"quantity\": 10, \"instruction\": \"Ngày 2 lần sau ăn\" },\n    { \"drugName\": \"Vitamin C\", \"dosage\": \"1000mg\", \"quantity\": 5, \"instruction\": null }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "List encounters (patient history)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/encounters?page=1&pageSize=20&patientId={{patientId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "encounters" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "patientId", "value": "{{patientId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get encounter by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/encounters/{{encounterId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "{{encounterId}}" ] }
+          }
+        },
+        {
+          "name": "Get encounter by appointment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/encounters/by-appointment/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "by-appointment", "{{appointmentId}}" ] }
+          }
+        },
+        {
+          "name": "Update encounter",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/encounters/{{encounterId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "{{encounterId}}" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symptoms\": \"Sốt cao 39°C\",\n  \"diagnosis\": \"Cúm mùa\",\n  \"notes\": null,\n  \"prescriptionItems\": [\n    { \"drugName\": \"Oseltamivir\", \"dosage\": \"75mg\", \"quantity\": 10, \"instruction\": \"Ngày 2 lần\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Complete encounter",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/encounters/{{encounterId}}/complete", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "{{encounterId}}", "complete" ] }
           }
         }
       ]

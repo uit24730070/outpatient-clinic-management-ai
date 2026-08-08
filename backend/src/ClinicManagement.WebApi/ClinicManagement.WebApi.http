@@ -202,3 +202,60 @@ Authorization: Bearer {{token}}
 ### Xoá mềm lịch
 DELETE {{host}}/api/appointments/{{appointmentId}}
 Authorization: Bearer {{token}}
+
+######################## Khám bệnh & Bệnh án ########################
+# Điều kiện: lịch {{appointmentId}} phải ở trạng thái InProgress (đã check-in + start).
+# Ghi phiếu khám cần vai trò Bác sĩ hoặc Admin.
+
+### Tạo phiếu khám cho lịch đang khám (lưu Id vào biến qua tên "enc")
+# @name enc
+POST {{host}}/api/encounters
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "appointmentId": "{{appointmentId}}",
+  "symptoms": "Sốt, ho, đau họng",
+  "diagnosis": "Viêm họng cấp",
+  "notes": "Nghỉ ngơi, uống nhiều nước",
+  "prescriptionItems": [
+    { "drugName": "Paracetamol", "dosage": "500mg", "quantity": 10, "instruction": "Ngày 2 lần sau ăn" },
+    { "drugName": "Vitamin C", "dosage": "1000mg", "quantity": 5, "instruction": null }
+  ]
+}
+
+### Lấy Id phiếu vừa tạo
+@encounterId = {{enc.response.body.$.data.id}}
+
+### Lịch sử khám của bệnh nhân (mới nhất trước) — thay patientId bằng Id thật
+GET {{host}}/api/encounters?patientId=11111111-1111-1111-1111-111111111111&page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Chi tiết phiếu khám (kèm đơn thuốc)
+GET {{host}}/api/encounters/{{encounterId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Lấy phiếu theo lịch khám (1–1)
+GET {{host}}/api/encounters/by-appointment/{{appointmentId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Sửa phiếu + thay toàn bộ đơn thuốc (chỉ khi còn Draft)
+PUT {{host}}/api/encounters/{{encounterId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "symptoms": "Sốt cao 39°C",
+  "diagnosis": "Cúm mùa",
+  "notes": null,
+  "prescriptionItems": [
+    { "drugName": "Oseltamivir", "dosage": "75mg", "quantity": 10, "instruction": "Ngày 2 lần" }
+  ]
+}
+
+### Chốt phiếu (Draft -> Completed; đồng thời khép lịch khám -> Completed)
+POST {{host}}/api/encounters/{{encounterId}}/complete
+Authorization: Bearer {{token}}
