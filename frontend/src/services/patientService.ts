@@ -26,3 +26,7 @@ export async function updatePatient(id: string, values: PatientFormValues): Prom
   const res = await apiClient.put<ApiResponse<Patient>>(`/api/patients/${id}`, values)
   return unwrap(res.data)
 }
+
+export async function deletePatient(id: string): Promise<void> {
+  await apiClient.delete(`/api/patients/${id}`)
+}

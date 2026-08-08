@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { deletePatient, listPatients } from '../services/patientService'
+import { deleteSpecialty, listSpecialties } from '../services/specialtyService'
 import { toApiException } from '../services/apiClient'
-import { genderLabels, type PagedResult, type Patient } from '../types/patient'
+import type { PagedResult } from '../types/common'
+import type { Specialty } from '../types/specialty'
 
 const PAGE_SIZE = 10
 
-export default function PatientsListPage() {
+export default function SpecialtiesListPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [data, setData] = useState<PagedResult<Patient> | null>(null)
+  const [data, setData] = useState<PagedResult<Specialty> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,7 +18,7 @@ export default function PatientsListPage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await listPatients({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
+      const result = await listSpecialties({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
       setData(result)
     } catch (err) {
       setError(toApiException(err).message)
@@ -36,10 +37,10 @@ export default function PatientsListPage() {
     void load()
   }
 
-  const onDelete = async (p: Patient) => {
-    if (!window.confirm(`Ngừng sử dụng hồ sơ bệnh nhân "${p.fullName}"?`)) return
+  const onDelete = async (s: Specialty) => {
+    if (!window.confirm(`Ngừng sử dụng chuyên khoa "${s.name}"?`)) return
     try {
-      await deletePatient(p.id)
+      await deleteSpecialty(s.id)
       void load()
     } catch (err) {
       setError(toApiException(err).message)
@@ -49,14 +50,14 @@ export default function PatientsListPage() {
   return (
     <section>
       <div className="page-head">
-        <h1>Quản lý bệnh nhân</h1>
-        <Link className="btn btn--primary" to="/patients/new">+ Thêm bệnh nhân</Link>
+        <h1>Quản lý chuyên khoa</h1>
+        <Link className="btn btn--primary" to="/specialties/new">+ Thêm chuyên khoa</Link>
       </div>
 
       <form className="toolbar" onSubmit={onSearchSubmit}>
         <input
           type="search"
-          placeholder="Tìm theo tên, mã, số điện thoại…"
+          placeholder="Tìm theo tên chuyên khoa…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -71,28 +72,22 @@ export default function PatientsListPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Mã BN</th>
-                <th>Họ tên</th>
-                <th>Giới tính</th>
-                <th>Ngày sinh</th>
-                <th>Điện thoại</th>
+                <th>Tên chuyên khoa</th>
+                <th>Mô tả</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 && (
-                <tr><td colSpan={6} className="table__empty">Không có bệnh nhân nào.</td></tr>
+                <tr><td colSpan={3} className="table__empty">Không có chuyên khoa nào.</td></tr>
               )}
-              {data.items.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.code}</td>
-                  <td>{p.fullName}</td>
-                  <td>{genderLabels[p.gender]}</td>
-                  <td>{p.dateOfBirth ?? '—'}</td>
-                  <td>{p.phoneNumber ?? '—'}</td>
+              {data.items.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td>{s.description ?? '—'}</td>
                   <td className="table__actions">
-                    <Link to={`/patients/${p.id}/edit`}>Sửa</Link>
-                    <button className="link-btn link-btn--danger" onClick={() => onDelete(p)}>Xoá</button>
+                    <Link to={`/specialties/${s.id}/edit`}>Sửa</Link>
+                    <button className="link-btn link-btn--danger" onClick={() => onDelete(s)}>Xoá</button>
                   </td>
                 </tr>
               ))}

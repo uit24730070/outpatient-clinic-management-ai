@@ -37,25 +37,5 @@ export interface PatientFormValues {
   address: string | null
 }
 
-export interface PagedResult<T> {
-  items: T[]
-  page: number
-  pageSize: number
-  totalCount: number
-  totalPages: number
-  hasPreviousPage: boolean
-  hasNextPage: boolean
-}
-
-export interface ApiError {
-  code: string
-  message: string
-  details?: Record<string, string[]> | null
-}
-
-export interface ApiResponse<T> {
-  success: boolean
-  data: T | null
-  error: ApiError | null
-  meta: unknown
-}
+// Re-export type dùng chung để giữ tương thích với các import cũ.
+export type { PagedResult, ApiError, ApiResponse } from './common'

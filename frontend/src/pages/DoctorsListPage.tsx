@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { deletePatient, listPatients } from '../services/patientService'
+import { deleteDoctor, listDoctors } from '../services/doctorService'
 import { toApiException } from '../services/apiClient'
-import { genderLabels, type PagedResult, type Patient } from '../types/patient'
+import type { PagedResult } from '../types/common'
+import type { Doctor } from '../types/doctor'
 
 const PAGE_SIZE = 10
 
-export default function PatientsListPage() {
+export default function DoctorsListPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [data, setData] = useState<PagedResult<Patient> | null>(null)
+  const [data, setData] = useState<PagedResult<Doctor> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,7 +18,7 @@ export default function PatientsListPage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await listPatients({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
+      const result = await listDoctors({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
       setData(result)
     } catch (err) {
       setError(toApiException(err).message)
@@ -36,10 +37,10 @@ export default function PatientsListPage() {
     void load()
   }
 
-  const onDelete = async (p: Patient) => {
-    if (!window.confirm(`Ngừng sử dụng hồ sơ bệnh nhân "${p.fullName}"?`)) return
+  const onDelete = async (d: Doctor) => {
+    if (!window.confirm(`Ngừng sử dụng hồ sơ bác sĩ "${d.fullName}"?`)) return
     try {
-      await deletePatient(p.id)
+      await deleteDoctor(d.id)
       void load()
     } catch (err) {
       setError(toApiException(err).message)
@@ -49,8 +50,8 @@ export default function PatientsListPage() {
   return (
     <section>
       <div className="page-head">
-        <h1>Quản lý bệnh nhân</h1>
-        <Link className="btn btn--primary" to="/patients/new">+ Thêm bệnh nhân</Link>
+        <h1>Quản lý bác sĩ</h1>
+        <Link className="btn btn--primary" to="/doctors/new">+ Thêm bác sĩ</Link>
       </div>
 
       <form className="toolbar" onSubmit={onSearchSubmit}>
@@ -71,28 +72,28 @@ export default function PatientsListPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Mã BN</th>
+                <th>Mã BS</th>
                 <th>Họ tên</th>
-                <th>Giới tính</th>
-                <th>Ngày sinh</th>
+                <th>Chuyên khoa</th>
                 <th>Điện thoại</th>
+                <th>Email</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 && (
-                <tr><td colSpan={6} className="table__empty">Không có bệnh nhân nào.</td></tr>
+                <tr><td colSpan={6} className="table__empty">Không có bác sĩ nào.</td></tr>
               )}
-              {data.items.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.code}</td>
-                  <td>{p.fullName}</td>
-                  <td>{genderLabels[p.gender]}</td>
-                  <td>{p.dateOfBirth ?? '—'}</td>
-                  <td>{p.phoneNumber ?? '—'}</td>
+              {data.items.map((d) => (
+                <tr key={d.id}>
+                  <td>{d.code}</td>
+                  <td>{d.fullName}</td>
+                  <td>{d.specialtyName ?? '—'}</td>
+                  <td>{d.phoneNumber ?? '—'}</td>
+                  <td>{d.email ?? '—'}</td>
                   <td className="table__actions">
-                    <Link to={`/patients/${p.id}/edit`}>Sửa</Link>
-                    <button className="link-btn link-btn--danger" onClick={() => onDelete(p)}>Xoá</button>
+                    <Link to={`/doctors/${d.id}/edit`}>Sửa</Link>
+                    <button className="link-btn link-btn--danger" onClick={() => onDelete(d)}>Xoá</button>
                   </td>
                 </tr>
               ))}

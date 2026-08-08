@@ -2,6 +2,10 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import PatientsListPage from '../pages/PatientsListPage'
 import PatientFormPage from '../pages/PatientFormPage'
+import SpecialtiesListPage from '../pages/SpecialtiesListPage'
+import SpecialtyFormPage from '../pages/SpecialtyFormPage'
+import DoctorsListPage from '../pages/DoctorsListPage'
+import DoctorFormPage from '../pages/DoctorFormPage'
 
 export const router = createBrowserRouter([
   {
@@ -12,6 +16,12 @@ export const router = createBrowserRouter([
       { path: 'patients', element: <PatientsListPage /> },
       { path: 'patients/new', element: <PatientFormPage /> },
       { path: 'patients/:id/edit', element: <PatientFormPage /> },
+      { path: 'doctors', element: <DoctorsListPage /> },
+      { path: 'doctors/new', element: <DoctorFormPage /> },
+      { path: 'doctors/:id/edit', element: <DoctorFormPage /> },
+      { path: 'specialties', element: <SpecialtiesListPage /> },
+      { path: 'specialties/new', element: <SpecialtyFormPage /> },
+      { path: 'specialties/:id/edit', element: <SpecialtyFormPage /> },
     ],
   },
 ])
