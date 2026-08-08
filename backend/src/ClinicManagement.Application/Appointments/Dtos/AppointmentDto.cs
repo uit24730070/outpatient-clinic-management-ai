@@ -1,0 +1,18 @@
+using ClinicManagement.Domain.Appointments;
+
+namespace ClinicManagement.Application.Appointments.Dtos;
+
+/// <summary>Dữ liệu lịch khám trả về cho client, kèm tên bệnh nhân & bác sĩ (join).</summary>
+public sealed record AppointmentDto(
+    Guid Id,
+    Guid PatientId,
+    string? PatientName,
+    Guid DoctorId,
+    string? DoctorName,
+    DateTimeOffset StartTime,
+    DateTimeOffset EndTime,
+    string? Reason,
+    AppointmentStatus Status,
+    DateTimeOffset? CheckedInAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt);

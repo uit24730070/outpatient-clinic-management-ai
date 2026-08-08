@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using ClinicManagement.Application.Common.Interfaces;
+using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
@@ -21,6 +22,7 @@ public sealed class TestDbContext : DbContext, IAppDbContext
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<Doctor> Doctors => Set<Doctor>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Appointment> Appointments => Set<Appointment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
