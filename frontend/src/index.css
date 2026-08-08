@@ -1,7 +1,12 @@
 :root {
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
-  color-scheme: light dark;
+  color-scheme: light;
+  --border: #d7dde3;
+  --muted: #6b7683;
+  --primary: #2563eb;
+  --error: #dc2626;
+  --bg-soft: #f5f7fa;
 }
 
 * {
@@ -11,10 +16,100 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: #fff;
+  color: #1f2937;
 }
 
-.app-shell {
+/* Layout */
+.layout__header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 0.75rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.layout__brand { font-weight: 700; }
+.layout__nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+}
+.layout__nav a.active { color: var(--primary); }
+.layout__main {
   max-width: 960px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.5rem 2rem;
 }
+
+/* Head + toolbar */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.toolbar input { flex: 1; }
+
+/* Controls */
+input, select, textarea {
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  width: 100%;
+}
+.btn {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Table */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th, .table td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.table th { color: var(--muted); font-size: 0.85rem; }
+.table__empty { text-align: center; color: var(--muted); padding: 1.5rem; }
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+  color: var(--muted);
+}
+
+/* Form */
+.form-wrap { max-width: 520px; }
+.form { display: grid; gap: 1rem; }
+.field { display: grid; gap: 0.3rem; }
+.field > span { font-size: 0.85rem; color: var(--muted); }
+.field__error { color: var(--error); font-size: 0.8rem; }
+.form__actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+/* Alerts */
+.alert { padding: 0.6rem 0.85rem; border-radius: 6px; }
+.alert--error { background: #fee2e2; color: var(--error); }

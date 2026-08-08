@@ -2,7 +2,7 @@
 
 Đồ án tốt nghiệp: hệ thống quản lý phòng khám / khám ngoại trú, tích hợp trợ lý AI (LLM) hỗ trợ nghiệp vụ.
 
-> **Trạng thái:** Sprint 0 — Project skeleton. Chưa triển khai nghiệp vụ.
+> **Trạng thái:** Sprint 1 — Nền tảng kỹ thuật + vertical slice "Quản lý Bệnh nhân" (CRUD đầu-cuối).
 
 ## Tech Stack
 
