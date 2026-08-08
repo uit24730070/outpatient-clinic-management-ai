@@ -16,6 +16,15 @@ public abstract class ApiControllerBase : ControllerBase
         return Problem(result.Error);
     }
 
+    /// <summary>Ánh xạ <see cref="Result"/> (không mang dữ liệu) — mặc định trả 204 No Content khi thành công.</summary>
+    protected IActionResult ToResponse(Result result, int successStatusCode = StatusCodes.Status204NoContent)
+    {
+        if (result.IsSuccess)
+            return StatusCode(successStatusCode);
+
+        return Problem(result.Error);
+    }
+
     private IActionResult Problem(Error error)
     {
         var status = error.Type switch

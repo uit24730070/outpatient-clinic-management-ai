@@ -9,4 +9,5 @@ public interface IPatientService
     Task<Result<PagedResult<PatientDto>>> GetListAsync(int page, int pageSize, string? search, CancellationToken ct = default);
     Task<Result<PatientDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Result<PatientDto>> UpdateAsync(Guid id, UpdatePatientRequest request, CancellationToken ct = default);
+    Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
 }

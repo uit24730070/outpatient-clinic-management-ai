@@ -1,6 +1,9 @@
+using System.Linq.Expressions;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Common;
+using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Specialties;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Infrastructure.Persistence;
@@ -10,10 +13,26 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<Specialty> Specialties => Set<Specialty>();
+    public DbSet<Doctor> Doctors => Set<Doctor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Global query filter: mặc định ẩn mọi bản ghi đã xoá mềm (e => !e.IsDeleted).
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+                continue;
+
+            var parameter = Expression.Parameter(entityType.ClrType, "e");
+            var body = Expression.Not(
+                Expression.Property(parameter, nameof(ISoftDeletable.IsDeleted)));
+            modelBuilder.Entity(entityType.ClrType)
+                .HasQueryFilter(Expression.Lambda(body, parameter));
+        }
+
         base.OnModelCreating(modelBuilder);
     }
 

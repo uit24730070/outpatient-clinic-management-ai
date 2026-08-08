@@ -47,4 +47,12 @@ public sealed class PatientsController : ApiControllerBase
         var result = await _patients.UpdateAsync(id, request, ct);
         return ToResponse(result);
     }
+
+    /// <summary>Ngừng sử dụng (xoá mềm) hồ sơ bệnh nhân.</summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var result = await _patients.DeleteAsync(id, ct);
+        return ToResponse(result);
+    }
 }

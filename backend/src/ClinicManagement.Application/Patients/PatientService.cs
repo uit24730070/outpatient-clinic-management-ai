@@ -84,10 +84,25 @@ public sealed class PatientService : IPatientService
         return PatientDto.FromEntity(patient);
     }
 
-    /// <summary>Sinh mã bệnh nhân dạng BN-000001 theo số thứ tự lớn nhất hiện có.</summary>
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (patient is null)
+            return Result.Failure(Error.NotFound("Patient.NotFound", $"Không tìm thấy bệnh nhân với Id {id}."));
+
+        patient.MarkAsDeleted();
+        await _db.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Sinh mã bệnh nhân dạng BN-000001 theo số thứ tự lớn nhất hiện có.
+    /// Đếm cả bản ghi đã xoá mềm (<see cref="EntityFrameworkQueryableExtensions.IgnoreQueryFilters"/>)
+    /// để tránh trùng mã với bản ghi đang chiếm giá trị unique.
+    /// </summary>
     private async Task<string> GenerateCodeAsync(CancellationToken ct)
     {
-        var count = await _db.Patients.CountAsync(ct);
+        var count = await _db.Patients.IgnoreQueryFilters().CountAsync(ct);
         return $"BN-{count + 1:D6}";
     }
 
