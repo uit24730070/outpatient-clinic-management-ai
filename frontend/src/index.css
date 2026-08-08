@@ -106,6 +106,25 @@ input, select, textarea {
 .link-btn:hover { text-decoration: underline; }
 .link-btn--danger { color: #c0392b; }
 
+/* Cột thao tác lịch khám có nhiều nút → cho phép xuống dòng */
+.table__actions { flex-wrap: wrap; }
+
+/* Badge trạng thái lịch khám */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge--scheduled  { background: #eef2ff; color: #3538cd; }
+.badge--checkedin  { background: #ecfeff; color: #0e7490; }
+.badge--inprogress { background: #fef9c3; color: #854d0e; }
+.badge--completed  { background: #dcfce7; color: #166534; }
+.badge--cancelled  { background: #f3f4f6; color: #6b7280; }
+.badge--noshow     { background: #fee2e2; color: #b91c1c; }
+
 .pager {
   display: flex;
   align-items: center;

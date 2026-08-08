@@ -16,6 +16,7 @@ export default function MainLayout() {
       <header className="layout__header">
         <div className="layout__brand">Clinic Management AI</div>
         <nav className="layout__nav">
+          <NavLink to="/appointments">Lịch khám</NavLink>
           <NavLink to="/patients">Bệnh nhân</NavLink>
           <NavLink to="/doctors">Bác sĩ</NavLink>
           <NavLink to="/specialties">Chuyên khoa</NavLink>
