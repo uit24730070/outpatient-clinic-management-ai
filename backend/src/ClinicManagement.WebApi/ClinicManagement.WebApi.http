@@ -259,3 +259,12 @@ Content-Type: application/json
 ### Chốt phiếu (Draft -> Completed; đồng thời khép lịch khám -> Completed)
 POST {{host}}/api/encounters/{{encounterId}}/complete
 Authorization: Bearer {{token}}
+
+######################## Trợ lý AI ########################
+# Cần vai trò Bác sĩ hoặc Admin. Dev bật Ai:UseFake = true → trả tóm tắt mô phỏng, không gọi mạng.
+# Thay patientId bằng Id thật (lấy từ danh sách Bệnh nhân).
+
+### Tóm tắt lịch sử khám của bệnh nhân bằng AI
+POST {{host}}/api/patients/11111111-1111-1111-1111-111111111111/ai-summary
+Authorization: Bearer {{token}}
+Accept: application/json

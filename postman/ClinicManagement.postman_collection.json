@@ -6,16 +6,43 @@
   },
   "auth": {
     "type": "bearer",
-    "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5006" },
-    { "key": "token", "value": "" },
-    { "key": "patientId", "value": "" },
-    { "key": "specialtyId", "value": "22222222-2222-2222-2222-222222222222" },
-    { "key": "doctorId", "value": "" },
-    { "key": "appointmentId", "value": "" },
-    { "key": "encounterId", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5006"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "patientId",
+      "value": ""
+    },
+    {
+      "key": "specialtyId",
+      "value": "22222222-2222-2222-2222-222222222222"
+    },
+    {
+      "key": "doctorId",
+      "value": ""
+    },
+    {
+      "key": "appointmentId",
+      "value": ""
+    },
+    {
+      "key": "encounterId",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -37,10 +64,27 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "login" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
@@ -52,7 +96,17 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "me" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
           }
         }
       ]
@@ -65,7 +119,15 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/health", "host": [ "{{baseUrl}}" ], "path": [ "health" ] }
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
           }
         }
       ]
@@ -90,8 +152,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/patients", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fullName\": \"Nguyễn Văn A\",\n  \"dateOfBirth\": \"1990-05-20\",\n  \"gender\": 1,\n  \"phoneNumber\": \"0912345678\",\n  \"address\": \"Hà Nội\"\n}"
@@ -105,12 +181,26 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/patients?page=1&pageSize=20&search=",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "patients" ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "search", "value": "" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                }
               ]
             }
           }
@@ -120,15 +210,40 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/patients/{{patientId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients", "{{patientId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/{{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{patientId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update patient",
           "request": {
             "method": "PUT",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/patients/{{patientId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients", "{{patientId}}" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/{{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{patientId}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fullName\": \"Nguyễn Văn An\",\n  \"dateOfBirth\": \"1990-05-20\",\n  \"gender\": 1,\n  \"phoneNumber\": \"0900000000\",\n  \"address\": \"TP.HCM\"\n}"
@@ -140,7 +255,17 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/patients/{{patientId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients", "{{patientId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/{{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{patientId}}"
+              ]
+            }
           }
         }
       ]
@@ -165,8 +290,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/specialties", "host": [ "{{baseUrl}}" ], "path": [ "api", "specialties" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/specialties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specialties"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Ngoại tổng quát\",\n  \"description\": \"Khoa ngoại.\"\n}"
@@ -180,12 +319,26 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/specialties?page=1&pageSize=20&search=",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "specialties" ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specialties"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "search", "value": "" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                }
               ]
             }
           }
@@ -194,8 +347,23 @@
           "name": "Update specialty",
           "request": {
             "method": "PUT",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/specialties/{{specialtyId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "specialties", "{{specialtyId}}" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/specialties/{{specialtyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specialties",
+                "{{specialtyId}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Ngoại tổng quát\",\n  \"description\": \"Cập nhật mô tả.\"\n}"
@@ -207,7 +375,17 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/specialties/{{specialtyId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "specialties", "{{specialtyId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/specialties/{{specialtyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specialties",
+                "{{specialtyId}}"
+              ]
+            }
           }
         }
       ]
@@ -232,8 +410,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/doctors", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctors"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fullName\": \"Nguyễn Văn A\",\n  \"specialtyId\": \"{{specialtyId}}\",\n  \"phoneNumber\": \"0912345678\",\n  \"email\": \"a@clinic.vn\"\n}"
@@ -247,12 +439,26 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/doctors?page=1&pageSize=20&search=",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "doctors" ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctors"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "search", "value": "" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                }
               ]
             }
           }
@@ -262,15 +468,40 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/{{doctorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                "{{doctorId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update doctor",
           "request": {
             "method": "PUT",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/{{doctorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                "{{doctorId}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fullName\": \"Nguyễn Văn An\",\n  \"specialtyId\": \"{{specialtyId}}\",\n  \"phoneNumber\": \"0900000000\",\n  \"email\": \"an@clinic.vn\"\n}"
@@ -282,7 +513,17 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/{{doctorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                "{{doctorId}}"
+              ]
+            }
           }
         }
       ]
@@ -308,8 +549,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/appointments", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"doctorId\": \"{{doctorId}}\",\n  \"startTime\": \"2026-08-10T08:00:00Z\",\n  \"endTime\": \"2026-08-10T08:30:00Z\",\n  \"reason\": \"Khám tổng quát\"\n}"
@@ -323,14 +578,34 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/appointments?page=1&pageSize=20&date=2026-08-10&doctorId={{doctorId}}&status=0",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "appointments" ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "date", "value": "2026-08-10" },
-                { "key": "doctorId", "value": "{{doctorId}}" },
-                { "key": "status", "value": "0" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-08-10"
+                },
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "0"
+                }
               ]
             }
           }
@@ -340,15 +615,40 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Reschedule appointment",
           "request": {
             "method": "PUT",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"startTime\": \"2026-08-10T09:00:00Z\",\n  \"endTime\": \"2026-08-10T09:30:00Z\",\n  \"reason\": \"Đổi giờ\"\n}"
@@ -360,7 +660,18 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/check-in", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "check-in" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "check-in"
+              ]
+            }
           }
         },
         {
@@ -368,7 +679,18 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/start", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "start" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "start"
+              ]
+            }
           }
         },
         {
@@ -376,7 +698,18 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/complete", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "complete" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "complete"
+              ]
+            }
           }
         },
         {
@@ -384,7 +717,18 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/cancel", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "cancel" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "cancel"
+              ]
+            }
           }
         },
         {
@@ -392,7 +736,18 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/no-show", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}", "no-show" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/no-show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "no-show"
+              ]
+            }
           }
         },
         {
@@ -400,7 +755,17 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "appointments", "{{appointmentId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            }
           }
         }
       ]
@@ -426,8 +791,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/encounters", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/encounters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "encounters"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"symptoms\": \"Sốt, ho, đau họng\",\n  \"diagnosis\": \"Viêm họng cấp\",\n  \"notes\": \"Nghỉ ngơi, uống nhiều nước\",\n  \"prescriptionItems\": [\n    { \"drugName\": \"Paracetamol\", \"dosage\": \"500mg\", \"quantity\": 10, \"instruction\": \"Ngày 2 lần sau ăn\" },\n    { \"drugName\": \"Vitamin C\", \"dosage\": \"1000mg\", \"quantity\": 5, \"instruction\": null }\n  ]\n}"
@@ -441,12 +820,26 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/encounters?page=1&pageSize=20&patientId={{patientId}}",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "encounters" ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "encounters"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "patientId", "value": "{{patientId}}" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "patientId",
+                  "value": "{{patientId}}"
+                }
               ]
             }
           }
@@ -456,7 +849,17 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/encounters/{{encounterId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "{{encounterId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/encounters/{{encounterId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "encounters",
+                "{{encounterId}}"
+              ]
+            }
           }
         },
         {
@@ -464,15 +867,41 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/encounters/by-appointment/{{appointmentId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "by-appointment", "{{appointmentId}}" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/encounters/by-appointment/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "encounters",
+                "by-appointment",
+                "{{appointmentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update encounter",
           "request": {
             "method": "PUT",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "url": { "raw": "{{baseUrl}}/api/encounters/{{encounterId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "{{encounterId}}" ] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/encounters/{{encounterId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "encounters",
+                "{{encounterId}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"symptoms\": \"Sốt cao 39°C\",\n  \"diagnosis\": \"Cúm mùa\",\n  \"notes\": null,\n  \"prescriptionItems\": [\n    { \"drugName\": \"Oseltamivir\", \"dosage\": \"75mg\", \"quantity\": 10, \"instruction\": \"Ngày 2 lần\" }\n  ]\n}"
@@ -484,7 +913,60 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/api/encounters/{{encounterId}}/complete", "host": [ "{{baseUrl}}" ], "path": [ "api", "encounters", "{{encounterId}}", "complete" ] }
+            "url": {
+              "raw": "{{baseUrl}}/api/encounters/{{encounterId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "encounters",
+                "{{encounterId}}",
+                "complete"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Summarize patient (AI)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.code === 200);",
+                  "const body = pm.response.json();",
+                  "pm.test('có summary', () => body.success && typeof body.data.summary === 'string');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/{{patientId}}/ai-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{patientId}}",
+                "ai-summary"
+              ]
+            }
           }
         }
       ]
