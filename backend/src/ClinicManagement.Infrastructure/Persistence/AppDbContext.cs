@@ -4,6 +4,7 @@ using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Specialties;
+using ClinicManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Infrastructure.Persistence;
@@ -15,6 +16,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<Doctor> Doctors => Set<Doctor>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

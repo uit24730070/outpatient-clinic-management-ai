@@ -1,4 +1,5 @@
 using ClinicManagement.Application.Common.Interfaces;
+using ClinicManagement.Infrastructure.Authentication;
 using ClinicManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,11 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
+        // Xác thực: cấu hình JWT + băm mật khẩu + phát token.
+        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }

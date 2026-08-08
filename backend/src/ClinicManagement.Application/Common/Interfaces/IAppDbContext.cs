@@ -1,6 +1,7 @@
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Specialties;
+using ClinicManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Application.Common.Interfaces;
@@ -13,6 +14,7 @@ public interface IAppDbContext
     DbSet<Patient> Patients { get; }
     DbSet<Specialty> Specialties { get; }
     DbSet<Doctor> Doctors { get; }
+    DbSet<User> Users { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

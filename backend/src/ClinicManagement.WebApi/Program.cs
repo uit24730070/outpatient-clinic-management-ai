@@ -1,10 +1,15 @@
+using System.Text;
+using System.Text.Json;
 using ClinicManagement.Application;
 using ClinicManagement.Infrastructure;
+using ClinicManagement.Infrastructure.Authentication;
 using ClinicManagement.Infrastructure.Persistence;
 using ClinicManagement.Shared.Contracts;
 using ClinicManagement.WebApi.Filters;
 using ClinicManagement.WebApi.Middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +57,42 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
+// Xác thực JWT (Bearer). Đọc cấu hình từ section "Jwt".
+var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
+    ?? throw new InvalidOperationException("Thiếu cấu hình 'Jwt' trong appsettings.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+
+        // Giữ chuẩn envelope ApiResponse cho 401/403 (mặc định JwtBearer trả body rỗng).
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                await WriteAuthErrorAsync(context.Response, StatusCodes.Status401Unauthorized,
+                    "Auth.Unauthorized", "Bạn cần đăng nhập để truy cập tài nguyên này.");
+            },
+            OnForbidden = async context =>
+                await WriteAuthErrorAsync(context.Response, StatusCodes.Status403Forbidden,
+                    "Auth.Forbidden", "Bạn không có quyền truy cập tài nguyên này.")
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -80,11 +121,29 @@ app.UseHttpsRedirection();
 
 app.UseCors(CorsPolicy);
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 // Endpoint health check: GET /health -> "Healthy" khi DB kết nối được.
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.Run();
+
+// Ghi lỗi xác thực/phân quyền theo envelope ApiResponse thống nhất.
+static async Task WriteAuthErrorAsync(HttpResponse response, int statusCode, string code, string message)
+{
+    if (response.HasStarted) return;
+
+    response.StatusCode = statusCode;
+    response.ContentType = "application/json";
+
+    var body = ApiResponse<object>.Fail(new ApiError { Code = code, Message = message });
+    var json = JsonSerializer.Serialize(body, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    });
+
+    await response.WriteAsync(json);
+}
