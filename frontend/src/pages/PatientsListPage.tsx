@@ -93,12 +93,13 @@ export default function PatientsListPage() {
                   <td>{p.dateOfBirth ?? '—'}</td>
                   <td>{p.phoneNumber ?? '—'}</td>
                   <td className="table__actions">
-                    {canManage ? (
+                    <Link to={`/patients/${p.id}/encounters`}>Lịch sử khám</Link>
+                    {canManage && (
                       <>
                         <Link to={`/patients/${p.id}/edit`}>Sửa</Link>
                         <button className="link-btn link-btn--danger" onClick={() => onDelete(p)}>Xoá</button>
                       </>
-                    ) : '—'}
+                    )}
                   </td>
                 </tr>
               ))}

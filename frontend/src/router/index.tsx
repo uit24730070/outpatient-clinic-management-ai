@@ -10,6 +10,8 @@ import DoctorsListPage from '../pages/DoctorsListPage'
 import DoctorFormPage from '../pages/DoctorFormPage'
 import AppointmentsListPage from '../pages/AppointmentsListPage'
 import AppointmentFormPage from '../pages/AppointmentFormPage'
+import EncounterFormPage from '../pages/EncounterFormPage'
+import PatientEncountersPage from '../pages/PatientEncountersPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -24,9 +26,11 @@ export const router = createBrowserRouter([
           { path: 'appointments', element: <AppointmentsListPage /> },
           { path: 'appointments/new', element: <AppointmentFormPage /> },
           { path: 'appointments/:id/edit', element: <AppointmentFormPage /> },
+          { path: 'appointments/:appointmentId/encounter', element: <EncounterFormPage /> },
           { path: 'patients', element: <PatientsListPage /> },
           { path: 'patients/new', element: <PatientFormPage /> },
           { path: 'patients/:id/edit', element: <PatientFormPage /> },
+          { path: 'patients/:id/encounters', element: <PatientEncountersPage /> },
           { path: 'doctors', element: <DoctorsListPage /> },
           { path: 'doctors/new', element: <DoctorFormPage /> },
           { path: 'doctors/:id/edit', element: <DoctorFormPage /> },

@@ -7,6 +7,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   /** Có quyền ghi (tạo/sửa/xoá) danh mục nghiệp vụ: Admin hoặc Lễ tân. */
   canManage: boolean
+  /** Có quyền ghi bệnh án (phiếu khám/đơn thuốc): Bác sĩ hoặc Admin (ADR 0006). */
+  canRecordEncounter: boolean
   login: (request: LoginRequest) => Promise<void>
   logout: () => void
 }
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: user !== null,
     canManage: user?.role === UserRole.Admin || user?.role === UserRole.Receptionist,
+    canRecordEncounter: user?.role === UserRole.Admin || user?.role === UserRole.Doctor,
     login,
     logout,
   }), [user, login, logout])

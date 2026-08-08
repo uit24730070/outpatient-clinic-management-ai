@@ -51,7 +51,7 @@ function formatTime(iso: string): string {
 }
 
 export default function AppointmentsListPage() {
-  const { canManage } = useAuth()
+  const { canManage, canRecordEncounter } = useAuth()
   const [date, setDate] = useState('')
   const [doctorId, setDoctorId] = useState('')
   const [status, setStatus] = useState('')
@@ -186,6 +186,9 @@ export default function AppointmentsListPage() {
                     </span>
                   </td>
                   <td className="table__actions">
+                    {canRecordEncounter && a.status === AppointmentStatus.InProgress && (
+                      <Link to={`/appointments/${a.id}/encounter`}>Khám</Link>
+                    )}
                     {canManage ? (
                       <>
                         {actionsByStatus[a.status].map((x) => (
@@ -200,7 +203,7 @@ export default function AppointmentsListPage() {
                         {canEdit(a) && <Link to={`/appointments/${a.id}/edit`}>Sửa</Link>}
                         <button className="link-btn link-btn--danger" onClick={() => onDelete(a)}>Xoá</button>
                       </>
-                    ) : '—'}
+                    ) : (!canRecordEncounter && '—')}
                   </td>
                 </tr>
               ))}
