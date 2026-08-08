@@ -1,14 +1,29 @@
 {
   "info": {
     "name": "Clinic Management AI",
-    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Quản lý Bệnh nhân.",
+    "description": "Bộ sưu tập kiểm thử API. Sprint 1: Bệnh nhân. Sprint 2: Chuyên khoa, Bác sĩ, soft delete, health check.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5006" },
-    { "key": "patientId", "value": "" }
+    { "key": "patientId", "value": "" },
+    { "key": "specialtyId", "value": "22222222-2222-2222-2222-222222222222" },
+    { "key": "doctorId", "value": "" }
   ],
   "item": [
+    {
+      "name": "Ops",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": [ "{{baseUrl}}" ], "path": [ "health" ] }
+          }
+        }
+      ]
+    },
     {
       "name": "Patients",
       "item": [
@@ -72,6 +87,156 @@
               "mode": "raw",
               "raw": "{\n  \"fullName\": \"Nguyễn Văn An\",\n  \"dateOfBirth\": \"1990-05-20\",\n  \"gender\": 1,\n  \"phoneNumber\": \"0900000000\",\n  \"address\": \"TP.HCM\"\n}"
             }
+          }
+        },
+        {
+          "name": "Delete patient (soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/patients/{{patientId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "patients", "{{patientId}}" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Specialties",
+      "item": [
+        {
+          "name": "Create specialty",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.code === 201);",
+                  "const body = pm.response.json();",
+                  "if (body.success) pm.collectionVariables.set('specialtyId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/specialties", "host": [ "{{baseUrl}}" ], "path": [ "api", "specialties" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ngoại tổng quát\",\n  \"description\": \"Khoa ngoại.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List specialties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/specialties?page=1&pageSize=20&search=",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "specialties" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update specialty",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/specialties/{{specialtyId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "specialties", "{{specialtyId}}" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ngoại tổng quát\",\n  \"description\": \"Cập nhật mô tả.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete specialty (soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/specialties/{{specialtyId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "specialties", "{{specialtyId}}" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctors",
+      "item": [
+        {
+          "name": "Create doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.code === 201);",
+                  "const body = pm.response.json();",
+                  "if (body.success) pm.collectionVariables.set('doctorId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/doctors", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn A\",\n  \"specialtyId\": \"{{specialtyId}}\",\n  \"phoneNumber\": \"0912345678\",\n  \"email\": \"a@clinic.vn\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List doctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors?page=1&pageSize=20&search=",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "doctors" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get doctor by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] }
+          }
+        },
+        {
+          "name": "Update doctor",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn An\",\n  \"specialtyId\": \"{{specialtyId}}\",\n  \"phoneNumber\": \"0900000000\",\n  \"email\": \"an@clinic.vn\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete doctor (soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/doctors/{{doctorId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "doctors", "{{doctorId}}" ] }
           }
         }
       ]

@@ -31,3 +31,73 @@ Content-Type: application/json
   "phoneNumber": "0900000000",
   "address": "TP.HCM"
 }
+
+### Xoá mềm bệnh nhân
+DELETE {{host}}/api/patients/00000000-0000-0000-0000-000000000000
+
+######################## Vận hành ########################
+
+### Health check
+GET {{host}}/health
+
+######################## Chuyên khoa ########################
+
+### Tạo chuyên khoa
+POST {{host}}/api/specialties
+Content-Type: application/json
+
+{
+  "name": "Tim mạch",
+  "description": "Chẩn đoán và điều trị bệnh lý tim mạch."
+}
+
+### Danh sách chuyên khoa
+GET {{host}}/api/specialties?page=1&pageSize=20&search=
+Accept: application/json
+
+### Cập nhật chuyên khoa
+PUT {{host}}/api/specialties/11111111-1111-1111-1111-111111111111
+Content-Type: application/json
+
+{
+  "name": "Nội tổng quát",
+  "description": "Cập nhật mô tả."
+}
+
+### Xoá mềm chuyên khoa
+DELETE {{host}}/api/specialties/11111111-1111-1111-1111-111111111111
+
+######################## Bác sĩ ########################
+
+### Tạo bác sĩ (specialtyId là chuyên khoa seed sẵn: Tim mạch)
+POST {{host}}/api/doctors
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn A",
+  "specialtyId": "22222222-2222-2222-2222-222222222222",
+  "phoneNumber": "0912345678",
+  "email": "a@clinic.vn"
+}
+
+### Danh sách bác sĩ (phân trang + tìm kiếm)
+GET {{host}}/api/doctors?page=1&pageSize=20&search=
+Accept: application/json
+
+### Chi tiết bác sĩ
+GET {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Cập nhật bác sĩ
+PUT {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn An",
+  "specialtyId": "11111111-1111-1111-1111-111111111111",
+  "phoneNumber": "0900000000",
+  "email": "an@clinic.vn"
+}
+
+### Xoá mềm bác sĩ
+DELETE {{host}}/api/doctors/00000000-0000-0000-0000-000000000000
