@@ -1,5 +1,7 @@
 using System.Reflection;
+using ClinicManagement.Application.Doctors;
 using ClinicManagement.Application.Patients;
+using ClinicManagement.Application.Specialties;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,6 +13,8 @@ public static class DependencyInjection
     {
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<IPatientService, PatientService>();
+        services.AddScoped<ISpecialtyService, SpecialtyService>();
+        services.AddScoped<IDoctorService, DoctorService>();
         return services;
     }
 }
