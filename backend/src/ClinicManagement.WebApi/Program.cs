@@ -8,6 +8,7 @@ using ClinicManagement.Shared.Contracts;
 using ClinicManagement.WebApi.Filters;
 using ClinicManagement.WebApi.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -105,6 +106,14 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Tự động áp migration khi bật cấu hình (Database:AutoMigrate) — dùng cho Docker/triển khai.
+// Mặc định tắt để không ảnh hưởng luồng dev/test (áp migration bằng dotnet ef thủ công).
+if (app.Configuration.GetValue<bool>("Database:AutoMigrate"))
+{
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
 
 // Ghi log tóm tắt mỗi request HTTP (method, path, status, thời lượng).
 app.UseSerilogRequestLogging();

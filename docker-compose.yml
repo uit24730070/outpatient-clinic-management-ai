@@ -1,24 +1,60 @@
 # =============================================================================
-# Clinic Management AI — Docker Compose (SKELETON — Sprint 0)
+# Clinic Management AI — Docker Compose (F-08, Sprint 9)
 #
-# LƯU Ý: Sprint 0 CHỦ Ý CHƯA triển khai Docker. File này chỉ là khung định
-# hướng. Các service (database, backend, frontend) sẽ được bổ sung ở các sprint
-# sau khi nghiệp vụ bắt đầu được phát triển. Các block dưới đây được để dạng
-# comment và KHÔNG hoạt động cho tới khi được hiện thực.
+# Dựng toàn hệ thống bằng một lệnh:  docker compose up --build
+#   - db  : PostgreSQL 16 CÓ pgvector (bắt buộc cho RAG — Sprint 7)
+#   - api : ASP.NET Core Web API (tự áp migration khi khởi động)
+#   - web : bản build tĩnh React phục vụ qua nginx (reverse proxy /api → api)
+#
+# Bí mật lấy từ .env (sao chép .env.example → .env). KHÔNG commit .env.
 # =============================================================================
 
-services: {}
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-clinic_management}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-clinic_management}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
 
-# services:
-#   database:
-#     image: postgres:16
-#     # cấu hình sẽ được bổ sung ở sprint sau
-#
-#   backend:
-#     # build từ ./backend — bổ sung ở sprint sau
-#
-#   frontend:
-#     # build từ ./frontend — bổ sung ở sprint sau
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Áp migration tự động khi khởi động (chờ DB healthy trước — xem depends_on).
+      Database__AutoMigrate: "true"
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-clinic_management};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-change_me}"
+      Jwt__Key: ${JWT_KEY:?Thiếu JWT_KEY trong .env}
+      # AI: mặc định dùng bản fake (không cần khoá). Đặt UseFake=false + khoá thật để bật LLM/RAG.
+      Ai__UseFake: ${AI_USE_FAKE:-true}
+      Ai__UseFakeEmbedding: ${AI_USE_FAKE_EMBEDDING:-true}
+      Ai__ApiKey: ${AI_API_KEY:-}
+      Ai__EmbeddingApiKey: ${AI_EMBEDDING_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-5006}:8080"
 
-# volumes:
-#   postgres_data:
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  postgres_data:
