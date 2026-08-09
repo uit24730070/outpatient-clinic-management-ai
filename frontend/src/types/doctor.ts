@@ -8,6 +8,8 @@ export interface Doctor {
   specialtyName: string | null
   phoneNumber: string | null
   email: string | null
+  /** Tài khoản đăng nhập gắn với hồ sơ (null nếu chưa gắn). */
+  userId: string | null
   createdAt: string
   updatedAt: string | null
 }

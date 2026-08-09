@@ -17,11 +17,14 @@ import AppointmentsListPage from '../pages/AppointmentsListPage'
 import AppointmentFormPage from '../pages/AppointmentFormPage'
 import EncounterFormPage from '../pages/EncounterFormPage'
 import PatientEncountersPage from '../pages/PatientEncountersPage'
+import UsersListPage from '../pages/UsersListPage'
+import UserFormPage from '../pages/UserFormPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
 const RECORD_ENCOUNTER = [UserRole.Admin, UserRole.Doctor]
 const ALL_ROLES = [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor]
+const ADMIN_ONLY = [UserRole.Admin]
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -88,6 +91,16 @@ export const router = createBrowserRouter([
               { path: 'specialties', element: <SpecialtiesListPage /> },
               { path: 'specialties/new', element: <SpecialtyFormPage /> },
               { path: 'specialties/:id/edit', element: <SpecialtyFormPage /> },
+            ],
+          },
+
+          // Quản lý người dùng — chỉ Admin.
+          {
+            element: <RequireRole roles={ADMIN_ONLY} />,
+            children: [
+              { path: 'users', element: <UsersListPage /> },
+              { path: 'users/new', element: <UserFormPage /> },
+              { path: 'users/:id/edit', element: <UserFormPage /> },
             ],
           },
         ],

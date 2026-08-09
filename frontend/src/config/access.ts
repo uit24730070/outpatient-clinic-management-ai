@@ -32,6 +32,7 @@ export const navItems: NavItem[] = [
   { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
   { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin, UserRole.Receptionist] },
+  { label: 'Người dùng', to: '/users', roles: [UserRole.Admin] },
 ]
 
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.
