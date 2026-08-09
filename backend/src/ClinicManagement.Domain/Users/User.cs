@@ -40,6 +40,14 @@ public class User : Entity
     /// <summary>Tài khoản có được phép đăng nhập hay không (khoá mềm, khác xoá mềm).</summary>
     public bool IsActive { get; private set; }
 
+    /// <summary>Cập nhật thông tin hồ sơ tài khoản (không đổi tên đăng nhập, không đổi mật khẩu).</summary>
+    public void UpdateDetails(string fullName, UserRole role, string? email)
+    {
+        FullName = fullName;
+        Role = role;
+        Email = email;
+    }
+
     /// <summary>Đổi mật khẩu (đã băm sẵn ở lớp trên).</summary>
     public void ChangePassword(string newPasswordHash) => PasswordHash = newPasswordHash;
 

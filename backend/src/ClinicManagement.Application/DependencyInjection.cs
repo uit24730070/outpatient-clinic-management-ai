@@ -6,6 +6,7 @@ using ClinicManagement.Application.Doctors;
 using ClinicManagement.Application.Encounters;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Specialties;
+using ClinicManagement.Application.Users;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IPatientSummaryService, PatientSummaryService>();
         services.AddScoped<IEncounterEmbeddingIndexer, EncounterEmbeddingIndexer>();
         services.AddScoped<IPatientQuestionService, PatientQuestionService>();

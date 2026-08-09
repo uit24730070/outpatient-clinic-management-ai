@@ -99,6 +99,47 @@ public sealed class DoctorService : IDoctorService
         return Result.Success();
     }
 
+    public async Task<Result<DoctorDto>> LinkUserAsync(
+        Guid doctorId, LinkUserRequest request, CancellationToken ct = default)
+    {
+        var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == doctorId, ct);
+        if (doctor is null)
+            return Error.NotFound("Doctor.NotFound", $"Không tìm thấy bác sĩ với Id {doctorId}.");
+
+        if (doctor.UserId is not null)
+            return Error.Conflict("Doctor.AlreadyLinked",
+                "Hồ sơ bác sĩ đã gắn một tài khoản. Hãy gỡ liên kết hiện tại trước.");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct);
+        if (user is null)
+            return Error.NotFound("User.NotFound", $"Không tìm thấy người dùng với Id {request.UserId}.");
+
+        if (user.Role != Domain.Users.UserRole.Doctor)
+            return Error.Validation("Doctor.UserNotDoctor",
+                "Chỉ có thể gắn tài khoản có vai trò Bác sĩ vào hồ sơ bác sĩ.");
+
+        // Một tài khoản chỉ gắn tối đa một hồ sơ (unique index là chốt DB; kiểm ở đây cho thông báo thân thiện).
+        var alreadyLinked = await _db.Doctors.AnyAsync(d => d.UserId == request.UserId, ct);
+        if (alreadyLinked)
+            return Error.Conflict("Doctor.UserAlreadyLinked",
+                "Tài khoản này đã được gắn với một hồ sơ bác sĩ khác.");
+
+        doctor.AssignUser(request.UserId);
+        await _db.SaveChangesAsync(ct);
+        return (await ProjectByIdAsync(doctor.Id, ct))!;
+    }
+
+    public async Task<Result<DoctorDto>> UnlinkUserAsync(Guid doctorId, CancellationToken ct = default)
+    {
+        var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == doctorId, ct);
+        if (doctor is null)
+            return Error.NotFound("Doctor.NotFound", $"Không tìm thấy bác sĩ với Id {doctorId}.");
+
+        doctor.UnassignUser();
+        await _db.SaveChangesAsync(ct);
+        return (await ProjectByIdAsync(doctor.Id, ct))!;
+    }
+
     /// <summary>Ánh xạ truy vấn Bác sĩ sang DTO kèm tên chuyên khoa (subquery, null nếu khoa đã bị xoá).</summary>
     private IQueryable<DoctorDto> Project(IQueryable<Doctor> query) =>
         query.Select(d => new DoctorDto(
@@ -109,6 +150,7 @@ public sealed class DoctorService : IDoctorService
             _db.Specialties.Where(s => s.Id == d.SpecialtyId).Select(s => s.Name).FirstOrDefault(),
             d.PhoneNumber,
             d.Email,
+            d.UserId,
             d.CreatedAt,
             d.UpdatedAt));
 

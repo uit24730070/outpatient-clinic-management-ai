@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ClinicManagement.Shared.Contracts;
 using ClinicManagement.Shared.Results;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,10 @@ namespace ClinicManagement.WebApi.Common;
 [ApiController]
 public abstract class ApiControllerBase : ControllerBase
 {
+    /// <summary>Id người dùng đang đăng nhập lấy từ claim; <see cref="Guid.Empty"/> nếu không có/không hợp lệ.</summary>
+    protected Guid CurrentUserId =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : Guid.Empty;
+
     /// <summary>Ánh xạ <see cref="Result{T}"/> sang phản hồi HTTP với envelope <see cref="ApiResponse{T}"/>.</summary>
     protected IActionResult ToResponse<T>(Result<T> result, int successStatusCode = StatusCodes.Status200OK)
     {

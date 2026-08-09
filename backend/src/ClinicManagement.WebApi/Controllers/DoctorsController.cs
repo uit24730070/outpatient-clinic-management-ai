@@ -60,4 +60,22 @@ public sealed class DoctorsController : ApiControllerBase
         var result = await _doctors.DeleteAsync(id, ct);
         return ToResponse(result);
     }
+
+    /// <summary>Gắn một tài khoản (role Bác sĩ) vào hồ sơ bác sĩ (chỉ Admin).</summary>
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("{id:guid}/link-user")]
+    public async Task<IActionResult> LinkUser(Guid id, [FromBody] LinkUserRequest request, CancellationToken ct)
+    {
+        var result = await _doctors.LinkUserAsync(id, request, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Gỡ liên kết tài khoản khỏi hồ sơ bác sĩ (chỉ Admin).</summary>
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("{id:guid}/unlink-user")]
+    public async Task<IActionResult> UnlinkUser(Guid id, CancellationToken ct)
+    {
+        var result = await _doctors.UnlinkUserAsync(id, ct);
+        return ToResponse(result);
+    }
 }

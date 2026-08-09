@@ -9,5 +9,7 @@ public sealed record DoctorDto(
     string? SpecialtyName,
     string? PhoneNumber,
     string? Email,
+    // Tài khoản đăng nhập gắn với hồ sơ (null nếu chưa gắn) — cho màn quản lý người dùng/liên kết.
+    Guid? UserId,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);
