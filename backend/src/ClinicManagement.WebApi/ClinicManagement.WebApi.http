@@ -283,3 +283,70 @@ Content-Type: application/json
 POST {{host}}/api/ai/reindex
 Authorization: Bearer {{token}}
 Accept: application/json
+
+######################## Quản lý người dùng (Admin) ########################
+# Mọi endpoint /api/users chỉ Admin. role nhận CHUỖI ("Admin"/"Receptionist"/"Doctor").
+
+### Tạo tài khoản mới
+POST {{host}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "letan1",
+  "password": "MatKhau@123",
+  "fullName": "Lễ Tân Một",
+  "role": "Receptionist",
+  "email": null
+}
+
+### Danh sách người dùng (lọc theo vai trò/trạng thái)
+GET {{host}}/api/users?page=1&pageSize=20&role=Doctor&isActive=true
+Authorization: Bearer {{token}}
+
+### Chi tiết một người dùng
+GET {{host}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### Cập nhật hồ sơ tài khoản (không đổi username/mật khẩu)
+PUT {{host}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Lễ Tân Một (đã sửa)",
+  "role": "Receptionist",
+  "email": "letan1@clinic.vn"
+}
+
+### Đặt lại mật khẩu
+POST {{host}}/api/users/{{userId}}/reset-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "newPassword": "MatKhauMoi@9" }
+
+### Khoá / mở khoá đăng nhập
+POST {{host}}/api/users/{{userId}}/deactivate
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/users/{{userId}}/activate
+Authorization: Bearer {{token}}
+
+### Xoá mềm tài khoản
+DELETE {{host}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+
+######################## Gắn/gỡ User <-> Doctor (Admin) ########################
+
+### Gắn tài khoản (role Doctor) vào hồ sơ bác sĩ
+POST {{host}}/api/doctors/{{doctorId}}/link-user
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "userId": "{{userId}}" }
+
+### Gỡ liên kết tài khoản khỏi hồ sơ bác sĩ
+POST {{host}}/api/doctors/{{doctorId}}/unlink-user
+Authorization: Bearer {{token}}

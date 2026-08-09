@@ -2,7 +2,7 @@
 
 Đồ án tốt nghiệp: hệ thống quản lý phòng khám / khám ngoại trú, tích hợp trợ lý AI (LLM) hỗ trợ nghiệp vụ.
 
-> **Trạng thái:** Sprint 1 — Nền tảng kỹ thuật + vertical slice "Quản lý Bệnh nhân" (CRUD đầu-cuối).
+> **Trạng thái:** Sprint 9 — Quản lý người dùng (Admin) + gắn/gỡ `User↔Doctor` qua UI + **Docker Compose** dựng toàn hệ thống. (Đã có: bệnh nhân, bác sĩ/chuyên khoa, đặt lịch/tiếp đón, bệnh án/đơn thuốc, xác thực/RBAC, trợ lý AI tóm tắt + hỏi đáp RAG.)
 
 ## Tech Stack
 
@@ -35,6 +35,17 @@ clinic-management-ai/
 - [Node.js 20+](https://nodejs.org/) và npm
 - [PostgreSQL](https://www.postgresql.org/) (hoặc chạy qua Docker Compose)
 - [Docker Desktop](https://www.docker.com/) (tùy chọn)
+
+## Khởi chạy nhanh bằng Docker Compose (khuyến nghị)
+
+Dựng toàn hệ thống (PostgreSQL + API + Web) bằng một lệnh:
+
+```bash
+cp .env.example .env      # đặt JWT_KEY thành chuỗi bí mật ≥ 32 byte
+docker compose up --build # Web: http://localhost:8080 · API: http://localhost:5006
+```
+
+Đăng nhập mặc định: Admin `admin`/`Admin@123`, Bác sĩ `bacsi`/`Doctor@123`. Hướng dẫn đầy đủ + bảng biến môi trường: [`docs/deployment/`](./docs/deployment/README.md).
 
 ## Khởi chạy nhanh (dành cho phát triển)
 
