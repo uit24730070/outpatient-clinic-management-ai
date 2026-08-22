@@ -22,6 +22,11 @@ import {
   labOrderStatusLabels,
   type LabOrderStatusValue,
 } from '../types/labOrder'
+import {
+  VisitStatus,
+  visitStatusLabels,
+  type VisitStatusValue,
+} from '../types/visit'
 
 // Bảng tông màu — giữ đúng ngữ nghĩa màu cũ (ADR 0012), dùng lại khắp app.
 const tone = {
@@ -123,6 +128,20 @@ export function LabOrderStatusBadge({ status }: { status: LabOrderStatusValue })
   return (
     <TonedBadge tone={labOrderTone[status] ?? 'gray'}>
       {labOrderStatusLabels[status] ?? status}
+    </TonedBadge>
+  )
+}
+
+const visitTone: Record<number, Tone> = {
+  [VisitStatus.Open]: 'blue',
+  [VisitStatus.Closed]: 'green',
+  [VisitStatus.Cancelled]: 'gray',
+}
+
+export function VisitStatusBadge({ status }: { status: VisitStatusValue }) {
+  return (
+    <TonedBadge tone={visitTone[status] ?? 'gray'}>
+      {visitStatusLabels[status] ?? status}
     </TonedBadge>
   )
 }

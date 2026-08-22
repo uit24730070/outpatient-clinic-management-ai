@@ -48,6 +48,8 @@ export interface NavItem {
 // Bác sĩ có menu gọn theo phận sự (không thấy quản lý Bác sĩ/Chuyên khoa).
 export const navItems: NavItem[] = [
   { label: 'Phòng khám của tôi', to: '/my-clinic', roles: [UserRole.Doctor] },
+  // Lượt tiếp đón (ADR 0017) — điểm vào quy trình tiếp đón: một lượt nhiều dịch vụ khám.
+  { label: 'Lượt tiếp đón', to: '/visits', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
   { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
   // Danh mục master Bác sĩ/Chuyên khoa — chỉ Admin (đọc vẫn dùng được ở form đặt lịch).

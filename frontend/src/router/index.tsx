@@ -34,6 +34,9 @@ import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 import LabOrderPrintPage from '../pages/LabOrderPrintPage'
 import LabWalkInPage from '../pages/LabWalkInPage'
 import TechnicianLabPage from '../pages/TechnicianLabPage'
+import VisitsListPage from '../pages/VisitsListPage'
+import VisitFormPage from '../pages/VisitFormPage'
+import VisitDetailPage from '../pages/VisitDetailPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -69,6 +72,19 @@ export const router = createBrowserRouter([
           {
             element: <RequireRole roles={[UserRole.Doctor]} />,
             children: [{ path: 'my-clinic', element: <MyClinicPage /> }],
+          },
+
+          // Lượt tiếp đón (ADR 0017): đọc cho mọi vai trò; tạo/thao tác chỉ Admin/Lễ tân.
+          {
+            element: <RequireRole roles={ALL_ROLES} />,
+            children: [
+              { path: 'visits', element: <VisitsListPage /> },
+              { path: 'visits/:id', element: <VisitDetailPage /> },
+            ],
+          },
+          {
+            element: <RequireRole roles={MANAGE_STAFF} />,
+            children: [{ path: 'visits/new', element: <VisitFormPage /> }],
           },
 
           // Lịch khám: đọc cho mọi vai trò; ghi (đặt/sửa) chỉ Admin/Lễ tân.

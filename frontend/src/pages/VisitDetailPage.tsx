@@ -1,0 +1,376 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { Plus, Receipt, Stethoscope } from 'lucide-react'
+import { addVisitService, cancelVisit, closeVisit, getVisit } from '../services/visitService'
+import { listDoctors } from '../services/doctorService'
+import { listServicePrices } from '../services/servicePriceService'
+import { transitionAppointment, type AppointmentAction } from '../services/appointmentService'
+import { useAuth } from '../store/auth'
+import { canManageBilling } from '../config/access'
+import { toastError, toastInfo, toastSuccess } from '../lib/toast'
+import { formatVnd } from '../lib/format'
+import { AppointmentStatus, type Appointment } from '../types/appointment'
+import { ServiceCategory, type ServicePrice } from '../types/invoice'
+import { VisitStatus, type Visit } from '../types/visit'
+import type { Doctor } from '../types/doctor'
+import { PageHeader } from '../components/PageHeader'
+import { AppointmentStatusBadge, VisitStatusBadge } from '../components/StatusBadge'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+const NONE = 'none'
+
+const actionsByStatus: Record<number, { action: AppointmentAction; label: string; danger?: boolean }[]> = {
+  [AppointmentStatus.Scheduled]: [
+    { action: 'check-in', label: 'Check-in' },
+    { action: 'cancel', label: 'Huỷ', danger: true },
+  ],
+  [AppointmentStatus.CheckedIn]: [{ action: 'start', label: 'Bắt đầu khám' }],
+  [AppointmentStatus.InProgress]: [{ action: 'complete', label: 'Hoàn tất' }],
+  [AppointmentStatus.Completed]: [],
+  [AppointmentStatus.Cancelled]: [],
+  [AppointmentStatus.NoShow]: [],
+}
+
+function toLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
+export default function VisitDetailPage() {
+  const { id = '' } = useParams()
+  const { user, canManage, canRecordEncounter } = useAuth()
+  const canBilling = canManageBilling(user?.role)
+
+  const [visit, setVisit] = useState<Visit | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [services, setServices] = useState<ServicePrice[]>([])
+
+  // Thêm dịch vụ (một dòng gọn).
+  const [adding, setAdding] = useState(false)
+  const [newDoctorId, setNewDoctorId] = useState('')
+  const [newServiceId, setNewServiceId] = useState('')
+  const [newStart, setNewStart] = useState(toLocalInput(new Date()))
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      setVisit(await getVisit(id))
+    } catch (err) {
+      toastError(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  useEffect(() => {
+    if (!canManage) return
+    void (async () => {
+      try {
+        const [d, s] = await Promise.all([
+          listDoctors({ page: 1, pageSize: 100 }),
+          listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Consultation }),
+        ])
+        setDoctors(d.items)
+        setServices(s.items)
+      } catch {
+        // Danh mục chỉ phục vụ thao tác thêm dịch vụ.
+      }
+    })()
+  }, [canManage])
+
+  const serviceMap = useMemo(() => new Map(services.map((s) => [s.id, s])), [services])
+
+  const onAction = async (a: Appointment, action: AppointmentAction) => {
+    try {
+      await transitionAppointment(a.id, action)
+      toastSuccess('Đã cập nhật trạng thái.')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  const onAddService = async () => {
+    if (!newDoctorId) {
+      toastInfo('Hãy chọn bác sĩ.')
+      return
+    }
+    try {
+      const start = new Date(newStart)
+      const end = new Date(start)
+      end.setMinutes(end.getMinutes() + 30)
+      await addVisitService(id, {
+        doctorId: newDoctorId,
+        servicePriceId: newServiceId || null,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        reason: null,
+      })
+      toastSuccess('Đã thêm dịch vụ khám vào lượt.')
+      setAdding(false)
+      setNewDoctorId('')
+      setNewServiceId('')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  const onClose = async () => {
+    try {
+      await closeVisit(id)
+      toastSuccess('Đã đóng lượt.')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  const onCancel = async () => {
+    try {
+      await cancelVisit(id)
+      toastSuccess('Đã huỷ lượt.')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  if (loading && !visit) return <p className="text-muted-foreground">Đang tải…</p>
+  if (!visit) return <p className="text-muted-foreground">Không tìm thấy lượt tiếp đón.</p>
+
+  const isOpen = visit.status === VisitStatus.Open
+
+  return (
+    <section className="flex flex-col gap-4">
+      <PageHeader
+        title={`Lượt ${visit.code}`}
+        description={visit.patientName ?? undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            <VisitStatusBadge status={visit.status} />
+            {canManage && isOpen && (
+              <>
+                <ConfirmDialog
+                  trigger={<Button size="sm" variant="outline">Đóng lượt</Button>}
+                  title="Đóng lượt tiếp đón?"
+                  description="Xác nhận lượt khám đã hoàn tất."
+                  confirmText="Đóng lượt"
+                  onConfirm={() => void onClose()}
+                />
+                <ConfirmDialog
+                  trigger={
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                      Huỷ lượt
+                    </Button>
+                  }
+                  title="Huỷ lượt tiếp đón?"
+                  description="Hành động này không thể hoàn tác."
+                  confirmText="Huỷ lượt"
+                  destructive
+                  onConfirm={() => void onCancel()}
+                />
+              </>
+            )}
+          </div>
+        }
+      />
+
+      {/* Tổng viện phí gom cả lượt */}
+      <Card>
+        <CardContent className="grid grid-cols-3 gap-4 p-6 text-center">
+          <div>
+            <p className="text-sm text-muted-foreground">Đã lập</p>
+            <p className="text-lg font-semibold">{formatVnd(visit.totalBilled)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Đã thu</p>
+            <p className="text-lg font-semibold text-green-700">{formatVnd(visit.totalPaid)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Còn nợ</p>
+            <p className="text-lg font-semibold text-red-700">{formatVnd(visit.totalOutstanding)}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Danh sách dịch vụ khám trong lượt */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Giờ</TableHead>
+                <TableHead>Bác sĩ</TableHead>
+                <TableHead>Dịch vụ khám</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visit.appointments.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                    Chưa có dịch vụ khám.
+                  </TableCell>
+                </TableRow>
+              )}
+              {visit.appointments.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell className="whitespace-nowrap font-medium">
+                    {formatTime(a.startTime)}–{formatTime(a.endTime)}
+                  </TableCell>
+                  <TableCell>{a.doctorName ?? '—'}</TableCell>
+                  <TableCell>
+                    {a.serviceName ?? '—'}
+                    {a.servicePrice != null && (
+                      <span className="text-muted-foreground"> · {formatVnd(a.servicePrice)}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <AppointmentStatusBadge status={a.status} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      {canRecordEncounter && a.status === AppointmentStatus.InProgress && (
+                        <Button asChild size="sm" variant="secondary">
+                          <Link to={`/appointments/${a.id}/encounter`}>
+                            <Stethoscope className="size-4" />
+                            Khám
+                          </Link>
+                        </Button>
+                      )}
+                      {canBilling &&
+                        a.status !== AppointmentStatus.Cancelled &&
+                        a.status !== AppointmentStatus.NoShow && (
+                          <Button asChild size="sm" variant="outline">
+                            <Link to={`/invoices/new?patientId=${a.patientId}&appointmentId=${a.id}`}>
+                              <Receipt className="size-4" />
+                              Lập HĐ
+                            </Link>
+                          </Button>
+                        )}
+                      {canManage &&
+                        actionsByStatus[a.status].map((x) =>
+                          x.danger ? (
+                            <ConfirmDialog
+                              key={x.action}
+                              trigger={
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                  {x.label}
+                                </Button>
+                              }
+                              title={`${x.label} dịch vụ?`}
+                              description={`Xác nhận ${x.label.toLowerCase()} dịch vụ khám của "${a.doctorName ?? ''}"?`}
+                              confirmText={x.label}
+                              destructive
+                              onConfirm={() => void onAction(a, x.action)}
+                            />
+                          ) : (
+                            <Button
+                              key={x.action}
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void onAction(a, x.action)}
+                            >
+                              {x.label}
+                            </Button>
+                          ),
+                        )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Thêm dịch vụ khám (khi lượt còn mở) */}
+      {canManage && isOpen && (
+        <Card>
+          <CardContent className="p-4">
+            {!adding ? (
+              <Button variant="outline" onClick={() => setAdding(true)}>
+                <Plus className="size-4" />
+                Thêm dịch vụ khám
+              </Button>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-4 md:items-end">
+                <div className="grid gap-2">
+                  <Label>Bác sĩ *</Label>
+                  <Select value={newDoctorId} onValueChange={setNewDoctorId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="— Chọn —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {doctors.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Dịch vụ</Label>
+                  <Select value={newServiceId || NONE} onValueChange={(v) => setNewServiceId(v === NONE ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="— Không gắn —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>— Không gắn —</SelectItem>
+                      {services.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} · {formatVnd(serviceMap.get(s.id)?.unitPrice ?? s.unitPrice)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Giờ bắt đầu</Label>
+                  <Input type="datetime-local" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => void onAddService()}>Thêm</Button>
+                  <Button variant="ghost" onClick={() => setAdding(false)}>
+                    Huỷ
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </section>
+  )
+}
