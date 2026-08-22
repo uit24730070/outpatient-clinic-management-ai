@@ -21,7 +21,8 @@ public sealed class ServicePriceService : IServicePriceService
             code,
             request.Name.Trim(),
             request.UnitPrice,
-            NormalizeOptional(request.Description));
+            NormalizeOptional(request.Description),
+            request.Category);
 
         _db.ServicePrices.Add(service);
         await _db.SaveChangesAsync(ct);
@@ -30,7 +31,7 @@ public sealed class ServicePriceService : IServicePriceService
     }
 
     public async Task<Result<PagedResult<ServicePriceDto>>> GetListAsync(
-        int page, int pageSize, string? search, CancellationToken ct = default)
+        int page, int pageSize, string? search, ServiceCategory? category, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -44,6 +45,9 @@ public sealed class ServicePriceService : IServicePriceService
                 s.Name.ToLower().Contains(term) ||
                 s.Code.ToLower().Contains(term));
         }
+
+        if (category is not null)
+            query = query.Where(s => s.Category == category);
 
         var total = await query.CountAsync(ct);
         var items = await query
@@ -74,7 +78,8 @@ public sealed class ServicePriceService : IServicePriceService
         service.UpdateDetails(
             request.Name.Trim(),
             request.UnitPrice,
-            NormalizeOptional(request.Description));
+            NormalizeOptional(request.Description),
+            request.Category);
 
         await _db.SaveChangesAsync(ct);
         return ServicePriceDto.FromEntity(service);

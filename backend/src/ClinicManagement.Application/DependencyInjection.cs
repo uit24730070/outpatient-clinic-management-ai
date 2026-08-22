@@ -9,6 +9,7 @@ using ClinicManagement.Application.Common.Ai;
 using ClinicManagement.Application.Doctors;
 using ClinicManagement.Application.Encounters;
 using ClinicManagement.Application.Medications;
+using ClinicManagement.Application.Paraclinical;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Pharmacy;
 using ClinicManagement.Application.Specialties;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IPharmacyAlertService, PharmacyAlertService>();
         services.AddScoped<IServicePriceService, ServicePriceService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<ILabOrderService, LabOrderService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IPatientSummaryService, PatientSummaryService>();

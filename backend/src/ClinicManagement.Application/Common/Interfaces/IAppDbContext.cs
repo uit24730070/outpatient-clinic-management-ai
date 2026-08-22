@@ -2,6 +2,7 @@ using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
+using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
@@ -27,6 +28,7 @@ public interface IAppDbContext
     DbSet<StockTransaction> StockTransactions { get; }
     DbSet<ServicePrice> ServicePrices { get; }
     DbSet<Invoice> Invoices { get; }
+    DbSet<LabOrder> LabOrders { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

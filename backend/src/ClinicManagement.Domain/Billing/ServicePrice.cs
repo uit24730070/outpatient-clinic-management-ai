@@ -12,12 +12,15 @@ public class ServicePrice : Entity
     // EF Core cần constructor không tham số.
     private ServicePrice() { }
 
-    public ServicePrice(string code, string name, decimal unitPrice, string? description)
+    public ServicePrice(
+        string code, string name, decimal unitPrice, string? description,
+        ServiceCategory category = ServiceCategory.Other)
     {
         Code = code;
         Name = name;
         UnitPrice = unitPrice;
         Description = description;
+        Category = category;
     }
 
     /// <summary>Mã dịch vụ duy nhất, ví dụ DV-000001.</summary>
@@ -32,11 +35,20 @@ public class ServicePrice : Entity
     /// <summary>Mô tả thêm (tuỳ chọn).</summary>
     public string? Description { get; private set; }
 
+    /// <summary>
+    /// Phân loại dịch vụ (công khám/cận lâm sàng/khác). Mặc định <see cref="ServiceCategory.Other"/>
+    /// để tương thích dữ liệu Sprint 14 (ADR 0015).
+    /// </summary>
+    public ServiceCategory Category { get; private set; }
+
     /// <summary>Cập nhật các trường có thể chỉnh sửa của mục bảng giá.</summary>
-    public void UpdateDetails(string name, decimal unitPrice, string? description)
+    public void UpdateDetails(
+        string name, decimal unitPrice, string? description,
+        ServiceCategory category = ServiceCategory.Other)
     {
         Name = name;
         UnitPrice = unitPrice;
         Description = description;
+        Category = category;
     }
 }

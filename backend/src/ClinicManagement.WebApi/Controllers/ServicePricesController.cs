@@ -1,5 +1,6 @@
 using ClinicManagement.Application.Billing;
 using ClinicManagement.Application.Billing.Dtos;
+using ClinicManagement.Domain.Billing;
 using ClinicManagement.WebApi.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,15 +23,16 @@ public sealed class ServicePricesController : ApiControllerBase
         return ToResponse(result, StatusCodes.Status201Created);
     }
 
-    /// <summary>Danh sách dịch vụ có phân trang + tìm kiếm (theo tên/mã).</summary>
+    /// <summary>Danh sách dịch vụ có phân trang + tìm kiếm (theo tên/mã) + lọc theo phân loại.</summary>
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
+        [FromQuery] ServiceCategory? category = null,
         CancellationToken ct = default)
     {
-        var result = await _servicePrices.GetListAsync(page, pageSize, search, ct);
+        var result = await _servicePrices.GetListAsync(page, pageSize, search, category, ct);
         return ToResponse(result);
     }
 

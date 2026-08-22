@@ -6,6 +6,7 @@ using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
+using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
@@ -31,6 +32,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
     public DbSet<ServicePrice> ServicePrices => Set<ServicePrice>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<LabOrder> LabOrders => Set<LabOrder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
