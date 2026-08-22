@@ -30,6 +30,11 @@ body {
   background: var(--bg-soft);
 }
 .layout__brand { font-weight: 700; }
+.layout__nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
 .layout__nav a {
   color: var(--muted);
   text-decoration: none;
@@ -209,3 +214,76 @@ input, select, textarea {
 }
 .ai-ask__sources { margin: 0.25rem 0 0.5rem; font-size: 0.9rem; }
 .ai-ask__sources ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
+
+/* --- Trợ lý hội thoại (AI-03) --- */
+.assistant { display: flex; flex-direction: column; }
+.input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+}
+.chip {
+  display: inline-block;
+  background: var(--bg-soft, #f1f5f9);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--text, inherit);
+}
+.chip:hover { border-color: var(--primary); }
+.chip--sm { padding: 0.1rem 0.55rem; font-size: 0.78rem; margin-right: 0.35rem; cursor: default; }
+
+.assistant__chat {
+  flex: 1;
+  min-height: 320px;
+  max-height: 58vh;
+  overflow-y: auto;
+  background: var(--bg-soft, #f8fafc);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0.5rem 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.assistant__empty { margin: auto; text-align: center; }
+.assistant__suggestions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; }
+
+.msg { display: flex; flex-direction: column; max-width: 80%; }
+.msg--user { align-self: flex-end; align-items: flex-end; }
+.msg--assistant { align-self: flex-start; align-items: flex-start; }
+.msg__bubble {
+  white-space: pre-wrap;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  line-height: 1.5;
+}
+.msg--user .msg__bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.msg--assistant .msg__bubble { background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.msg__bubble--loading { color: var(--muted); font-style: italic; }
+.msg__tools { margin-top: 0.3rem; font-size: 0.8rem; }
+
+.assistant__form { display: flex; gap: 0.5rem; }
+.assistant__input { flex: 1; }
+
+/* --- Tạo nhanh bệnh nhân trong form đặt lịch --- */
+.patient-create__toggle { align-self: flex-start; margin-top: 0.35rem; font-size: 0.9rem; }
+.patient-create {
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem;
+  background: var(--bg-soft, #f8fafc);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.patient-create__title { margin: 0; font-weight: 600; }
+.patient-create__row { display: flex; gap: 0.75rem; }
+.patient-create__row .field { flex: 1; }
+.patient-create__actions { display: flex; justify-content: flex-end; }

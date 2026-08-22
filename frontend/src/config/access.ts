@@ -17,6 +17,11 @@ export function canRecordEncounter(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin || role === UserRole.Doctor
 }
 
+/** Có quyền quản lý danh mục master Bác sĩ/Chuyên khoa (ghi): chỉ Admin — khớp Roles.ManageCatalog. */
+export function canManageCatalog(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.Admin
+}
+
 /** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
 export interface NavItem {
   label: string
@@ -30,9 +35,11 @@ export const navItems: NavItem[] = [
   { label: 'Phòng khám của tôi', to: '/my-clinic', roles: [UserRole.Doctor] },
   { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
   { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
-  { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin, UserRole.Receptionist] },
+  // Danh mục master Bác sĩ/Chuyên khoa — chỉ Admin (đọc vẫn dùng được ở form đặt lịch).
+  { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin] },
+  { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin] },
   { label: 'Người dùng', to: '/users', roles: [UserRole.Admin] },
+  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
 ]
 
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.

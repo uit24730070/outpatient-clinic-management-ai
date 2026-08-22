@@ -19,6 +19,7 @@ import EncounterFormPage from '../pages/EncounterFormPage'
 import PatientEncountersPage from '../pages/PatientEncountersPage'
 import UsersListPage from '../pages/UsersListPage'
 import UserFormPage from '../pages/UserFormPage'
+import AssistantPage from '../pages/AssistantPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -81,9 +82,9 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // Quản lý danh mục Bác sĩ/Chuyên khoa — chỉ Admin/Lễ tân.
+          // Quản lý danh mục master Bác sĩ/Chuyên khoa — chỉ Admin.
           {
-            element: <RequireRole roles={MANAGE_STAFF} />,
+            element: <RequireRole roles={ADMIN_ONLY} />,
             children: [
               { path: 'doctors', element: <DoctorsListPage /> },
               { path: 'doctors/new', element: <DoctorFormPage /> },
@@ -92,6 +93,12 @@ export const router = createBrowserRouter([
               { path: 'specialties/new', element: <SpecialtyFormPage /> },
               { path: 'specialties/:id/edit', element: <SpecialtyFormPage /> },
             ],
+          },
+
+          // Trợ lý hội thoại — mọi vai trò đã đăng nhập (phạm vi dữ liệu do backend kiểm soát).
+          {
+            element: <RequireRole roles={ALL_ROLES} />,
+            children: [{ path: 'assistant', element: <AssistantPage /> }],
           },
 
           // Quản lý người dùng — chỉ Admin.
