@@ -44,4 +44,25 @@ public class MedicationBatch : Entity
         QuantityOnHand += quantity;
         return Result.Success();
     }
+
+    /// <summary>
+    /// Trừ tồn của lô khi cấp phát (FEFO — ADR 0011). Số lượng phải &gt; 0 và không vượt tồn hiện có.
+    /// Điểm đồng thời nhạy cảm: concurrency token (<c>xmin</c>) cấu hình ở Infrastructure chặn hai lượt
+    /// cấp phát chồng nhau lên cùng lô.
+    /// </summary>
+    public Result Decrease(int quantity)
+    {
+        if (quantity <= 0)
+            return Result.Failure(Error.Validation(
+                "MedicationBatch.InvalidQuantity",
+                "Số lượng cấp phát phải lớn hơn 0."));
+
+        if (quantity > QuantityOnHand)
+            return Result.Failure(Error.Conflict(
+                "MedicationBatch.InsufficientStock",
+                $"Lô {BatchNumber} không đủ tồn (còn {QuantityOnHand}, cần {quantity})."));
+
+        QuantityOnHand -= quantity;
+        return Result.Success();
+    }
 }

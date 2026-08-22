@@ -9,6 +9,7 @@ using ClinicManagement.Application.Doctors;
 using ClinicManagement.Application.Encounters;
 using ClinicManagement.Application.Medications;
 using ClinicManagement.Application.Patients;
+using ClinicManagement.Application.Pharmacy;
 using ClinicManagement.Application.Specialties;
 using ClinicManagement.Application.StockReceipts;
 using ClinicManagement.Application.StockTransactions;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IMedicationService, MedicationService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
         services.AddScoped<IStockTransactionService, StockTransactionService>();
+        services.AddScoped<IPharmacyAlertService, PharmacyAlertService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IPatientSummaryService, PatientSummaryService>();

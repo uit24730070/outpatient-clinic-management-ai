@@ -64,8 +64,12 @@ public sealed class EncountersController : ApiControllerBase
         return ToResponse(result);
     }
 
-    /// <summary>Chốt phiếu: Draft → Completed, đồng thời khép lịch khám (InProgress → Completed).</summary>
-    [Authorize(Roles = Roles.RecordEncounter)]
+    /// <summary>
+    /// Chốt phiếu: Draft → Completed, đồng thời khép lịch khám (InProgress → Completed) và
+    /// <b>cấp phát thuốc theo đơn</b> (trừ tồn FEFO, ghi sổ cái Dispense) — ADR 0011.
+    /// Vì gộp cấp phát vào bước này, cho phép cả ba vai trò thực hiện (Admin/Lễ tân/Bác sĩ).
+    /// </summary>
+    [Authorize(Roles = Roles.DispenseEncounter)]
     [HttpPost("{id:guid}/complete")]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
         => ToResponse(await _encounters.CompleteAsync(id, ct));

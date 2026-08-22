@@ -24,4 +24,11 @@ public static class Roles
     /// Phòng khám nhỏ chưa có vai trò "Dược sĩ" riêng — xem ADR 0011. Đọc danh mục mở cho mọi vai trò.
     /// </summary>
     public const string ManagePharmacy = Admin + "," + Receptionist;
+
+    /// <summary>
+    /// Nhóm được phép chốt phiếu khám (kèm cấp phát thuốc FEFO): cả ba vai trò. Vì cấp phát gộp
+    /// vào bước chốt phiếu (ADR 0011), lễ tân/quầy dược cũng cần thực hiện được — nới quyền có chủ đích
+    /// so với <see cref="RecordEncounter"/> (chỉ chi phối tạo/sửa phiếu).
+    /// </summary>
+    public const string DispenseEncounter = Admin + "," + Receptionist + "," + Doctor;
 }

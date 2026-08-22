@@ -3,6 +3,7 @@ using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Encounters.Dtos;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Encounters;
+using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +42,10 @@ public sealed class EncounterService : IEncounterService
         if (await _db.Encounters.AnyAsync(e => e.AppointmentId == request.AppointmentId, ct))
             return Error.Conflict("Encounter.AlreadyExists",
                 "Lịch khám này đã có phiếu khám.");
+
+        var medicationsCheck = await EnsureMedicationsExistAsync(request.PrescriptionItems, ct);
+        if (medicationsCheck.IsFailure)
+            return Result.Failure<EncounterDto>(medicationsCheck.Error);
 
         var encounter = new Encounter(
             appointment.Id,
@@ -110,6 +115,10 @@ public sealed class EncounterService : IEncounterService
         if (encounter is null)
             return Error.NotFound("Encounter.NotFound", $"Không tìm thấy phiếu khám với Id {id}.");
 
+        var medicationsCheck = await EnsureMedicationsExistAsync(request.PrescriptionItems, ct);
+        if (medicationsCheck.IsFailure)
+            return Result.Failure<EncounterDto>(medicationsCheck.Error);
+
         var update = encounter.UpdateDetails(
             NormalizeOptional(request.Symptoms),
             request.Diagnosis.Trim(),
@@ -146,9 +155,86 @@ public sealed class EncounterService : IEncounterService
         if (closeAppointment.IsFailure)
             return Result.Failure<EncounterDto>(closeAppointment.Error);
 
-        await _db.SaveChangesAsync(ct);
+        // Cấp phát thuốc theo đơn (FEFO) — gộp vào luồng chốt phiếu (ADR 0011).
+        // Thiếu tồn → rollback toàn bộ (chưa SaveChanges nên không có gì được ghi).
+        var dispense = await DispenseAsync(encounter, ct);
+        if (dispense.IsFailure)
+            return Result.Failure<EncounterDto>(dispense.Error);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Lô vừa bị thay đổi bởi thao tác khác (concurrency token xmin) — client thử lại.
+            return Error.Conflict("Pharmacy.ConcurrencyConflict",
+                "Tồn kho vừa thay đổi bởi thao tác khác, vui lòng thử lại.");
+        }
+
         await IndexEmbeddingAsync(encounter.Id, ct);
         return (await ProjectByIdAsync(encounter.Id, ct))!;
+    }
+
+    /// <summary>
+    /// Cấp phát các dòng đơn có <c>MedicationId</c>: trừ tồn các lô còn hạn theo FEFO (hạn tăng dần),
+    /// ghi <see cref="StockTransaction"/> <see cref="StockTransactionType.Dispense"/> (âm). Bỏ qua lô đã
+    /// hết hạn. Thiếu tồn còn hạn → <c>Pharmacy.InsufficientStock</c> (không cấp phát một phần). Chưa ghi
+    /// DB ở đây — <see cref="CompleteAsync"/> gọi <c>SaveChanges</c> một lần (cùng transaction).
+    /// </summary>
+    private async Task<Result> DispenseAsync(Encounter encounter, CancellationToken ct)
+    {
+        if (encounter.IsDispensed)
+            return Result.Success();
+
+        // Gom số lượng cần cấp phát theo từng thuốc (chỉ dòng gắn danh mục).
+        var needed = encounter.PrescriptionItems
+            .Where(i => i.MedicationId is not null)
+            .GroupBy(i => i.MedicationId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+        if (needed.Count == 0)
+            return Result.Success();
+
+        var occurredAt = DateTimeOffset.UtcNow;
+        var today = DateOnly.FromDateTime(occurredAt.UtcDateTime);
+
+        foreach (var (medicationId, quantity) in needed)
+        {
+            var remaining = quantity;
+            // FEFO: chỉ lô còn hạn (ExpiryDate ≥ hôm nay), còn tồn, hạn gần nhất trước.
+            var batches = await _db.MedicationBatches
+                .Where(b => b.MedicationId == medicationId && b.QuantityOnHand > 0 && b.ExpiryDate >= today)
+                .OrderBy(b => b.ExpiryDate)
+                .ToListAsync(ct);
+
+            foreach (var batch in batches)
+            {
+                if (remaining <= 0)
+                    break;
+
+                var take = Math.Min(remaining, batch.QuantityOnHand);
+                var decrease = batch.Decrease(take);
+                if (decrease.IsFailure)
+                    return decrease;
+
+                _db.StockTransactions.Add(new StockTransaction(
+                    batch.Id,
+                    StockTransactionType.Dispense,
+                    -take,
+                    referenceType: nameof(Encounter),
+                    referenceId: encounter.Id,
+                    occurredAt: occurredAt));
+
+                remaining -= take;
+            }
+
+            if (remaining > 0)
+                return Result.Failure(Error.Conflict("Pharmacy.InsufficientStock",
+                    $"Không đủ tồn còn hạn để cấp phát thuốc (Id {medicationId}): còn thiếu {remaining}."));
+        }
+
+        encounter.MarkDispensed(occurredAt);
+        return Result.Success();
     }
 
     /// <summary>Lập chỉ mục embedding cho phiếu (best-effort; bỏ qua khi chưa cấu hình indexer).</summary>
@@ -169,8 +255,9 @@ public sealed class EncounterService : IEncounterService
             e.Notes,
             e.Status,
             e.PrescriptionItems
-                .Select(i => new PrescriptionItemDto(i.DrugName, i.Dosage, i.Quantity, i.Instruction))
+                .Select(i => new PrescriptionItemDto(i.MedicationId, i.DrugName, i.Dosage, i.Quantity, i.Instruction))
                 .ToList(),
+            e.DispensedAt,
             e.CreatedAt,
             e.UpdatedAt));
 
@@ -183,7 +270,31 @@ public sealed class EncounterService : IEncounterService
                 i.DrugName.Trim(),
                 i.Dosage.Trim(),
                 i.Quantity,
-                NormalizeOptional(i.Instruction)));
+                NormalizeOptional(i.Instruction),
+                i.MedicationId));
+
+    /// <summary>Kiểm mọi dòng đơn có <c>MedicationId</c> đều trỏ tới thuốc tồn tại (chưa xoá).</summary>
+    private async Task<Result> EnsureMedicationsExistAsync(
+        IReadOnlyList<PrescriptionItemRequest>? items, CancellationToken ct)
+    {
+        var medicationIds = (items ?? Array.Empty<PrescriptionItemRequest>())
+            .Where(i => i.MedicationId is not null)
+            .Select(i => i.MedicationId!.Value)
+            .Distinct()
+            .ToList();
+        if (medicationIds.Count == 0)
+            return Result.Success();
+
+        var existingIds = await _db.Medications
+            .Where(m => medicationIds.Contains(m.Id))
+            .Select(m => m.Id)
+            .ToListAsync(ct);
+        var missing = medicationIds.Except(existingIds).ToList();
+        return missing.Count > 0
+            ? Result.Failure(Error.NotFound("Pharmacy.MedicationNotFound",
+                $"Thuốc không tồn tại hoặc đã bị xoá: {string.Join(", ", missing)}."))
+            : Result.Success();
+    }
 
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

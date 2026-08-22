@@ -54,6 +54,15 @@ public class Encounter : Entity
 
     public EncounterStatus Status { get; private set; }
 
+    /// <summary>
+    /// Thời điểm đã cấp phát thuốc theo đơn (trừ tồn FEFO) — null nếu chưa cấp phát.
+    /// Đánh dấu để chống cấp phát trùng một đơn (ADR 0011).
+    /// </summary>
+    public DateTimeOffset? DispensedAt { get; private set; }
+
+    /// <summary>Đã cấp phát thuốc hay chưa.</summary>
+    public bool IsDispensed => DispensedAt is not null;
+
     /// <summary>Cụm dòng đơn thuốc (chỉ đọc từ ngoài; thay cả cụm qua <see cref="ReplaceItems"/>).</summary>
     public IReadOnlyCollection<PrescriptionItem> PrescriptionItems => _prescriptionItems.AsReadOnly();
 
@@ -89,6 +98,9 @@ public class Encounter : Entity
         Status = EncounterStatus.Completed;
         return Result.Success();
     }
+
+    /// <summary>Đánh dấu đã cấp phát thuốc (chỉ đặt một lần; các lần sau bỏ qua) — ADR 0011.</summary>
+    public void MarkDispensed(DateTimeOffset when) => DispensedAt ??= when;
 
     private Result InvalidTransition(string action) => Result.Failure(Error.Conflict(
         "Encounter.InvalidTransition",

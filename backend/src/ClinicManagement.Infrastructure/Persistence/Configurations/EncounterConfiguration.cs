@@ -58,6 +58,11 @@ public sealed class EncounterConfiguration : IEntityTypeConfiguration<Encounter>
             item.Property(i => i.Dosage).HasMaxLength(100).IsRequired();
             item.Property(i => i.Quantity).IsRequired();
             item.Property(i => i.Instruction).HasMaxLength(300);
+
+            // P2: liên kết tuỳ chọn tới danh mục thuốc. Cột nullable, KHÔNG FK cứng — tránh
+            // ràng buộc chặn xoá (mềm) thuốc và giữ dòng đơn cũ (null) nguyên vẹn (ADR 0011).
+            item.Property(i => i.MedicationId);
+            item.HasIndex(i => i.MedicationId);
         });
 
         // Đọc/ghi cụm đơn thuốc qua backing field (property chỉ đọc).

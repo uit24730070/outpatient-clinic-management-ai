@@ -15,5 +15,6 @@ public sealed record EncounterDto(
     string? Notes,
     EncounterStatus Status,
     IReadOnlyList<PrescriptionItemDto> PrescriptionItems,
+    DateTimeOffset? DispensedAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);
