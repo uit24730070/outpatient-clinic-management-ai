@@ -2,6 +2,7 @@ using ClinicManagement.Application.Billing.Dtos;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Encounters;
+using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,6 +65,48 @@ public sealed class InvoiceService : IInvoiceService
 
         var code = await GenerateCodeAsync(ct);
         var invoice = new Invoice(code, encounter.PatientId, encounterId, note: null, items, encounter.AppointmentId);
+        _db.Invoices.Add(invoice);
+        await _db.SaveChangesAsync(ct);
+
+        return (await ProjectByIdAsync(invoice.Id, ct))!;
+    }
+
+    /// <summary>
+    /// Lập hoá đơn <b>phí cận lâm sàng</b> từ một phiếu chỉ định (Mô hình A, ADR 0015): các dòng loại
+    /// <see cref="InvoiceItemType.Paraclinical"/> snapshot theo giá đã chỉ định. Gắn lượt tiếp đón suy ra
+    /// từ phiếu khám nguồn (nếu có). Chống lập trùng bằng cờ <see cref="LabOrder.InvoicedAt"/> (đã lập → 409).
+    /// </summary>
+    public async Task<Result<InvoiceDto>> CreateFromLabOrderAsync(Guid labOrderId, CancellationToken ct = default)
+    {
+        var order = await _db.LabOrders.FirstOrDefaultAsync(o => o.Id == labOrderId, ct);
+        if (order is null)
+            return Error.NotFound("Paraclinical.NotFound", $"Không tìm thấy phiếu chỉ định với Id {labOrderId}.");
+
+        if (order.Status == LabOrderStatus.Cancelled)
+            return Result.Failure<InvoiceDto>(Error.Conflict(
+                "Billing.LabOrderCancelled", "Không lập được hoá đơn từ phiếu chỉ định đã huỷ."));
+
+        if (order.Items.Count == 0)
+            return Result.Failure<InvoiceDto>(Error.Validation(
+                "Billing.NoItems", "Phiếu chỉ định không có dịch vụ để lập hoá đơn."));
+
+        var items = order.Items
+            .Select(i => new InvoiceItem(InvoiceItemType.Paraclinical, i.ServiceName, i.UnitPrice, 1, i.ServicePriceId))
+            .ToList();
+
+        // Cờ chống lập trùng (Mô hình A — không dựa lá chắn unique).
+        var mark = order.MarkInvoiced(DateTimeOffset.UtcNow);
+        if (mark.IsFailure)
+            return Result.Failure<InvoiceDto>(mark.Error);
+
+        // Suy ra lượt tiếp đón từ phiếu khám nguồn để gom hoá đơn theo lượt.
+        var appointmentId = await _db.Encounters.AsNoTracking()
+            .Where(e => e.Id == order.EncounterId)
+            .Select(e => (Guid?)e.AppointmentId)
+            .FirstOrDefaultAsync(ct);
+
+        var code = await GenerateCodeAsync(ct);
+        var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);
 
@@ -236,7 +279,11 @@ public sealed class InvoiceService : IInvoiceService
         return lines.Select(l =>
         {
             var svc = services[l.ServicePriceId];
-            return new InvoiceItem(InvoiceItemType.ServiceFee, svc.Name, svc.UnitPrice, l.Quantity, svc.Id);
+            // Loại dòng suy ra từ phân loại dịch vụ: CLS → Paraclinical, còn lại → ServiceFee (ADR 0015).
+            var itemType = svc.Category == ServiceCategory.Paraclinical
+                ? InvoiceItemType.Paraclinical
+                : InvoiceItemType.ServiceFee;
+            return new InvoiceItem(itemType, svc.Name, svc.UnitPrice, l.Quantity, svc.Id);
         }).ToList();
     }
 

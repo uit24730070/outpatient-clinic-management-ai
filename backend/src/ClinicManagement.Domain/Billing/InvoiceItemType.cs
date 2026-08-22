@@ -11,6 +11,9 @@ public enum InvoiceItemType
     /// <summary>Tiền thuốc đã cấp (tham chiếu danh mục thuốc).</summary>
     Medication,
 
+    /// <summary>Phí cận lâm sàng (xét nghiệm/CĐHA — tham chiếu bảng giá dịch vụ loại Paraclinical, ADR 0015).</summary>
+    Paraclinical,
+
     /// <summary>Khoản khác (nhập tay).</summary>
     Other
 }

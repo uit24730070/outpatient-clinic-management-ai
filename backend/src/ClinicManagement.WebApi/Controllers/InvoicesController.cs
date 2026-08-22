@@ -23,6 +23,14 @@ public sealed class InvoicesController : ApiControllerBase
         return ToResponse(result, StatusCodes.Status201Created);
     }
 
+    /// <summary>Lập hoá đơn phí cận lâm sàng từ một phiếu chỉ định (dòng Paraclinical, snapshot giá).</summary>
+    [HttpPost("from-lab-order/{labOrderId:guid}")]
+    public async Task<IActionResult> CreateFromLabOrder(Guid labOrderId, CancellationToken ct)
+    {
+        var result = await _invoices.CreateFromLabOrderAsync(labOrderId, ct);
+        return ToResponse(result, StatusCodes.Status201Created);
+    }
+
     /// <summary>Tạo hoá đơn dịch vụ lẻ (không gắn phiếu khám).</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest request, CancellationToken ct)

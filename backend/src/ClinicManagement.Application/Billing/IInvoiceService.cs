@@ -9,6 +9,9 @@ public interface IInvoiceService
     /// <summary>Lập hoá đơn từ một phiếu khám đã hoàn tất: tự dựng dòng công khám + dòng thuốc đã cấp.</summary>
     Task<Result<InvoiceDto>> CreateFromEncounterAsync(Guid encounterId, CancellationToken ct = default);
 
+    /// <summary>Lập hoá đơn phí cận lâm sàng từ một phiếu chỉ định (loại Paraclinical, snapshot giá).</summary>
+    Task<Result<InvoiceDto>> CreateFromLabOrderAsync(Guid labOrderId, CancellationToken ct = default);
+
     /// <summary>Tạo hoá đơn dịch vụ lẻ (không gắn phiếu khám).</summary>
     Task<Result<InvoiceDto>> CreateAsync(CreateInvoiceRequest request, CancellationToken ct = default);
 
