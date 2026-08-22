@@ -75,10 +75,14 @@ public sealed class TestDbContext : DbContext, IAppDbContext
     }
 
     /// <summary>Tạo một <see cref="TestDbContext"/> với CSDL InMemory riêng biệt cho mỗi test.</summary>
-    public static TestDbContext CreateInMemory()
+    public static TestDbContext CreateInMemory() => CreateInMemory(Guid.NewGuid().ToString());
+
+    /// <summary>Tạo <see cref="TestDbContext"/> trỏ tới một CSDL InMemory theo tên (để mở context mới
+    /// trên cùng dữ liệu — kiểm chứng trạng thái đã ghi/rollback).</summary>
+    public static TestDbContext CreateInMemory(string databaseName)
     {
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(databaseName)
             .Options;
         return new TestDbContext(options);
     }
