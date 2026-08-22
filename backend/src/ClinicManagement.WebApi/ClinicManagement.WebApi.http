@@ -378,3 +378,73 @@ Content-Type: application/json
 ### Gỡ liên kết tài khoản khỏi hồ sơ bác sĩ
 POST {{host}}/api/doctors/{{doctorId}}/unlink-user
 Authorization: Bearer {{token}}
+
+######################## Kho thuốc (Pharmacy) ########################
+
+### Danh sách thuốc (kèm tồn tổng)
+GET {{host}}/api/medications?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Tạo thuốc mới
+# @name createMedication
+POST {{host}}/api/medications
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofen 400mg",
+  "activeIngredient": "Ibuprofen",
+  "unit": "viên",
+  "reorderLevel": 50,
+  "description": "Giảm đau, kháng viêm"
+}
+
+### Lấy Id thuốc vừa tạo
+@medicationId = {{createMedication.response.body.$.data.id}}
+
+### Chi tiết thuốc
+GET {{host}}/api/medications/{{medicationId}}
+Authorization: Bearer {{token}}
+
+### Danh sách lô của thuốc
+GET {{host}}/api/medications/{{medicationId}}/batches
+Authorization: Bearer {{token}}
+
+### Cập nhật thuốc
+PUT {{host}}/api/medications/{{medicationId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofen 400mg",
+  "activeIngredient": "Ibuprofen",
+  "unit": "viên",
+  "reorderLevel": 80,
+  "description": null
+}
+
+### Nhập kho (tăng tồn theo lô + ghi sổ cái Import)
+POST {{host}}/api/stock-receipts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "supplierName": "Công ty Dược ABC",
+  "receivedAt": "2026-08-22T00:00:00Z",
+  "note": "Nhập đầu kỳ",
+  "items": [
+    { "medicationId": "{{medicationId}}", "batchNumber": "L2608", "expiryDate": "2027-12-31", "quantity": 40, "unitCost": 1500 }
+  ]
+}
+
+### Danh sách phiếu nhập
+GET {{host}}/api/stock-receipts?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Sổ cái giao dịch tồn (lọc theo thuốc)
+GET {{host}}/api/stock-transactions?medicationId={{medicationId}}&type=Import
+Authorization: Bearer {{token}}
+
+### Xoá mềm thuốc
+DELETE {{host}}/api/medications/{{medicationId}}
+Authorization: Bearer {{token}}
