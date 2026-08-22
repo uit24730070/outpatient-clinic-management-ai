@@ -2,6 +2,7 @@ import { apiClient, unwrap } from './apiClient'
 import type { ApiResponse, PagedResult } from '../types/common'
 import type {
   CreateLabOrderInput,
+  CreateWalkInLabOrderInput,
   LabOrder,
   LabOrderStatusValue,
   SetLabResultInput,
@@ -28,6 +29,12 @@ export async function getLabOrder(id: string): Promise<LabOrder> {
 /** Chỉ định cận lâm sàng từ một phiếu khám. */
 export async function createLabOrder(input: CreateLabOrderInput): Promise<LabOrder> {
   const res = await apiClient.post<ApiResponse<LabOrder>>('/api/lab-orders', input)
+  return unwrap(res.data)
+}
+
+/** Đăng ký CLS walk-in (lễ tân) — không cần phiếu khám (ADR 0016). */
+export async function createWalkInLabOrder(input: CreateWalkInLabOrderInput): Promise<LabOrder> {
+  const res = await apiClient.post<ApiResponse<LabOrder>>('/api/lab-orders/walk-in', input)
   return unwrap(res.data)
 }
 

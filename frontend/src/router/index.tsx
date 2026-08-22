@@ -32,11 +32,20 @@ import InvoicesListPage from '../pages/InvoicesListPage'
 import InvoiceFormPage from '../pages/InvoiceFormPage'
 import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 import LabOrderPrintPage from '../pages/LabOrderPrintPage'
+import LabWalkInPage from '../pages/LabWalkInPage'
+import TechnicianLabPage from '../pages/TechnicianLabPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
 const RECORD_ENCOUNTER = [UserRole.Admin, UserRole.Doctor]
-const ALL_ROLES = [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist]
+const RECORD_LAB_RESULT = [UserRole.Admin, UserRole.Doctor, UserRole.Technician]
+const ALL_ROLES = [
+  UserRole.Admin,
+  UserRole.Receptionist,
+  UserRole.Doctor,
+  UserRole.Pharmacist,
+  UserRole.Technician,
+]
 const ADMIN_ONLY = [UserRole.Admin]
 const MANAGE_PHARMACY = [UserRole.Admin, UserRole.Pharmacist]
 const MANAGE_BILLING = [UserRole.Admin, UserRole.Receptionist]
@@ -139,6 +148,17 @@ export const router = createBrowserRouter([
               { path: 'stock-receipts/new', element: <StockReceiptFormPage /> },
               { path: 'pharmacy/alerts', element: <PharmacyAlertsPage /> },
             ],
+          },
+
+          // Đăng ký CLS walk-in — Lễ tân/Admin (ManageStaff, ADR 0016).
+          {
+            element: <RequireRole roles={MANAGE_STAFF} />,
+            children: [{ path: 'lab/walk-in', element: <LabWalkInPage /> }],
+          },
+          // Thực hiện CLS + nhập kết quả — Kỹ thuật viên/Bác sĩ/Admin (RecordLabResult, ADR 0016).
+          {
+            element: <RequireRole roles={RECORD_LAB_RESULT} />,
+            children: [{ path: 'lab/technician', element: <TechnicianLabPage /> }],
           },
 
           // Viện phí — thu ngân bởi Lễ tân/Admin (ManageBilling, ADR 0014).

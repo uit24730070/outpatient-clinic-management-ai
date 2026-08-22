@@ -21,12 +21,20 @@ export async function getAppointment(id: string): Promise<Appointment> {
   return unwrap(res.data)
 }
 
+/** Lượt khám gần nhất của bệnh nhân (prefill dịch vụ khi tái khám); null nếu chưa có. */
+export async function getLastAppointment(patientId: string): Promise<Appointment | null> {
+  const res = await apiClient.get<ApiResponse<Appointment | null>>('/api/appointments/last', {
+    params: { patientId },
+  })
+  return unwrap(res.data)
+}
+
 export async function createAppointment(values: AppointmentFormValues): Promise<Appointment> {
   const res = await apiClient.post<ApiResponse<Appointment>>('/api/appointments', values)
   return unwrap(res.data)
 }
 
-export async function updateAppointment(id: string, values: Pick<AppointmentFormValues, 'startTime' | 'endTime' | 'reason'>): Promise<Appointment> {
+export async function updateAppointment(id: string, values: Pick<AppointmentFormValues, 'startTime' | 'endTime' | 'reason' | 'servicePriceId'>): Promise<Appointment> {
   const res = await apiClient.put<ApiResponse<Appointment>>(`/api/appointments/${id}`, values)
   return unwrap(res.data)
 }

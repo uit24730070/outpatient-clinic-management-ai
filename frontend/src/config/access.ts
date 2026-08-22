@@ -32,6 +32,11 @@ export function canManageBilling(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin || role === UserRole.Receptionist
 }
 
+/** Có quyền nhập kết quả cận lâm sàng: Admin, Bác sĩ hoặc Kỹ thuật viên — khớp Roles.RecordLabResult (ADR 0016). */
+export function canRecordLabResult(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.Admin || role === UserRole.Doctor || role === UserRole.Technician
+}
+
 /** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
 export interface NavItem {
   label: string
@@ -53,10 +58,13 @@ export const navItems: NavItem[] = [
   { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist] },
   { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Pharmacist] },
   { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Pharmacist] },
+  // Cận lâm sàng — đăng ký walk-in (lễ tân) + thực hiện/nhập kết quả (kỹ thuật viên), ADR 0016.
+  { label: 'Đăng ký CLS', to: '/lab/walk-in', roles: [UserRole.Admin, UserRole.Receptionist] },
+  { label: 'Thực hiện CLS', to: '/lab/technician', roles: [UserRole.Admin, UserRole.Technician] },
   // Viện phí — thu ngân bởi Lễ tân (và Admin), ADR 0014.
   { label: 'Hoá đơn', to: '/invoices', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Bảng giá dịch vụ', to: '/service-prices', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist] },
+  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist, UserRole.Technician] },
 ]
 
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.
@@ -66,6 +74,7 @@ export const roleLandingPath: Record<UserRoleValue, string> = {
   [UserRole.Receptionist]: '/appointments',
   [UserRole.Doctor]: '/my-clinic',
   [UserRole.Pharmacist]: '/pharmacy/alerts',
+  [UserRole.Technician]: '/lab/technician',
 }
 
 /** Trang mặc định cho vai trò hiện tại (fallback /appointments nếu thiếu). */

@@ -114,7 +114,10 @@ export default function PatientEncountersPage() {
         // Gom phiếu chỉ định CLS theo phiếu khám để hiển thị kết quả trong bệnh án.
         const labs = await listLabOrders({ page: 1, pageSize: 100, patientId: id })
         const grouped: Record<string, LabOrder[]> = {}
-        for (const o of labs.items) (grouped[o.encounterId] ??= []).push(o)
+        // Bỏ qua phiếu walk-in (không gắn phiếu khám) khi gom theo bệnh án.
+        for (const o of labs.items) {
+          if (o.encounterId) (grouped[o.encounterId] ??= []).push(o)
+        }
         setLabByEncounter(grouped)
       } catch {
         // Không tải được CLS không chặn lịch sử khám.

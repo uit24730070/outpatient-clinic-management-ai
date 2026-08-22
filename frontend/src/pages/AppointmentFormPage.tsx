@@ -7,13 +7,17 @@ import { UserPlus, X } from 'lucide-react'
 import {
   createAppointment,
   getAppointment,
+  getLastAppointment,
   updateAppointment,
 } from '../services/appointmentService'
 import { listPatients, createPatient } from '../services/patientService'
 import { listDoctors } from '../services/doctorService'
+import { listServicePrices } from '../services/servicePriceService'
 import { applyServerErrors } from '../lib/form'
 import { toastError, toastSuccess } from '../lib/toast'
+import { formatVnd } from '../lib/format'
 import { Gender, genderLabels, type Patient, type GenderValue } from '../types/patient'
+import { ServiceCategory, type ServicePrice } from '../types/invoice'
 import type { Doctor } from '../types/doctor'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -46,8 +50,12 @@ const schema = z.object({
   startTime: z.string().min(1, 'Vui lòng chọn thời gian bắt đầu.'),
   endTime: z.string().min(1, 'Vui lòng chọn thời gian kết thúc.'),
   reason: z.string(),
+  servicePriceId: z.string(),
 })
 type FormValues = z.infer<typeof schema>
+
+// Giá trị Select không nhận chuỗi rỗng — dùng token này cho lựa chọn "không gắn dịch vụ".
+const NO_SERVICE = '__none__'
 
 const patientSchema = z.object({
   fullName: z.string().min(1, 'Vui lòng nhập họ tên.'),
@@ -68,16 +76,25 @@ export default function AppointmentFormPage() {
   const [patientSearch, setPatientSearch] = useState('')
   const [patients, setPatients] = useState<Patient[]>([])
   const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [services, setServices] = useState<ServicePrice[]>([])
   const [showCreatePatient, setShowCreatePatient] = useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { patientId: '', doctorId: '', startTime: '', endTime: '', reason: '' },
+    defaultValues: {
+      patientId: '',
+      doctorId: '',
+      startTime: '',
+      endTime: '',
+      reason: '',
+      servicePriceId: '',
+    },
   })
   const { register, handleSubmit, setValue, watch, reset, formState } = form
   const errors = formState.errors
   const patientId = watch('patientId')
   const doctorId = watch('doctorId')
+  const servicePriceId = watch('servicePriceId')
 
   const patientForm = useForm<PatientForm>({
     resolver: zodResolver(patientSchema),
@@ -88,8 +105,14 @@ export default function AppointmentFormPage() {
     let active = true
     void (async () => {
       try {
-        const doctorPage = await listDoctors({ page: 1, pageSize: 100 })
-        if (active) setDoctors(doctorPage.items)
+        const [doctorPage, servicePage] = await Promise.all([
+          listDoctors({ page: 1, pageSize: 100 }),
+          listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Consultation }),
+        ])
+        if (active) {
+          setDoctors(doctorPage.items)
+          setServices(servicePage.items)
+        }
 
         if (id) {
           const a = await getAppointment(id)
@@ -100,6 +123,7 @@ export default function AppointmentFormPage() {
               startTime: toLocalInput(a.startTime),
               endTime: toLocalInput(a.endTime),
               reason: a.reason ?? '',
+              servicePriceId: a.servicePriceId ?? '',
             })
             setReadonlyNames({ patient: a.patientName ?? '—', doctor: a.doctorName ?? '—' })
           }
@@ -157,13 +181,34 @@ export default function AppointmentFormPage() {
     }
   })
 
+  // Tái khám: lấy dịch vụ khám của lượt gần nhất để prefill.
+  const applyLastService = async () => {
+    if (!patientId) {
+      toastError('Hãy chọn bệnh nhân trước.')
+      return
+    }
+    try {
+      const last = await getLastAppointment(patientId)
+      if (last?.servicePriceId) {
+        setValue('servicePriceId', last.servicePriceId, { shouldValidate: true })
+        toastSuccess(`Đã dùng dịch vụ lần trước: ${last.serviceName ?? ''}.`)
+      } else {
+        toastError('Lượt khám gần nhất không có dịch vụ để dùng lại.')
+      }
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
   const onSubmit = handleSubmit(async (values) => {
+    const servicePriceIdOut = values.servicePriceId || null
     try {
       if (isEdit && id) {
         await updateAppointment(id, {
           startTime: toIso(values.startTime),
           endTime: toIso(values.endTime),
           reason: values.reason.trim() || null,
+          servicePriceId: servicePriceIdOut,
         })
       } else {
         await createAppointment({
@@ -172,6 +217,7 @@ export default function AppointmentFormPage() {
           startTime: toIso(values.startTime),
           endTime: toIso(values.endTime),
           reason: values.reason.trim() || null,
+          servicePriceId: servicePriceIdOut,
         })
       }
       toastSuccess(isEdit ? 'Đã cập nhật lịch khám.' : 'Đã đặt lịch khám.')
@@ -348,6 +394,42 @@ export default function AppointmentFormPage() {
               <Input id="reason" {...register('reason')} />
               {errors.reason && (
                 <p className="text-sm text-destructive">{errors.reason.message}</p>
+              )}
+            </div>
+
+            {/* Dịch vụ khám đăng ký khi đặt lịch (loại Consultation) — ADR 0016 */}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Dịch vụ khám</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs"
+                  onClick={() => void applyLastService()}
+                >
+                  Tái khám: dùng dịch vụ lần trước
+                </Button>
+              </div>
+              <Select
+                value={servicePriceId || NO_SERVICE}
+                onValueChange={(v) =>
+                  setValue('servicePriceId', v === NO_SERVICE ? '' : v, { shouldValidate: true })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— Không đăng ký dịch vụ —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_SERVICE}>— Không đăng ký dịch vụ —</SelectItem>
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} · {formatVnd(s.unitPrice)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.servicePriceId && (
+                <p className="text-sm text-destructive">{errors.servicePriceId.message}</p>
               )}
             </div>
 

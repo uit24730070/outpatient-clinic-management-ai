@@ -43,6 +43,10 @@ export interface Appointment {
   reason: string | null
   status: AppointmentStatusValue
   checkedInAt: string | null
+  /** Dịch vụ khám lễ tân đăng ký khi đặt lịch (snapshot) — ADR 0016. */
+  servicePriceId: string | null
+  serviceName: string | null
+  servicePrice: number | null
   createdAt: string
   updatedAt: string | null
 }
@@ -53,4 +57,6 @@ export interface AppointmentFormValues {
   startTime: string
   endTime: string
   reason: string | null
+  /** Dịch vụ khám (bảng giá loại Consultation); null nếu không gắn. */
+  servicePriceId: string | null
 }

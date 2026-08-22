@@ -39,10 +39,14 @@ export interface LabOrderItem {
 export interface LabOrder {
   id: string
   code: string
-  encounterId: string
+  /** null với phiếu walk-in (không qua phiếu khám) — ADR 0016. */
+  encounterId: string | null
+  /** Lượt tiếp đón gắn kèm (walk-in) hoặc null. */
+  appointmentId: string | null
   patientId: string
   patientName: string | null
-  doctorId: string
+  /** null với phiếu walk-in (không có bác sĩ chỉ định). */
+  doctorId: string | null
   doctorName: string | null
   status: LabOrderStatusValue
   note: string | null
@@ -60,6 +64,14 @@ export interface CreateLabOrderItemInput {
 
 export interface CreateLabOrderInput {
   encounterId: string
+  note: string | null
+  items: CreateLabOrderItemInput[]
+}
+
+/** Đăng ký CLS walk-in (lễ tân) — khớp CreateWalkInLabOrderRequest (ADR 0016). */
+export interface CreateWalkInLabOrderInput {
+  patientId: string
+  appointmentId: string | null
   note: string | null
   items: CreateLabOrderItemInput[]
 }

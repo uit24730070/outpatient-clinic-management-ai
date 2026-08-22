@@ -180,7 +180,11 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
   )
 }
 
-function LabOrderCard({
+/**
+ * Thẻ một phiếu chỉ định: tiêu đề (mã + trạng thái + lập HĐ/in/huỷ) và các dòng mục để nhập kết quả.
+ * Tái dùng ở màn khám (LabOrderPanel) lẫn màn "Thực hiện CLS" của kỹ thuật viên (ADR 0016).
+ */
+export function LabOrderCard({
   order,
   canRecord,
   canBill,

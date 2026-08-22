@@ -91,6 +91,7 @@ const roleTone: Record<string, Tone> = {
   [UserRole.Receptionist]: 'cyan',
   [UserRole.Doctor]: 'green',
   [UserRole.Pharmacist]: 'amber',
+  [UserRole.Technician]: 'indigo',
 }
 
 export function RoleBadge({ role }: { role: UserRoleValue }) {
