@@ -1,6 +1,7 @@
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Visits;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -31,6 +32,13 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         // Hỗ trợ lọc hàng đợi theo bác sĩ + thời gian, và tra theo bệnh nhân.
         builder.HasIndex(a => new { a.DoctorId, a.StartTime });
         builder.HasIndex(a => a.PatientId);
+
+        // Lượt tiếp đón gom lịch (ADR 0017) — nullable, hỗ trợ gom lịch theo lượt.
+        builder.HasIndex(a => a.VisitId);
+        builder.HasOne<Visit>()
+            .WithMany()
+            .HasForeignKey(a => a.VisitId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Khoá ngoại kép; chặn xoá (vật lý) bệnh nhân/bác sĩ khi còn lịch tham chiếu.
         builder.HasOne<Patient>()

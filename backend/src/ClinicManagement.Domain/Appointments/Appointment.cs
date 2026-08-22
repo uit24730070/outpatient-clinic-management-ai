@@ -21,7 +21,8 @@ public class Appointment : Entity
         string? reason,
         Guid? servicePriceId = null,
         string? serviceName = null,
-        decimal? servicePrice = null)
+        decimal? servicePrice = null,
+        Guid? visitId = null)
     {
         PatientId = patientId;
         DoctorId = doctorId;
@@ -31,11 +32,21 @@ public class Appointment : Entity
         ServicePriceId = servicePriceId;
         ServiceName = serviceName;
         ServicePrice = servicePrice;
+        VisitId = visitId;
         Status = AppointmentStatus.Scheduled;
     }
 
     public Guid PatientId { get; private set; }
     public Guid DoctorId { get; private set; }
+
+    /// <summary>
+    /// Lượt tiếp đón gom lịch này (nếu thuộc một lượt nhiều dịch vụ — ADR 0017); null với lịch lẻ
+    /// (tương thích lịch tạo trước Sprint 17 — mỗi lịch lẻ coi như "lượt một dịch vụ").
+    /// </summary>
+    public Guid? VisitId { get; private set; }
+
+    /// <summary>Gắn/gỡ lượt tiếp đón cho lịch này.</summary>
+    public void SetVisit(Guid? visitId) => VisitId = visitId;
     public DateTimeOffset StartTime { get; private set; }
     public DateTimeOffset EndTime { get; private set; }
 

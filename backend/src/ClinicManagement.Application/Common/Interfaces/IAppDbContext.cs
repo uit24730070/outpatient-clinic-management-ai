@@ -7,6 +7,7 @@ using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
+using ClinicManagement.Domain.Visits;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Application.Common.Interfaces;
@@ -20,6 +21,7 @@ public interface IAppDbContext
     DbSet<Specialty> Specialties { get; }
     DbSet<Doctor> Doctors { get; }
     DbSet<User> Users { get; }
+    DbSet<Visit> Visits { get; }
     DbSet<Appointment> Appointments { get; }
     DbSet<Encounter> Encounters { get; }
     DbSet<Medication> Medications { get; }

@@ -16,6 +16,7 @@ using ClinicManagement.Application.Specialties;
 using ClinicManagement.Application.StockReceipts;
 using ClinicManagement.Application.StockTransactions;
 using ClinicManagement.Application.Users;
+using ClinicManagement.Application.Visits;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<ISpecialtyService, SpecialtyService>();
         services.AddScoped<IDoctorService, DoctorService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<IVisitService, VisitService>();
         services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<IMedicationService, MedicationService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
