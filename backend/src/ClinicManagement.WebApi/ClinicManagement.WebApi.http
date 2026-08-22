@@ -152,11 +152,16 @@ Content-Type: application/json
   "doctorId": "22222222-2222-2222-2222-222222222222",
   "startTime": "2026-08-10T08:00:00Z",
   "endTime": "2026-08-10T08:30:00Z",
-  "reason": "Khám tổng quát"
+  "reason": "Khám tổng quát",
+  "servicePriceId": null
 }
 
 ### Lấy Id lịch vừa tạo
 @appointmentId = {{appt.response.body.$.data.id}}
+
+### Lượt gần nhất của bệnh nhân (prefill dịch vụ khi tái khám; ADR 0016)
+GET {{host}}/api/appointments/last?patientId=11111111-1111-1111-1111-111111111111
+Authorization: Bearer {{token}}
 
 ### Danh sách/hàng đợi (lọc theo ngày + bác sĩ + trạng thái)
 GET {{host}}/api/appointments?date=2026-08-10&status=0
@@ -535,6 +540,25 @@ Content-Type: application/json
     { "servicePriceId": "{{servicePriceId}}" }
   ]
 }
+
+### Đăng ký CLS walk-in (lễ tân — không cần phiếu khám; ADR 0016; RBAC ManageStaff)
+# @name createWalkInLabOrder
+POST {{host}}/api/lab-orders/walk-in
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "{{patientId}}",
+  "appointmentId": null,
+  "note": "Bệnh nhân yêu cầu",
+  "items": [
+    { "servicePriceId": "{{servicePriceId}}" }
+  ]
+}
+
+### Hàng chờ Kỹ thuật viên (đăng nhập kythuatvien/Technician@123; lọc trạng thái Ordered/InProgress)
+GET {{host}}/api/lab-orders?page=1&pageSize=50&status=0
+Authorization: Bearer {{token}}
 
 ### Danh sách phiếu chỉ định (lọc theo phiếu khám/bệnh nhân/trạng thái 0..3)
 GET {{host}}/api/lab-orders?page=1&pageSize=20&encounterId={{encounterId}}
