@@ -112,9 +112,9 @@ namespace ClinicManagement.Infrastructure.Persistence.Migrations
                 columns: new[] { "Id", "Category", "Code", "CreatedAt", "DeletedAt", "Description", "IsDeleted", "Name", "UnitPrice", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { new Guid("22222222-3333-4444-5555-000000000004"), "Paraclinical", "DV-000004", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, "Tổng phân tích tế bào máu ngoại vi", false, "Xét nghiệm công thức máu", 80000m, null },
-                    { new Guid("22222222-3333-4444-5555-000000000005"), "Paraclinical", "DV-000005", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, "X-quang ngực thẳng", false, "Chụp X-quang ngực thẳng", 120000m, null },
-                    { new Guid("22222222-3333-4444-5555-000000000006"), "Paraclinical", "DV-000006", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, "Siêu âm ổ bụng", false, "Siêu âm ổ bụng tổng quát", 150000m, null }
+                    { new Guid("22222222-3333-4444-5555-000000000004"), "Paraclinical", "DV-CLS001", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, "Tổng phân tích tế bào máu ngoại vi", false, "Xét nghiệm công thức máu", 80000m, null },
+                    { new Guid("22222222-3333-4444-5555-000000000005"), "Paraclinical", "DV-CLS002", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, "X-quang ngực thẳng", false, "Chụp X-quang ngực thẳng", 120000m, null },
+                    { new Guid("22222222-3333-4444-5555-000000000006"), "Paraclinical", "DV-CLS003", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, "Siêu âm ổ bụng", false, "Siêu âm ổ bụng tổng quát", 150000m, null }
                 });
 
             migrationBuilder.CreateIndex(

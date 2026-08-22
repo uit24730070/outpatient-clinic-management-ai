@@ -47,11 +47,11 @@ public sealed class ServicePriceConfiguration : IEntityTypeConfiguration<Service
             SeedService("22222222-3333-4444-5555-000000000003", "DV-000003",
                 "Khám chuyên khoa", 200000m, "Công khám theo chuyên khoa", ServiceCategory.Consultation),
             // Cận lâm sàng mẫu (loại Paraclinical) để chỉ định được ngay sau khi áp migration.
-            SeedService("22222222-3333-4444-5555-000000000004", "DV-000004",
+            SeedService("22222222-3333-4444-5555-000000000004", "DV-CLS001",
                 "Xét nghiệm công thức máu", 80000m, "Tổng phân tích tế bào máu ngoại vi", ServiceCategory.Paraclinical),
-            SeedService("22222222-3333-4444-5555-000000000005", "DV-000005",
+            SeedService("22222222-3333-4444-5555-000000000005", "DV-CLS002",
                 "Chụp X-quang ngực thẳng", 120000m, "X-quang ngực thẳng", ServiceCategory.Paraclinical),
-            SeedService("22222222-3333-4444-5555-000000000006", "DV-000006",
+            SeedService("22222222-3333-4444-5555-000000000006", "DV-CLS003",
                 "Siêu âm ổ bụng tổng quát", 150000m, "Siêu âm ổ bụng", ServiceCategory.Paraclinical));
     }
 

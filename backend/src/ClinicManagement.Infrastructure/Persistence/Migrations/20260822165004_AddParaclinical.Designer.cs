@@ -273,7 +273,7 @@ namespace ClinicManagement.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("22222222-3333-4444-5555-000000000004"),
                             Category = "Paraclinical",
-                            Code = "DV-000004",
+                            Code = "DV-CLS001",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Tổng phân tích tế bào máu ngoại vi",
                             IsDeleted = false,
@@ -284,7 +284,7 @@ namespace ClinicManagement.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("22222222-3333-4444-5555-000000000005"),
                             Category = "Paraclinical",
-                            Code = "DV-000005",
+                            Code = "DV-CLS002",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "X-quang ngực thẳng",
                             IsDeleted = false,
@@ -295,7 +295,7 @@ namespace ClinicManagement.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("22222222-3333-4444-5555-000000000006"),
                             Category = "Paraclinical",
-                            Code = "DV-000006",
+                            Code = "DV-CLS003",
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Siêu âm ổ bụng",
                             IsDeleted = false,
