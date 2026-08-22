@@ -455,3 +455,58 @@ Authorization: Bearer {{token}}
 ### Xoá mềm thuốc
 DELETE {{host}}/api/medications/{{medicationId}}
 Authorization: Bearer {{token}}
+
+###############################################
+# Viện phí & Thu ngân (Sprint 14, ManageBilling = Admin/Lễ tân)
+###############################################
+
+### Bảng giá dịch vụ — danh sách
+GET {{host}}/api/service-prices?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Tạo dịch vụ (sinh mã DV-)
+POST {{host}}/api/service-prices
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Tư vấn dinh dưỡng",
+  "unitPrice": 80000,
+  "description": null
+}
+
+### Lập hoá đơn TỪ PHIẾU KHÁM (công khám + thuốc đã cấp; phiếu phải Completed)
+POST {{host}}/api/invoices/from-encounter/{{encounterId}}
+Authorization: Bearer {{token}}
+
+### Tạo hoá đơn LẺ (dòng tham chiếu servicePriceId)
+POST {{host}}/api/invoices
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "{{patientId}}",
+  "note": null,
+  "items": [
+    { "servicePriceId": "{{servicePriceId}}", "quantity": 1 }
+  ]
+}
+
+### Danh sách hoá đơn (lọc trạng thái: 0=Draft, 1=Paid, 2=Cancelled)
+GET {{host}}/api/invoices?page=1&pageSize=20&status=0
+Authorization: Bearer {{token}}
+
+### Chi tiết hoá đơn
+GET {{host}}/api/invoices/{{invoiceId}}
+Authorization: Bearer {{token}}
+
+### Thu tiền (paymentMethod nhận CHUỖI: Cash/Card/Transfer)
+POST {{host}}/api/invoices/{{invoiceId}}/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "paymentMethod": "Cash" }
+
+### Huỷ hoá đơn (chỉ khi Draft)
+POST {{host}}/api/invoices/{{invoiceId}}/cancel
+Authorization: Bearer {{token}}
