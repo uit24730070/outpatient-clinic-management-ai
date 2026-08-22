@@ -582,3 +582,44 @@ Authorization: Bearer {{token}}
 ### Lập HĐ phí CLS từ phiếu chỉ định (dòng Paraclinical; lập lần 2 → 409; RBAC ManageBilling)
 POST {{host}}/api/invoices/from-lab-order/{{labOrderId}}
 Authorization: Bearer {{token}}
+
+###############################################
+# Lượt tiếp đón (Visit) — ADR 0017
+###############################################
+
+### Tạo lượt tiếp đón + nhiều dịch vụ khám (walk-in; RBAC ManageStaff)
+POST {{host}}/api/visits
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "{{patientId}}",
+  "note": "Lượt sáng",
+  "services": [
+    { "doctorId": "{{doctorId}}", "startTime": "2026-09-10T01:00:00Z", "endTime": "2026-09-10T01:30:00Z", "reason": "Khám nội", "servicePriceId": "{{servicePriceId}}" },
+    { "doctorId": "{{doctorId}}", "startTime": "2026-09-10T02:00:00Z", "endTime": "2026-09-10T02:30:00Z", "reason": "Tái khám", "servicePriceId": "{{servicePriceId}}" }
+  ]
+}
+
+### Danh sách lượt (lọc ngày/bệnh nhân/trạng thái 0..2)
+GET {{host}}/api/visits?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Chi tiết lượt (kèm tổng viện phí gom cả lượt)
+GET {{host}}/api/visits/{{visitId}}
+Authorization: Bearer {{token}}
+
+### Thêm dịch vụ khám vào lượt đang mở
+POST {{host}}/api/visits/{{visitId}}/services
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "doctorId": "{{doctorId}}", "startTime": "2026-09-10T03:00:00Z", "endTime": "2026-09-10T03:30:00Z", "reason": "Khám thêm", "servicePriceId": "{{servicePriceId}}" }
+
+### Đóng lượt (Open → Closed)
+POST {{host}}/api/visits/{{visitId}}/close
+Authorization: Bearer {{token}}
+
+### Huỷ lượt (Open → Cancelled)
+POST {{host}}/api/visits/{{visitId}}/cancel
+Authorization: Bearer {{token}}
