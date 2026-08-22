@@ -153,6 +153,8 @@ input, select, textarea {
 .alert--warning { background: #fef3c7; color: #92400e; }
 
 .text-muted { color: var(--muted); font-size: 0.85rem; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+.text-danger { color: var(--error); font-weight: 600; }
 
 /* User info trong header */
 .layout__user {

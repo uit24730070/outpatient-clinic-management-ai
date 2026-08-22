@@ -22,6 +22,11 @@ export function canManageCatalog(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin
 }
 
+/** Có quyền ghi nghiệp vụ kho thuốc (danh mục, nhập kho): Admin hoặc Lễ tân — khớp Roles.ManagePharmacy. */
+export function canManagePharmacy(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.Admin || role === UserRole.Receptionist
+}
+
 /** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
 export interface NavItem {
   label: string
@@ -39,6 +44,9 @@ export const navItems: NavItem[] = [
   { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin] },
   { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin] },
   { label: 'Người dùng', to: '/users', roles: [UserRole.Admin] },
+  // Kho thuốc — quản lý bởi Admin/Lễ tân (chưa có vai trò Dược sĩ riêng, ADR 0011).
+  { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Receptionist] },
+  { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
 ]
 

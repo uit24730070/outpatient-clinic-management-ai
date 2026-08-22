@@ -20,12 +20,18 @@ import PatientEncountersPage from '../pages/PatientEncountersPage'
 import UsersListPage from '../pages/UsersListPage'
 import UserFormPage from '../pages/UserFormPage'
 import AssistantPage from '../pages/AssistantPage'
+import MedicationsListPage from '../pages/MedicationsListPage'
+import MedicationFormPage from '../pages/MedicationFormPage'
+import MedicationBatchesPage from '../pages/MedicationBatchesPage'
+import StockReceiptsListPage from '../pages/StockReceiptsListPage'
+import StockReceiptFormPage from '../pages/StockReceiptFormPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
 const RECORD_ENCOUNTER = [UserRole.Admin, UserRole.Doctor]
 const ALL_ROLES = [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor]
 const ADMIN_ONLY = [UserRole.Admin]
+const MANAGE_PHARMACY = [UserRole.Admin, UserRole.Receptionist]
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -108,6 +114,19 @@ export const router = createBrowserRouter([
               { path: 'users', element: <UsersListPage /> },
               { path: 'users/new', element: <UserFormPage /> },
               { path: 'users/:id/edit', element: <UserFormPage /> },
+            ],
+          },
+
+          // Kho thuốc — danh mục + nhập kho. Ghi cho Admin/Lễ tân (ManagePharmacy).
+          {
+            element: <RequireRole roles={MANAGE_PHARMACY} />,
+            children: [
+              { path: 'medications', element: <MedicationsListPage /> },
+              { path: 'medications/new', element: <MedicationFormPage /> },
+              { path: 'medications/:id/edit', element: <MedicationFormPage /> },
+              { path: 'medications/:id/batches', element: <MedicationBatchesPage /> },
+              { path: 'stock-receipts', element: <StockReceiptsListPage /> },
+              { path: 'stock-receipts/new', element: <StockReceiptFormPage /> },
             ],
           },
         ],
