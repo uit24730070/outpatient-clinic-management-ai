@@ -25,6 +25,7 @@ import MedicationFormPage from '../pages/MedicationFormPage'
 import MedicationBatchesPage from '../pages/MedicationBatchesPage'
 import StockReceiptsListPage from '../pages/StockReceiptsListPage'
 import StockReceiptFormPage from '../pages/StockReceiptFormPage'
+import PharmacyAlertsPage from '../pages/PharmacyAlertsPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -127,6 +128,7 @@ export const router = createBrowserRouter([
               { path: 'medications/:id/batches', element: <MedicationBatchesPage /> },
               { path: 'stock-receipts', element: <StockReceiptsListPage /> },
               { path: 'stock-receipts/new', element: <StockReceiptFormPage /> },
+              { path: 'pharmacy/alerts', element: <PharmacyAlertsPage /> },
             ],
           },
         ],

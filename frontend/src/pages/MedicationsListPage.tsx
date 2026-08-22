@@ -55,7 +55,10 @@ export default function MedicationsListPage() {
     <section>
       <div className="page-head">
         <h1>Danh mục thuốc</h1>
-        {canManage && <Link className="btn btn--primary" to="/medications/new">+ Thêm thuốc</Link>}
+        <div className="page-head__actions">
+          <Link className="btn" to="/pharmacy/alerts">Cảnh báo kho</Link>
+          {canManage && <Link className="btn btn--primary" to="/medications/new">+ Thêm thuốc</Link>}
+        </div>
       </div>
 
       <form className="toolbar" onSubmit={onSearchSubmit}>
@@ -97,7 +100,10 @@ export default function MedicationsListPage() {
                     <td>{m.name}</td>
                     <td>{m.activeIngredient}</td>
                     <td>{m.unit}</td>
-                    <td className={low ? 'text-danger' : undefined}>{m.stockOnHand}</td>
+                    <td className={low ? 'text-danger' : undefined}>
+                      {m.stockOnHand}
+                      {low && <span className="badge badge--cancelled" style={{ marginLeft: 6 }}>Tồn thấp</span>}
+                    </td>
                     <td>{m.reorderLevel}</td>
                     <td className="table__actions">
                       <Link to={`/medications/${m.id}/batches`}>Xem lô</Link>

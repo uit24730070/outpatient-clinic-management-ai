@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   completeEncounter,
@@ -7,11 +7,13 @@ import {
   updateEncounter,
 } from '../services/encounterService'
 import { getAppointment } from '../services/appointmentService'
+import { listMedications } from '../services/medicationService'
 import { ApiException, toApiException } from '../services/apiClient'
 import { EncounterStatus, type Encounter, type PrescriptionItem } from '../types/encounter'
+import type { Medication } from '../types/medication'
 
 // Dòng đơn thuốc rỗng để thêm mới.
-const emptyItem = (): PrescriptionItem => ({ drugName: '', dosage: '', quantity: 1, instruction: null })
+const emptyItem = (): PrescriptionItem => ({ medicationId: null, drugName: '', dosage: '', quantity: 1, instruction: null })
 
 export default function EncounterFormPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>()
@@ -25,6 +27,7 @@ export default function EncounterFormPage() {
   const [diagnosis, setDiagnosis] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<PrescriptionItem[]>([])
+  const [medications, setMedications] = useState<Medication[]>([])
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -38,6 +41,13 @@ export default function EncounterFormPage() {
     let active = true
     void (async () => {
       try {
+        // Danh mục thuốc để chọn khi kê đơn (trang đầu, đủ cho quy mô một buổi khám).
+        try {
+          const meds = await listMedications({ page: 1, pageSize: 100 })
+          if (active) setMedications(meds.items)
+        } catch {
+          // Không có quyền đọc danh mục / lỗi tải: vẫn cho kê đơn gõ tay.
+        }
         const appt = await getAppointment(appointmentId)
         if (active) {
           setPatientName(appt.patientName ?? '—')
@@ -60,8 +70,20 @@ export default function EncounterFormPage() {
     return () => { active = false }
   }, [appointmentId])
 
+  const medMap = useMemo(() => new Map(medications.map((m) => [m.id, m])), [medications])
+
   const updateItem = (index: number, patch: Partial<PrescriptionItem>) => {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)))
+  }
+
+  // Chọn thuốc từ danh mục: điền sẵn tên thuốc (vẫn cho sửa tay); "" = ngoài danh mục.
+  const onSelectMedication = (index: number, medicationId: string) => {
+    if (!medicationId) {
+      updateItem(index, { medicationId: null })
+      return
+    }
+    const med = medMap.get(medicationId)
+    updateItem(index, { medicationId, drugName: med ? med.name : items[index].drugName })
   }
 
   const buildValues = () => ({
@@ -69,6 +91,7 @@ export default function EncounterFormPage() {
     diagnosis: diagnosis.trim(),
     notes: notes.trim() || null,
     prescriptionItems: items.map((it) => ({
+      medicationId: it.medicationId,
       drugName: it.drugName.trim(),
       dosage: it.dosage.trim(),
       quantity: Number(it.quantity),
@@ -103,7 +126,12 @@ export default function EncounterFormPage() {
 
   const onComplete = async () => {
     if (!encounter) return
-    if (!window.confirm('Chốt phiếu khám? Sau khi chốt sẽ không sửa được và lịch khám chuyển sang Hoàn tất.')) return
+    const hasLinked = items.some((it) => it.medicationId)
+    const message = hasLinked
+      ? 'Chốt phiếu khám? Thuốc trong danh mục sẽ được cấp phát (trừ tồn theo hạn dùng gần nhất). '
+        + 'Nếu không đủ tồn, việc chốt sẽ bị huỷ. Sau khi chốt sẽ không sửa được.'
+      : 'Chốt phiếu khám? Sau khi chốt sẽ không sửa được và lịch khám chuyển sang Hoàn tất.'
+    if (!window.confirm(message)) return
     setSaving(true)
     setFormError(null)
     try {
@@ -125,6 +153,7 @@ export default function EncounterFormPage() {
       <p className="muted">
         Bệnh nhân: <strong>{patientName}</strong> · Bác sĩ: <strong>{doctorName}</strong>
         {isCompleted && ' · Đã chốt'}
+        {encounter?.dispensedAt && ' · Đã cấp phát thuốc'}
       </p>
       {formError && <p className="alert alert--error">{formError}</p>}
 
@@ -155,6 +184,7 @@ export default function EncounterFormPage() {
           <table className="table">
             <thead>
               <tr>
+                <th>Danh mục (để trừ tồn)</th>
                 <th>Tên thuốc</th>
                 <th>Liều</th>
                 <th>Số lượng</th>
@@ -164,28 +194,47 @@ export default function EncounterFormPage() {
             </thead>
             <tbody>
               {items.length === 0 && (
-                <tr><td colSpan={5} className="table__empty">Chưa có thuốc nào.</td></tr>
+                <tr><td colSpan={6} className="table__empty">Chưa có thuốc nào.</td></tr>
               )}
-              {items.map((it, i) => (
-                <tr key={i}>
-                  <td><input value={it.drugName} disabled={isCompleted}
-                    onChange={(e) => updateItem(i, { drugName: e.target.value })} /></td>
-                  <td><input value={it.dosage} disabled={isCompleted}
-                    onChange={(e) => updateItem(i, { dosage: e.target.value })} /></td>
-                  <td><input type="number" min={1} value={it.quantity} disabled={isCompleted}
-                    onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} /></td>
-                  <td><input value={it.instruction ?? ''} disabled={isCompleted}
-                    onChange={(e) => updateItem(i, { instruction: e.target.value })} /></td>
-                  <td>
-                    {!isCompleted && (
-                      <button type="button" className="link-btn link-btn--danger"
-                        onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}>
-                        Xoá
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {items.map((it, i) => {
+                const med = it.medicationId ? medMap.get(it.medicationId) : undefined
+                const notEnough = med != null && Number(it.quantity) > med.stockOnHand
+                return (
+                  <tr key={i}>
+                    <td>
+                      <select value={it.medicationId ?? ''} disabled={isCompleted}
+                        onChange={(e) => onSelectMedication(i, e.target.value)}>
+                        <option value="">— Ngoài danh mục —</option>
+                        {medications.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name} (tồn {m.stockOnHand})</option>
+                        ))}
+                      </select>
+                      {med && (
+                        <small className={notEnough ? 'field__error' : 'muted'}>
+                          Tồn khả dụng: {med.stockOnHand} {med.unit}
+                          {notEnough && ' — không đủ để cấp phát'}
+                        </small>
+                      )}
+                    </td>
+                    <td><input value={it.drugName} disabled={isCompleted}
+                      onChange={(e) => updateItem(i, { drugName: e.target.value })} /></td>
+                    <td><input value={it.dosage} disabled={isCompleted}
+                      onChange={(e) => updateItem(i, { dosage: e.target.value })} /></td>
+                    <td><input type="number" min={1} value={it.quantity} disabled={isCompleted}
+                      onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} /></td>
+                    <td><input value={it.instruction ?? ''} disabled={isCompleted}
+                      onChange={(e) => updateItem(i, { instruction: e.target.value })} /></td>
+                    <td>
+                      {!isCompleted && (
+                        <button type="button" className="link-btn link-btn--danger"
+                          onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}>
+                          Xoá
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           {!isCompleted && (

@@ -68,3 +68,31 @@ export interface StockReceiptFormValues {
   note: string | null
   items: StockReceiptItemInput[]
 }
+
+// ── Cảnh báo kho (PH-08) ──────────────────────────────────────────────
+
+export interface LowStockAlert {
+  medicationId: string
+  code: string
+  name: string
+  unit: string
+  stockOnHand: number
+  reorderLevel: number
+}
+
+export interface ExpiringBatchAlert {
+  batchId: string
+  medicationId: string
+  medicationCode: string
+  medicationName: string
+  batchNumber: string
+  expiryDate: string
+  quantityOnHand: number
+  isExpired: boolean
+}
+
+export interface PharmacyAlerts {
+  lowStock: LowStockAlert[]
+  expiringBatches: ExpiringBatchAlert[]
+  expiringInDays: number
+}

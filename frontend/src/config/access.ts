@@ -47,6 +47,7 @@ export const navItems: NavItem[] = [
   // Kho thuốc — quản lý bởi Admin/Lễ tân (chưa có vai trò Dược sĩ riêng, ADR 0011).
   { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Receptionist] },
+  { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
 ]
 

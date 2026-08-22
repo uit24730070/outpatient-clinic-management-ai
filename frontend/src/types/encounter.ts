@@ -20,6 +20,8 @@ export const encounterStatusClass: Record<number, string> = {
 }
 
 export interface PrescriptionItem {
+  /** Thuốc trong danh mục (null = thuốc ngoài danh mục, không trừ tồn). */
+  medicationId: string | null
   drugName: string
   dosage: string
   quantity: number
@@ -38,6 +40,8 @@ export interface Encounter {
   notes: string | null
   status: EncounterStatusValue
   prescriptionItems: PrescriptionItem[]
+  /** Thời điểm đã cấp phát thuốc (trừ tồn FEFO) — null nếu chưa cấp phát. */
+  dispensedAt: string | null
   createdAt: string
   updatedAt: string | null
 }
