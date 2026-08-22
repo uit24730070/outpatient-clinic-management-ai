@@ -284,6 +284,34 @@ POST {{host}}/api/ai/reindex
 Authorization: Bearer {{token}}
 Accept: application/json
 
+######################## Trợ lý hội thoại (AI-03) ########################
+# Mọi vai trò đã đăng nhập. Dev bật Ai:UseFake = true → trả lời tất định, không gọi mạng.
+# Phạm vi dữ liệu do lớp công cụ kiểm soát theo vai trò (bác sĩ chỉ dữ liệu của mình).
+
+### Hỏi trợ lý (một lượt)
+POST {{host}}/api/assistant/chat
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "messages": [
+    { "role": "user", "content": "Hôm nay có bao nhiêu lịch khám đang chờ?" }
+  ]
+}
+
+### Hỏi trợ lý (nhiều lượt — gửi lại toàn bộ lịch sử)
+POST {{host}}/api/assistant/chat
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "messages": [
+    { "role": "user", "content": "Tìm bệnh nhân tên Nguyễn Văn A" },
+    { "role": "assistant", "content": "Tôi tìm thấy bệnh nhân Nguyễn Văn A (BN-000001)." },
+    { "role": "user", "content": "Xem lịch sử khám của bệnh nhân đó" }
+  ]
+}
+
 ######################## Quản lý người dùng (Admin) ########################
 # Mọi endpoint /api/users chỉ Admin. role nhận CHUỖI ("Admin"/"Receptionist"/"Doctor").
 
