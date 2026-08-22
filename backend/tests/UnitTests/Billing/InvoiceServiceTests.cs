@@ -549,6 +549,28 @@ public sealed class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task CreateFromLabOrder_WalkIn_ShouldUseLabOrderAppointmentId_NoEncounter()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patientId = Guid.NewGuid();
+        var appointmentId = Guid.NewGuid();
+        // Phiếu chỉ định walk-in: không encounter/doctor, gắn lượt trực tiếp trên phiếu (ADR 0016).
+        var order = ClinicManagement.Domain.Paraclinical.LabOrder.CreateWalkIn(
+            "CLS-000001", patientId, appointmentId, null,
+            new[] { new ClinicManagement.Domain.Paraclinical.LabOrderItem(Guid.NewGuid(), "Công thức máu", 80000m) });
+        db.LabOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateFromLabOrderAsync(order.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.EncounterId);
+        Assert.Equal(appointmentId, result.Value.AppointmentId);
+        Assert.Equal(InvoiceItemType.Paraclinical, Assert.Single(result.Value.Items).ItemType);
+    }
+
+    [Fact]
     public async Task CreateAsync_ParaclinicalOnly_AtReception_ShouldProduceParaclinicalLineType()
     {
         // Ca chỉ-CLS (không encounter): thu ngân lập hoá đơn dịch vụ CLS gắn lượt.

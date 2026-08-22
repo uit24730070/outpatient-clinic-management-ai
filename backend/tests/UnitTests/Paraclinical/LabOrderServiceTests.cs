@@ -1,8 +1,10 @@
 using ClinicManagement.Application.Paraclinical;
 using ClinicManagement.Application.Paraclinical.Dtos;
+using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
+using ClinicManagement.Domain.Patients;
 using ClinicManagement.Shared.Results;
 using UnitTests.Common;
 
@@ -27,6 +29,103 @@ public sealed class LabOrderServiceTests
         var svc = new ServicePrice(code, name, price, null, ServiceCategory.Paraclinical);
         db.ServicePrices.Add(svc);
         return svc;
+    }
+
+    private static Patient SeedPatient(TestDbContext db, string code = "BN-000001")
+    {
+        var p = new Patient(code, "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(p);
+        return p;
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WithoutEncounterOrDoctor_ShouldSnapshotAndGenerateCode()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, "BN yêu cầu", new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("CLS-000001", result.Value.Code);
+        Assert.Equal(patient.Id, result.Value.PatientId);
+        Assert.Null(result.Value.EncounterId);
+        Assert.Null(result.Value.DoctorId);
+        Assert.Equal(LabOrderStatus.Ordered, result.Value.Status);
+        Assert.Equal(80000m, result.Value.TotalAmount);
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WithNonParaclinicalService_ShouldReturnValidation()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var consult = new ServicePrice("DV-000001", "Khám tổng quát", 150000m, null, ServiceCategory.Consultation);
+        db.ServicePrices.Add(consult);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(consult.Id) }));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Paraclinical.ServiceNotParaclinical", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WhenPatientMissing_ShouldReturnNotFound()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var xn = SeedParaclinical(db, "DV-CLS001", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            Guid.NewGuid(), null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.NotFound, result.Error.Type);
+        Assert.Equal("Patient.NotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WhenAppointmentMissing_ShouldReturnNotFound()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, Guid.NewGuid(), null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.NotFound, result.Error.Type);
+        Assert.Equal("Appointment.NotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WithAppointment_ShouldAttachAppointmentId()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var appt = new Appointment(patient.Id, Guid.NewGuid(),
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(30), null);
+        db.Appointments.Add(appt);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, appt.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(appt.Id, result.Value.AppointmentId);
     }
 
     [Fact]

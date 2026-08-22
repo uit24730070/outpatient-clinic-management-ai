@@ -213,4 +213,72 @@ public sealed class AppointmentServiceTests
         Assert.True(getById.IsFailure);
         Assert.Equal(ErrorType.NotFound, getById.Error.Type);
     }
+
+    // ── SR-03: đăng ký dịch vụ khám khi đặt lịch ──────────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_WithConsultationService_ShouldSnapshotNameAndPrice()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorId);
+        var consult = new ClinicManagement.Domain.Billing.ServicePrice(
+            "DV-000001", "Khám tổng quát", 150000m, null,
+            ClinicManagement.Domain.Billing.ServiceCategory.Consultation);
+        db.ServicePrices.Add(consult);
+        await db.SaveChangesAsync();
+
+        var result = await service.CreateAsync(new CreateAppointmentRequest(
+            patientId, doctorId, Base, Base.AddMinutes(30), "Khám", consult.Id));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(consult.Id, result.Value.ServicePriceId);
+        Assert.Equal("Khám tổng quát", result.Value.ServiceName);
+        Assert.Equal(150000m, result.Value.ServicePrice);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNonConsultationService_ShouldReturnValidation()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorId);
+        var xn = new ClinicManagement.Domain.Billing.ServicePrice(
+            "DV-CLS001", "Công thức máu", 80000m, null,
+            ClinicManagement.Domain.Billing.ServiceCategory.Paraclinical);
+        db.ServicePrices.Add(xn);
+        await db.SaveChangesAsync();
+
+        var result = await service.CreateAsync(new CreateAppointmentRequest(
+            patientId, doctorId, Base, Base.AddMinutes(30), "Khám", xn.Id));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Appointment.ServiceNotConsultation", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutService_ShouldSucceed_NoServiceSnapshot()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorId);
+
+        var result = await service.CreateAsync(ValidRequest(patientId, doctorId));
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.ServicePriceId);
+        Assert.Null(result.Value.ServiceName);
+    }
+
+    [Fact]
+    public async Task GetLastForPatient_ShouldReturnMostRecent_OrNull()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorId);
+
+        var none = await service.GetLastForPatientAsync(patientId);
+        Assert.True(none.IsSuccess);
+        Assert.Null(none.Value);
+
+        await service.CreateAsync(ValidRequest(patientId, doctorId, Base, Base.AddMinutes(30)));
+        await service.CreateAsync(ValidRequest(patientId, doctorId, Base.AddDays(1), Base.AddDays(1).AddMinutes(30)));
+
+        var last = await service.GetLastForPatientAsync(patientId);
+        Assert.True(last.IsSuccess);
+        Assert.NotNull(last.Value);
+        Assert.Equal(Base.AddDays(1), last.Value!.StartTime);
+    }
 }

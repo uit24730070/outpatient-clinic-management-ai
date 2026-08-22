@@ -25,6 +25,7 @@ public sealed class AssistantToolTests
 
         public Task<Result<AppointmentDto>> CreateAsync(CreateAppointmentRequest r, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<AppointmentDto>> GetByIdAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<Result<AppointmentDto?>> GetLastForPatientAsync(Guid patientId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<AppointmentDto>> UpdateAsync(Guid id, UpdateAppointmentRequest r, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result> DeleteAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<AppointmentDto>> CheckInAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
