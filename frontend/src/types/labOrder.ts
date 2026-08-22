@@ -1,0 +1,70 @@
+// Kiểu dữ liệu miền Cận lâm sàng (phiếu chỉ định + kết quả), khớp API backend (ADR 0015).
+
+// Const-map thay cho enum (tsconfig bật erasableSyntaxOnly). Giá trị số khớp
+// LabOrderStatus backend (serialize enum thành số).
+export const LabOrderStatus = {
+  Ordered: 0,
+  InProgress: 1,
+  Completed: 2,
+  Cancelled: 3,
+} as const
+
+export type LabOrderStatusValue = (typeof LabOrderStatus)[keyof typeof LabOrderStatus]
+
+export const labOrderStatusLabels: Record<number, string> = {
+  0: 'Đã chỉ định',
+  1: 'Đang thực hiện',
+  2: 'Hoàn tất',
+  3: 'Đã huỷ',
+}
+
+export const LabOrderItemStatus = {
+  Pending: 0,
+  Completed: 1,
+} as const
+
+export type LabOrderItemStatusValue = (typeof LabOrderItemStatus)[keyof typeof LabOrderItemStatus]
+
+export interface LabOrderItem {
+  id: string
+  servicePriceId: string
+  serviceName: string
+  unitPrice: number
+  resultText: string | null
+  conclusion: string | null
+  status: LabOrderItemStatusValue
+  resultedAt: string | null
+}
+
+export interface LabOrder {
+  id: string
+  code: string
+  encounterId: string
+  patientId: string
+  patientName: string | null
+  doctorId: string
+  doctorName: string | null
+  status: LabOrderStatusValue
+  note: string | null
+  totalAmount: number
+  invoicedAt: string | null
+  items: LabOrderItem[]
+  createdAt: string
+  updatedAt: string | null
+}
+
+/** Một dòng chỉ định trong form (khớp CreateLabOrderItemRequest). */
+export interface CreateLabOrderItemInput {
+  servicePriceId: string
+}
+
+export interface CreateLabOrderInput {
+  encounterId: string
+  note: string | null
+  items: CreateLabOrderItemInput[]
+}
+
+export interface SetLabResultInput {
+  resultText: string | null
+  conclusion: string | null
+}

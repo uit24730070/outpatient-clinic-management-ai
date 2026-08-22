@@ -1,11 +1,12 @@
 import { apiClient, unwrap } from './apiClient'
 import type { ApiResponse, PagedResult } from '../types/common'
-import type { ServicePrice, ServicePriceFormValues } from '../types/invoice'
+import type { ServiceCategoryValue, ServicePrice, ServicePriceFormValues } from '../types/invoice'
 
 export interface ListServicePricesParams {
   page: number
   pageSize: number
   search?: string
+  category?: ServiceCategoryValue
 }
 
 export async function listServicePrices(

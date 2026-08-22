@@ -31,6 +31,7 @@ import ServicePriceFormPage from '../pages/ServicePriceFormPage'
 import InvoicesListPage from '../pages/InvoicesListPage'
 import InvoiceFormPage from '../pages/InvoiceFormPage'
 import InvoiceDetailPage from '../pages/InvoiceDetailPage'
+import LabOrderPrintPage from '../pages/LabOrderPrintPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -45,6 +46,8 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      // Bản in phiếu kết quả CLS — layout tối giản, ngoài MainLayout (không sidebar khi in).
+      { path: '/lab-orders/:id/print', element: <LabOrderPrintPage /> },
       {
         path: '/',
         element: <MainLayout />,

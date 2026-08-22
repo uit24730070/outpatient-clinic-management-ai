@@ -2,12 +2,28 @@
 
 // ── Bảng giá dịch vụ (BILL-01) ────────────────────────────────────────
 
+// Phân loại dịch vụ (số, khớp ServiceCategory backend). CLS-01.
+export const ServiceCategory = {
+  Consultation: 0,
+  Paraclinical: 1,
+  Other: 2,
+} as const
+
+export type ServiceCategoryValue = (typeof ServiceCategory)[keyof typeof ServiceCategory]
+
+export const serviceCategoryLabels: Record<number, string> = {
+  0: 'Công khám',
+  1: 'Cận lâm sàng',
+  2: 'Khác',
+}
+
 export interface ServicePrice {
   id: string
   code: string
   name: string
   unitPrice: number
   description: string | null
+  category: ServiceCategoryValue
   createdAt: string
   updatedAt: string | null
 }
@@ -16,6 +32,7 @@ export interface ServicePriceFormValues {
   name: string
   unitPrice: number
   description: string | null
+  category: ServiceCategoryValue
 }
 
 // ── Hoá đơn (BILL-03/04) ──────────────────────────────────────────────
@@ -36,11 +53,12 @@ export const invoiceStatusLabels: Record<number, string> = {
   2: 'Đã huỷ',
 }
 
-// Loại dòng hoá đơn (số, khớp InvoiceItemType backend).
+// Loại dòng hoá đơn (số, khớp InvoiceItemType backend — Paraclinical chèn trước Other, ADR 0015).
 export const InvoiceItemType = {
   ServiceFee: 0,
   Medication: 1,
-  Other: 2,
+  Paraclinical: 2,
+  Other: 3,
 } as const
 
 export type InvoiceItemTypeValue = (typeof InvoiceItemType)[keyof typeof InvoiceItemType]
@@ -48,7 +66,8 @@ export type InvoiceItemTypeValue = (typeof InvoiceItemType)[keyof typeof Invoice
 export const invoiceItemTypeLabels: Record<number, string> = {
   0: 'Công khám/Dịch vụ',
   1: 'Tiền thuốc',
-  2: 'Khoản khác',
+  2: 'Cận lâm sàng',
+  3: 'Khoản khác',
 }
 
 // Phương thức thanh toán (số, khớp PaymentMethod backend khi đọc).

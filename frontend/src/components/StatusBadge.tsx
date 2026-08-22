@@ -17,6 +17,11 @@ import {
   invoiceStatusLabels,
   type InvoiceStatusValue,
 } from '../types/invoice'
+import {
+  LabOrderStatus,
+  labOrderStatusLabels,
+  type LabOrderStatusValue,
+} from '../types/labOrder'
 
 // Bảng tông màu — giữ đúng ngữ nghĩa màu cũ (ADR 0012), dùng lại khắp app.
 const tone = {
@@ -102,6 +107,21 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatusValue }) {
   return (
     <TonedBadge tone={invoiceTone[status] ?? 'gray'}>
       {invoiceStatusLabels[status] ?? status}
+    </TonedBadge>
+  )
+}
+
+const labOrderTone: Record<number, Tone> = {
+  [LabOrderStatus.Ordered]: 'indigo',
+  [LabOrderStatus.InProgress]: 'amber',
+  [LabOrderStatus.Completed]: 'green',
+  [LabOrderStatus.Cancelled]: 'gray',
+}
+
+export function LabOrderStatusBadge({ status }: { status: LabOrderStatusValue }) {
+  return (
+    <TonedBadge tone={labOrderTone[status] ?? 'gray'}>
+      {labOrderStatusLabels[status] ?? status}
     </TonedBadge>
   )
 }

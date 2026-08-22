@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { RefreshCw, Stethoscope, TriangleAlert } from 'lucide-react'
+import { RefreshCw, Stethoscope, TriangleAlert, X } from 'lucide-react'
 import { listAppointments } from '../services/appointmentService'
 import { useAuth } from '../store/auth'
 import { toastError } from '../lib/toast'
 import { AppointmentStatus, type Appointment } from '../types/appointment'
 import { PageHeader } from '../components/PageHeader'
 import { AppointmentStatusBadge } from '../components/StatusBadge'
+import { EncounterForm } from '../components/EncounterForm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 // Các trạng thái thuộc "phòng khám của tôi": đã tiếp đón hoặc đang khám.
 const CLINIC_STATUSES: number[] = [AppointmentStatus.CheckedIn, AppointmentStatus.InProgress]
@@ -30,14 +31,22 @@ function formatTime(iso: string): string {
   })
 }
 
+interface OpenTab {
+  appointmentId: string
+  patientName: string
+}
+
 /**
- * Phòng khám của tôi (Bác sĩ): bệnh nhân đang chờ/đang khám của chính bác sĩ đăng nhập,
- * lọc theo doctorId = của tôi (ADR 0009). Bác sĩ chưa gắn hồ sơ → hướng dẫn nhờ Admin.
+ * Phòng khám của tôi (Bác sĩ) — màn khám đa tab (CLS-06): danh sách bệnh nhân đang chờ/đang khám
+ * của chính bác sĩ (lọc doctorId, ADR 0009), mở song song nhiều phiếu khám dạng tab. Nháp lưu
+ * server-side nên đóng/mở lại tab (kể cả F5) vẫn nạp đúng — không cần global state.
  */
 export default function MyClinicPage() {
   const { doctorId } = useAuth()
   const [items, setItems] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(false)
+  const [tabs, setTabs] = useState<OpenTab[]>([])
+  const [active, setActive] = useState<string>('')
 
   const load = useCallback(async () => {
     if (!doctorId) return
@@ -60,6 +69,25 @@ export default function MyClinicPage() {
     void load()
   }, [load])
 
+  const openTab = (a: Appointment) => {
+    setTabs((cur) =>
+      cur.some((t) => t.appointmentId === a.id)
+        ? cur
+        : [...cur, { appointmentId: a.id, patientName: a.patientName ?? '—' }],
+    )
+    setActive(a.id)
+  }
+
+  const closeTab = (appointmentId: string) => {
+    setTabs((cur) => {
+      const next = cur.filter((t) => t.appointmentId !== appointmentId)
+      setActive((curActive) =>
+        curActive === appointmentId ? next[next.length - 1]?.appointmentId ?? '' : curActive,
+      )
+      return next
+    })
+  }
+
   // Bác sĩ chưa được gắn hồ sơ Doctor → không lọc được "của tôi".
   if (!doctorId) {
     return (
@@ -79,10 +107,10 @@ export default function MyClinicPage() {
   }
 
   return (
-    <section>
+    <section className="flex flex-col gap-4">
       <PageHeader
         title="Phòng khám của tôi"
-        description="Bệnh nhân đang chờ và đang khám của bạn"
+        description="Bệnh nhân đang chờ và đang khám của bạn — mở nhiều phiếu song song"
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
@@ -131,11 +159,9 @@ export default function MyClinicPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {a.status === AppointmentStatus.InProgress ? (
-                        <Button asChild size="sm">
-                          <Link to={`/appointments/${a.id}/encounter`}>
-                            <Stethoscope className="size-4" />
-                            Khám
-                          </Link>
+                        <Button size="sm" onClick={() => openTab(a)}>
+                          <Stethoscope className="size-4" />
+                          {tabs.some((t) => t.appointmentId === a.id) ? 'Mở lại' : 'Khám'}
                         </Button>
                       ) : (
                         <span className="text-sm text-muted-foreground">
@@ -149,6 +175,44 @@ export default function MyClinicPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {tabs.length > 0 && (
+        <Tabs value={active} onValueChange={setActive}>
+          <TabsList className="h-auto flex-wrap">
+            {tabs.map((t) => (
+              <TabsTrigger key={t.appointmentId} value={t.appointmentId} className="gap-2">
+                {t.patientName}
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Đóng tab"
+                  className="rounded p-0.5 hover:bg-muted-foreground/20"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    closeTab(t.appointmentId)
+                  }}
+                >
+                  <X className="size-3.5" />
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {/* keep-mounted (forceMount) để không mất input khi chuyển tab. */}
+          {tabs.map((t) => (
+            <TabsContent key={t.appointmentId} value={t.appointmentId} forceMount className="data-[state=inactive]:hidden">
+              <EncounterForm
+                appointmentId={t.appointmentId}
+                hideHeader
+                onBack={() => closeTab(t.appointmentId)}
+                onCompleted={() => {
+                  closeTab(t.appointmentId)
+                  void load()
+                }}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
     </section>
   )
 }

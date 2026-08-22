@@ -6,8 +6,9 @@ import { useAuth } from '../store/auth'
 import { canManageBilling } from '../config/access'
 import { toastError, toastSuccess } from '../lib/toast'
 import type { PagedResult } from '../types/common'
-import type { ServicePrice } from '../types/invoice'
+import { serviceCategoryLabels, type ServicePrice } from '../types/invoice'
 import { formatVnd } from '../lib/format'
+import { TonedBadge } from '../components/StatusBadge'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -110,6 +111,7 @@ export default function ServicePricesListPage() {
               <TableRow>
                 <TableHead>Mã</TableHead>
                 <TableHead>Tên dịch vụ</TableHead>
+                <TableHead>Phân loại</TableHead>
                 <TableHead>Mô tả</TableHead>
                 <TableHead className="text-right">Đơn giá</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
@@ -118,14 +120,14 @@ export default function ServicePricesListPage() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     Đang tải…
                   </TableCell>
                 </TableRow>
               )}
               {!loading && data?.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     Chưa có dịch vụ nào.
                   </TableCell>
                 </TableRow>
@@ -135,6 +137,11 @@ export default function ServicePricesListPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-mono text-sm">{s.code}</TableCell>
                     <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell>
+                      <TonedBadge tone={s.category === 1 ? 'cyan' : s.category === 0 ? 'blue' : 'gray'}>
+                        {serviceCategoryLabels[s.category] ?? '—'}
+                      </TonedBadge>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{s.description ?? '—'}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatVnd(s.unitPrice)}</TableCell>
                     <TableCell>

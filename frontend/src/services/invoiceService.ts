@@ -45,6 +45,14 @@ export async function createInvoiceFromEncounter(encounterId: string): Promise<I
   return unwrap(res.data)
 }
 
+/** Lập hoá đơn phí cận lâm sàng từ một phiếu chỉ định (dòng Paraclinical, snapshot giá). */
+export async function createInvoiceFromLabOrder(labOrderId: string): Promise<Invoice> {
+  const res = await apiClient.post<ApiResponse<Invoice>>(
+    `/api/invoices/from-lab-order/${labOrderId}`,
+  )
+  return unwrap(res.data)
+}
+
 /** Tạo hoá đơn dịch vụ lẻ (không gắn phiếu khám). */
 export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
   const res = await apiClient.post<ApiResponse<Invoice>>('/api/invoices', input)

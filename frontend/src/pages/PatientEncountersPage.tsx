@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Receipt } from 'lucide-react'
+import { ArrowLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Receipt, Printer } from 'lucide-react'
 import { listEncounters } from '../services/encounterService'
+import { listLabOrders } from '../services/labOrderService'
 import { getPatient } from '../services/patientService'
 import { summarizePatient, askPatient } from '../services/aiService'
 import { createInvoiceFromEncounter } from '../services/invoiceService'
@@ -9,6 +10,8 @@ import { useAuth } from '../store/auth'
 import { canManageBilling } from '../config/access'
 import { toastError, toastSuccess } from '../lib/toast'
 import { EncounterStatus, type Encounter } from '../types/encounter'
+import type { LabOrder } from '../types/labOrder'
+import { LabOrderStatusBadge } from '../components/StatusBadge'
 import type { PatientSummary, PatientAnswer } from '../types/ai'
 import type { PagedResult } from '../types/common'
 import { PageHeader } from '../components/PageHeader'
@@ -47,6 +50,7 @@ export default function PatientEncountersPage() {
   const [patientName, setPatientName] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Encounter> | null>(null)
+  const [labByEncounter, setLabByEncounter] = useState<Record<string, LabOrder[]>>({})
   const [expanded, setExpanded] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -106,6 +110,15 @@ export default function PatientEncountersPage() {
     try {
       const result = await listEncounters({ page, pageSize: PAGE_SIZE, patientId: id })
       setData(result)
+      try {
+        // Gom phiếu chỉ định CLS theo phiếu khám để hiển thị kết quả trong bệnh án.
+        const labs = await listLabOrders({ page: 1, pageSize: 100, patientId: id })
+        const grouped: Record<string, LabOrder[]> = {}
+        for (const o of labs.items) (grouped[o.encounterId] ??= []).push(o)
+        setLabByEncounter(grouped)
+      } catch {
+        // Không tải được CLS không chặn lịch sử khám.
+      }
     } catch (err) {
       toastError(err)
     } finally {
@@ -320,6 +333,37 @@ export default function PatientEncountersPage() {
                                   </li>
                                 ))}
                               </ul>
+                            )}
+
+                            {(labByEncounter[e.id]?.length ?? 0) > 0 && (
+                              <>
+                                <p className="font-semibold">Cận lâm sàng:</p>
+                                <div className="space-y-2">
+                                  {labByEncounter[e.id].map((o) => (
+                                    <div key={o.id} className="rounded-md border bg-background p-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-mono text-sm">{o.code}</span>
+                                        <LabOrderStatusBadge status={o.status} />
+                                        <Button asChild size="sm" variant="ghost" className="ml-auto">
+                                          <Link to={`/lab-orders/${o.id}/print`} target="_blank">
+                                            <Printer className="size-4" />
+                                            In
+                                          </Link>
+                                        </Button>
+                                      </div>
+                                      <ul className="mt-1 list-disc space-y-1 pl-5">
+                                        {o.items.map((it) => (
+                                          <li key={it.id}>
+                                            {it.serviceName}
+                                            {it.resultText ? ` — ${it.resultText}` : ' — chưa có kết quả'}
+                                            {it.conclusion ? ` (KL: ${it.conclusion})` : ''}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
                             )}
                           </div>
                         </TableCell>

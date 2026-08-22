@@ -16,11 +16,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ServiceCategory, serviceCategoryLabels, type ServiceCategoryValue } from '../types/invoice'
 
 const schema = z.object({
   name: z.string().min(1, 'Vui lòng nhập tên dịch vụ.'),
   unitPrice: z.number().min(0, 'Đơn giá không được âm.'),
   description: z.string(),
+  category: z.number(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -32,10 +41,11 @@ export default function ServicePriceFormPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', unitPrice: 0, description: '' },
+    defaultValues: { name: '', unitPrice: 0, description: '', category: ServiceCategory.Consultation },
   })
-  const { register, handleSubmit, reset, formState } = form
+  const { register, handleSubmit, reset, watch, setValue, formState } = form
   const errors = formState.errors
+  const category = watch('category') as ServiceCategoryValue
 
   useEffect(() => {
     if (!id) return
@@ -44,7 +54,12 @@ export default function ServicePriceFormPage() {
       try {
         const s = await getServicePrice(id)
         if (active)
-          reset({ name: s.name, unitPrice: s.unitPrice, description: s.description ?? '' })
+          reset({
+            name: s.name,
+            unitPrice: s.unitPrice,
+            description: s.description ?? '',
+            category: s.category,
+          })
       } catch (err) {
         toastError(err)
       } finally {
@@ -61,6 +76,7 @@ export default function ServicePriceFormPage() {
       name: values.name.trim(),
       unitPrice: Number(values.unitPrice),
       description: values.description.trim() || null,
+      category: values.category as ServiceCategoryValue,
     }
     try {
       if (isEdit && id) {
@@ -100,6 +116,27 @@ export default function ServicePriceFormPage() {
               {errors.unitPrice && (
                 <p className="text-sm text-destructive">{errors.unitPrice.message}</p>
               )}
+            </div>
+            <div className="grid gap-2">
+              <Label>Phân loại *</Label>
+              <Select
+                value={String(category)}
+                onValueChange={(v) => setValue('category', Number(v) as ServiceCategoryValue)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(ServiceCategory).map((c) => (
+                    <SelectItem key={c} value={String(c)}>
+                      {serviceCategoryLabels[c]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Dịch vụ loại <strong>Cận lâm sàng</strong> mới chỉ định được trong lúc khám.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Mô tả</Label>
