@@ -6,6 +6,7 @@ using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,10 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<EncounterEmbedding> EncounterEmbeddings => Set<EncounterEmbedding>();
+    public DbSet<Medication> Medications => Set<Medication>();
+    public DbSet<MedicationBatch> MedicationBatches => Set<MedicationBatch>();
+    public DbSet<StockReceipt> StockReceipts => Set<StockReceipt>();
+    public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

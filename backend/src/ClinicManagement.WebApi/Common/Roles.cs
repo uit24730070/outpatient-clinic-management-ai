@@ -18,4 +18,10 @@ public static class Roles
 
     /// <summary>Nhóm được phép ghi bệnh án (phiếu khám/đơn thuốc): Bác sĩ và Admin (xem ADR 0006).</summary>
     public const string RecordEncounter = Admin + "," + Doctor;
+
+    /// <summary>
+    /// Nhóm được phép ghi nghiệp vụ kho thuốc (danh mục, nhập kho): Admin và Lễ tân (mirror <see cref="ManageStaff"/>).
+    /// Phòng khám nhỏ chưa có vai trò "Dược sĩ" riêng — xem ADR 0011. Đọc danh mục mở cho mọi vai trò.
+    /// </summary>
+    public const string ManagePharmacy = Admin + "," + Receptionist;
 }

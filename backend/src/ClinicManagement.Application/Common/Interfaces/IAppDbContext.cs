@@ -2,6 +2,7 @@ using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,10 @@ public interface IAppDbContext
     DbSet<User> Users { get; }
     DbSet<Appointment> Appointments { get; }
     DbSet<Encounter> Encounters { get; }
+    DbSet<Medication> Medications { get; }
+    DbSet<MedicationBatch> MedicationBatches { get; }
+    DbSet<StockReceipt> StockReceipts { get; }
+    DbSet<StockTransaction> StockTransactions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
