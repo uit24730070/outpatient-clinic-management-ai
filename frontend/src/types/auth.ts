@@ -5,6 +5,7 @@ export const UserRole = {
   Admin: 'Admin',
   Receptionist: 'Receptionist',
   Doctor: 'Doctor',
+  Pharmacist: 'Pharmacist',
 } as const
 
 export type UserRoleValue = (typeof UserRole)[keyof typeof UserRole]
@@ -13,6 +14,7 @@ export const roleLabels: Record<string, string> = {
   Admin: 'Quản trị',
   Receptionist: 'Lễ tân',
   Doctor: 'Bác sĩ',
+  Pharmacist: 'Dược sĩ',
 }
 
 export interface AuthUser {

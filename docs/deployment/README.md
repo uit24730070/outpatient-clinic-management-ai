@@ -48,8 +48,9 @@ Thứ tự khởi động được đảm bảo qua **healthcheck** DB (`pg_isre
 |---------|-----------|----------|
 | Admin | `admin` | `Admin@123` |
 | Bác sĩ | `bacsi` | `Doctor@123` (đã gắn hồ sơ `BS-000001`) |
+| Dược sĩ | `duocsi` | `Pharmacist@123` (quản lý kho thuốc — ADR 0013) |
 
-Đăng nhập Admin để vào **Người dùng** (tạo tài khoản, gắn bác sĩ…); đăng nhập `bacsi` để thấy **Phòng khám của tôi**.
+Đăng nhập Admin để vào **Người dùng** (tạo tài khoản, gắn bác sĩ…); đăng nhập `bacsi` để thấy **Phòng khám của tôi**; đăng nhập `duocsi` để quản lý **Kho thuốc** (danh mục, nhập kho, cảnh báo).
 
 ## Biến môi trường (`.env`)
 

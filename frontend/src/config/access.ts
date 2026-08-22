@@ -22,9 +22,9 @@ export function canManageCatalog(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin
 }
 
-/** Có quyền ghi nghiệp vụ kho thuốc (danh mục, nhập kho): Admin hoặc Lễ tân — khớp Roles.ManagePharmacy. */
+/** Có quyền ghi nghiệp vụ kho thuốc (danh mục, nhập kho, sổ cái, cảnh báo): Admin hoặc Dược sĩ — khớp Roles.ManagePharmacy (ADR 0013). */
 export function canManagePharmacy(role: UserRoleValue | undefined): boolean {
-  return role === UserRole.Admin || role === UserRole.Receptionist
+  return role === UserRole.Admin || role === UserRole.Pharmacist
 }
 
 /** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
@@ -44,11 +44,11 @@ export const navItems: NavItem[] = [
   { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin] },
   { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin] },
   { label: 'Người dùng', to: '/users', roles: [UserRole.Admin] },
-  // Kho thuốc — quản lý bởi Admin/Lễ tân (chưa có vai trò Dược sĩ riêng, ADR 0011).
-  { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
+  // Kho thuốc — quản lý trực tiếp bởi Dược sĩ (và Admin), ADR 0013.
+  { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist] },
+  { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Pharmacist] },
+  { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Pharmacist] },
+  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist] },
 ]
 
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.
@@ -57,6 +57,7 @@ export const roleLandingPath: Record<UserRoleValue, string> = {
   [UserRole.Admin]: '/appointments',
   [UserRole.Receptionist]: '/appointments',
   [UserRole.Doctor]: '/my-clinic',
+  [UserRole.Pharmacist]: '/pharmacy/alerts',
 }
 
 /** Trang mặc định cho vai trò hiện tại (fallback /appointments nếu thiếu). */

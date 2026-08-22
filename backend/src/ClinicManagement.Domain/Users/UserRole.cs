@@ -10,5 +10,8 @@ public enum UserRole
     Receptionist = 1,
 
     /// <summary>Bác sĩ — khám và xem hồ sơ liên quan.</summary>
-    Doctor = 2
+    Doctor = 2,
+
+    /// <summary>Dược sĩ — quản lý trực tiếp kho thuốc (danh mục, nhập kho, sổ cái, cảnh báo, cấp phát).</summary>
+    Pharmacist = 3
 }

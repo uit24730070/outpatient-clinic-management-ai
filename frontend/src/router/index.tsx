@@ -30,9 +30,9 @@ import PharmacyAlertsPage from '../pages/PharmacyAlertsPage'
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
 const RECORD_ENCOUNTER = [UserRole.Admin, UserRole.Doctor]
-const ALL_ROLES = [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor]
+const ALL_ROLES = [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist]
 const ADMIN_ONLY = [UserRole.Admin]
-const MANAGE_PHARMACY = [UserRole.Admin, UserRole.Receptionist]
+const MANAGE_PHARMACY = [UserRole.Admin, UserRole.Pharmacist]
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -118,7 +118,7 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // Kho thuốc — danh mục + nhập kho. Ghi cho Admin/Lễ tân (ManagePharmacy).
+          // Kho thuốc — danh mục + nhập kho. Ghi cho Admin/Dược sĩ (ManagePharmacy, ADR 0013).
           {
             element: <RequireRole roles={MANAGE_PHARMACY} />,
             children: [

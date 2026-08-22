@@ -45,7 +45,7 @@ cp .env.example .env      # đặt JWT_KEY thành chuỗi bí mật ≥ 32 byte
 docker compose up --build # Web: http://localhost:8080 · API: http://localhost:5006
 ```
 
-Đăng nhập mặc định: Admin `admin`/`Admin@123`, Bác sĩ `bacsi`/`Doctor@123`. Hướng dẫn đầy đủ + bảng biến môi trường: [`docs/deployment/`](./docs/deployment/README.md).
+Đăng nhập mặc định: Admin `admin`/`Admin@123`, Bác sĩ `bacsi`/`Doctor@123`, Dược sĩ `duocsi`/`Pharmacist@123`. Hướng dẫn đầy đủ + bảng biến môi trường: [`docs/deployment/`](./docs/deployment/README.md).
 
 ## Khởi chạy nhanh (dành cho phát triển)
 

@@ -9,6 +9,7 @@ public static class Roles
     public const string Admin = "Admin";
     public const string Receptionist = "Receptionist";
     public const string Doctor = "Doctor";
+    public const string Pharmacist = "Pharmacist";
 
     /// <summary>Nhóm được phép ghi (tạo/sửa/xoá) nghiệp vụ vận hành (Bệnh nhân, Lịch khám): Admin và Lễ tân.</summary>
     public const string ManageStaff = Admin + "," + Receptionist;
@@ -20,15 +21,16 @@ public static class Roles
     public const string RecordEncounter = Admin + "," + Doctor;
 
     /// <summary>
-    /// Nhóm được phép ghi nghiệp vụ kho thuốc (danh mục, nhập kho): Admin và Lễ tân (mirror <see cref="ManageStaff"/>).
-    /// Phòng khám nhỏ chưa có vai trò "Dược sĩ" riêng — xem ADR 0011. Đọc danh mục mở cho mọi vai trò.
+    /// Nhóm được phép ghi nghiệp vụ kho thuốc (danh mục, nhập kho, sổ cái, cảnh báo): Admin và Dược sĩ.
+    /// Kho thuốc do Dược sĩ quản lý trực tiếp — Lễ tân/Bác sĩ không còn quản lý (ADR 0013).
+    /// Đọc danh mục vẫn mở cho mọi vai trò (bác sĩ tra khi kê đơn).
     /// </summary>
-    public const string ManagePharmacy = Admin + "," + Receptionist;
+    public const string ManagePharmacy = Admin + "," + Pharmacist;
 
     /// <summary>
-    /// Nhóm được phép chốt phiếu khám (kèm cấp phát thuốc FEFO): cả ba vai trò. Vì cấp phát gộp
-    /// vào bước chốt phiếu (ADR 0011), lễ tân/quầy dược cũng cần thực hiện được — nới quyền có chủ đích
-    /// so với <see cref="RecordEncounter"/> (chỉ chi phối tạo/sửa phiếu).
+    /// Nhóm được phép chốt phiếu khám (kèm cấp phát thuốc FEFO): Admin, Bác sĩ và Dược sĩ.
+    /// Vì cấp phát gộp vào bước chốt phiếu (ADR 0011), bác sĩ (người khám) và dược sĩ (quầy phát thuốc)
+    /// đều cần thực hiện được; Lễ tân không đụng tồn kho nữa (ADR 0013).
     /// </summary>
-    public const string DispenseEncounter = Admin + "," + Receptionist + "," + Doctor;
+    public const string DispenseEncounter = Admin + "," + Doctor + "," + Pharmacist;
 }
