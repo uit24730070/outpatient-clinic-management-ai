@@ -515,3 +515,46 @@ Content-Type: application/json
 ### Huỷ hoá đơn (chỉ khi Draft)
 POST {{host}}/api/invoices/{{invoiceId}}/cancel
 Authorization: Bearer {{token}}
+
+### ───────────────────────────── Cận lâm sàng (Sprint 15, Epic 11) ─────────────────────────────
+
+### Danh mục dịch vụ CLS (lọc category: 0=Consultation, 1=Paraclinical, 2=Other)
+GET {{host}}/api/service-prices?page=1&pageSize=50&category=1
+Authorization: Bearer {{token}}
+
+### Chỉ định CLS từ phiếu khám (phiếu phải Draft; dịch vụ phải loại Paraclinical → sinh mã CLS-)
+# @name createLabOrder
+POST {{host}}/api/lab-orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "encounterId": "{{encounterId}}",
+  "note": "Chỉ định thường quy",
+  "items": [
+    { "servicePriceId": "{{servicePriceId}}" }
+  ]
+}
+
+### Danh sách phiếu chỉ định (lọc theo phiếu khám/bệnh nhân/trạng thái 0..3)
+GET {{host}}/api/lab-orders?page=1&pageSize=20&encounterId={{encounterId}}
+Authorization: Bearer {{token}}
+
+### Chi tiết phiếu chỉ định
+GET {{host}}/api/lab-orders/{{labOrderId}}
+Authorization: Bearer {{token}}
+
+### Nhập kết quả cho một mục (đủ mục có kết quả → phiếu Completed)
+POST {{host}}/api/lab-orders/{{labOrderId}}/items/{{labOrderItemId}}/result
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "resultText": "WBC 7.5 — bình thường", "conclusion": "Không bất thường" }
+
+### Huỷ phiếu chỉ định (chỉ khi chưa Completed/Cancelled)
+POST {{host}}/api/lab-orders/{{labOrderId}}/cancel
+Authorization: Bearer {{token}}
+
+### Lập HĐ phí CLS từ phiếu chỉ định (dòng Paraclinical; lập lần 2 → 409; RBAC ManageBilling)
+POST {{host}}/api/invoices/from-lab-order/{{labOrderId}}
+Authorization: Bearer {{token}}
