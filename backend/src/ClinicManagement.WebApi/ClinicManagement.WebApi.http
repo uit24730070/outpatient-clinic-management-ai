@@ -219,10 +219,12 @@ Content-Type: application/json
   "diagnosis": "Viêm họng cấp",
   "notes": "Nghỉ ngơi, uống nhiều nước",
   "prescriptionItems": [
-    { "drugName": "Paracetamol", "dosage": "500mg", "quantity": 10, "instruction": "Ngày 2 lần sau ăn" },
+    { "medicationId": "{{medicationId}}", "drugName": "Paracetamol", "dosage": "500mg", "quantity": 10, "instruction": "Ngày 2 lần sau ăn" },
     { "drugName": "Vitamin C", "dosage": "1000mg", "quantity": 5, "instruction": null }
   ]
 }
+# Lưu ý: dòng có "medicationId" (thuốc trong danh mục) sẽ được cấp phát trừ tồn FEFO khi chốt phiếu;
+# dòng không có "medicationId" là thuốc ngoài danh mục (không trừ tồn). Cần đã nhập kho đủ tồn.
 
 ### Lấy Id phiếu vừa tạo
 @encounterId = {{enc.response.body.$.data.id}}
@@ -256,7 +258,8 @@ Content-Type: application/json
   ]
 }
 
-### Chốt phiếu (Draft -> Completed; đồng thời khép lịch khám -> Completed)
+### Chốt phiếu (Draft -> Completed; khép lịch khám + CẤP PHÁT thuốc FEFO)
+# Cho phép cả ba vai trò (Roles.DispenseEncounter). Thiếu tồn -> 409 Pharmacy.InsufficientStock (rollback).
 POST {{host}}/api/encounters/{{encounterId}}/complete
 Authorization: Bearer {{token}}
 
@@ -441,8 +444,12 @@ Content-Type: application/json
 GET {{host}}/api/stock-receipts?page=1&pageSize=20
 Authorization: Bearer {{token}}
 
-### Sổ cái giao dịch tồn (lọc theo thuốc)
-GET {{host}}/api/stock-transactions?medicationId={{medicationId}}&type=Import
+### Sổ cái giao dịch tồn (lọc theo thuốc; bỏ type để xem cả Import + Dispense)
+GET {{host}}/api/stock-transactions?medicationId={{medicationId}}
+Authorization: Bearer {{token}}
+
+### Cảnh báo kho: tồn thấp + lô sắp/đã hết hạn (Admin/Lễ tân)
+GET {{host}}/api/pharmacy/alerts?expiringInDays=30
 Authorization: Bearer {{token}}
 
 ### Xoá mềm thuốc
