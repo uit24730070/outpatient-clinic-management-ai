@@ -3,7 +3,7 @@ import { FlaskConical, Plus } from 'lucide-react'
 import { createWalkInLabOrder, getLabOrder } from '../services/labOrderService'
 import { listPatients } from '../services/patientService'
 import { listServicePrices } from '../services/servicePriceService'
-import { toastError, toastSuccess } from '../lib/toast'
+import { toastError, toastInfo, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import { ServiceCategory, type ServicePrice } from '../types/invoice'
 import type { Patient } from '../types/patient'
@@ -78,7 +78,7 @@ export default function LabWalkInPage() {
 
   const submit = async () => {
     if (!patientId) {
-      toastError('Hãy chọn bệnh nhân.')
+      toastInfo('Hãy chọn bệnh nhân.')
       return
     }
     if (picked.length === 0) return

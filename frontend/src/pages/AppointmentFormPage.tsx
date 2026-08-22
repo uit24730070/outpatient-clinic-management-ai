@@ -14,7 +14,7 @@ import { listPatients, createPatient } from '../services/patientService'
 import { listDoctors } from '../services/doctorService'
 import { listServicePrices } from '../services/servicePriceService'
 import { applyServerErrors } from '../lib/form'
-import { toastError, toastSuccess } from '../lib/toast'
+import { toastError, toastInfo, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import { Gender, genderLabels, type Patient, type GenderValue } from '../types/patient'
 import { ServiceCategory, type ServicePrice } from '../types/invoice'
@@ -184,7 +184,7 @@ export default function AppointmentFormPage() {
   // Tái khám: lấy dịch vụ khám của lượt gần nhất để prefill.
   const applyLastService = async () => {
     if (!patientId) {
-      toastError('Hãy chọn bệnh nhân trước.')
+      toastInfo('Hãy chọn bệnh nhân trước.')
       return
     }
     try {
@@ -193,7 +193,7 @@ export default function AppointmentFormPage() {
         setValue('servicePriceId', last.servicePriceId, { shouldValidate: true })
         toastSuccess(`Đã dùng dịch vụ lần trước: ${last.serviceName ?? ''}.`)
       } else {
-        toastError('Lượt khám gần nhất không có dịch vụ để dùng lại.')
+        toastInfo('Lượt khám gần nhất không có dịch vụ để dùng lại.')
       }
     } catch (err) {
       toastError(err)
