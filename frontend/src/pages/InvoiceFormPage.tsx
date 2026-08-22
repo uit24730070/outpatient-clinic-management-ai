@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,7 +10,7 @@ import {
   updateInvoice,
 } from '../services/invoiceService'
 import { listServicePrices } from '../services/servicePriceService'
-import { listPatients } from '../services/patientService'
+import { listPatients, getPatient } from '../services/patientService'
 import { applyServerErrors } from '../lib/form'
 import { toastError, toastSuccess } from '../lib/toast'
 import type { Patient } from '../types/patient'
@@ -56,6 +56,13 @@ export default function InvoiceFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // Chế độ tiếp đón: điều hướng từ một lượt khám kèm ?patientId=&appointmentId=
+  // → khoá bệnh nhân + gắn hoá đơn vào lượt.
+  const prefillPatientId = searchParams.get('patientId')
+  const prefillAppointmentId = searchParams.get('appointmentId')
+  const lockedPatient = !isEdit && Boolean(prefillPatientId)
 
   const [services, setServices] = useState<ServicePrice[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
@@ -94,6 +101,13 @@ export default function InvoiceFormPage() {
               items: serviceLines.length > 0 ? serviceLines : [emptyItem()],
             })
           }
+        } else if (prefillPatientId) {
+          // Tiếp đón: nạp tên bệnh nhân để hiển thị + đặt sẵn patientId (khoá field).
+          const p = await getPatient(prefillPatientId)
+          if (active) {
+            setPatientName(`${p.fullName} (${p.code})`)
+            setValue('patientId', p.id, { shouldValidate: true })
+          }
         }
       } catch (err) {
         if (active) toastError(err)
@@ -104,11 +118,11 @@ export default function InvoiceFormPage() {
     return () => {
       active = false
     }
-  }, [id, reset])
+  }, [id, reset, prefillPatientId, setValue])
 
-  // Tìm kiếm bệnh nhân cho dropdown (chỉ khi tạo mới).
+  // Tìm kiếm bệnh nhân cho dropdown (chỉ khi tạo mới, chưa khoá bệnh nhân).
   useEffect(() => {
-    if (isEdit) return
+    if (isEdit || lockedPatient) return
     let active = true
     void (async () => {
       try {
@@ -125,7 +139,7 @@ export default function InvoiceFormPage() {
     return () => {
       active = false
     }
-  }, [isEdit, patientSearch])
+  }, [isEdit, lockedPatient, patientSearch])
 
   const serviceById = useMemo(
     () => new Map(services.map((s) => [s.id, s])),
@@ -152,7 +166,11 @@ export default function InvoiceFormPage() {
         toastSuccess('Đã cập nhật hoá đơn.')
         navigate(`/invoices/${id}`)
       } else {
-        const created = await createInvoice({ patientId: values.patientId, ...payload })
+        const created = await createInvoice({
+          patientId: values.patientId,
+          appointmentId: prefillAppointmentId ?? null,
+          ...payload,
+        })
         toastSuccess('Đã tạo hoá đơn.')
         navigate(`/invoices/${created.id}`)
       }
@@ -165,14 +183,21 @@ export default function InvoiceFormPage() {
 
   return (
     <section className="mx-auto max-w-3xl">
-      <PageHeader title={isEdit ? 'Sửa hoá đơn' : 'Tạo hoá đơn lẻ'} />
+      <PageHeader
+        title={isEdit ? 'Sửa hoá đơn' : lockedPatient ? 'Lập hoá đơn dịch vụ' : 'Tạo hoá đơn lẻ'}
+        description={
+          prefillAppointmentId
+            ? 'Hoá đơn gắn với lượt tiếp đón — chọn dịch vụ từ bảng giá (khám/tái khám/CLS).'
+            : undefined
+        }
+      />
 
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Card>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
               <Label>Bệnh nhân *</Label>
-              {isEdit ? (
+              {isEdit || lockedPatient ? (
                 <Input value={patientName} disabled />
               ) : (
                 <>

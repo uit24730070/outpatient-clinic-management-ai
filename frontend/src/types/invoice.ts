@@ -88,6 +88,7 @@ export interface Invoice {
   patientId: string
   patientName: string | null
   encounterId: string | null
+  appointmentId: string | null
   status: InvoiceStatusValue
   totalAmount: number
   paidAt: string | null
@@ -96,6 +97,15 @@ export interface Invoice {
   items: InvoiceItem[]
   createdAt: string
   updatedAt: string | null
+}
+
+/** Gom hoá đơn theo lượt tiếp đón + tổng (khớp AppointmentInvoicesDto backend). */
+export interface AppointmentInvoices {
+  appointmentId: string
+  invoices: Invoice[]
+  totalBilled: number
+  totalPaid: number
+  totalOutstanding: number
 }
 
 /** Một dòng dịch vụ trong form hoá đơn lẻ (khớp CreateInvoiceItemRequest). */
@@ -108,6 +118,8 @@ export interface CreateInvoiceInput {
   patientId: string
   note: string | null
   items: InvoiceItemInput[]
+  /** Lượt tiếp đón (tuỳ chọn): gắn khi lập từ màn tiếp đón; null với vãng lai/chỉ-CLS. */
+  appointmentId?: string | null
 }
 
 export interface UpdateInvoiceInput {

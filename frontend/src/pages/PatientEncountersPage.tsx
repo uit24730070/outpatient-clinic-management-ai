@@ -121,10 +121,10 @@ export default function PatientEncountersPage() {
     setCreatingInvoiceFor(encounterId)
     try {
       const inv = await createInvoiceFromEncounter(encounterId)
-      toastSuccess('Đã lập hoá đơn từ phiếu khám.')
+      toastSuccess('Đã lập hoá đơn thuốc từ phiếu khám.')
       navigate(`/invoices/${inv.id}`)
     } catch (err) {
-      // Đã có hoá đơn cho phiếu này (409) hoặc lỗi khác — hiển thị thông báo server.
+      // Đã lập HĐ thuốc cho phiếu này (409) hoặc lỗi khác — hiển thị thông báo server.
       toastError(err)
     } finally {
       setCreatingInvoiceFor(null)
@@ -276,7 +276,7 @@ export default function PatientEncountersPage() {
                               ) : (
                                 <Receipt className="size-4" />
                               )}
-                              Tạo hoá đơn
+                              Lập HĐ thuốc
                             </Button>
                           )}
                           <Button

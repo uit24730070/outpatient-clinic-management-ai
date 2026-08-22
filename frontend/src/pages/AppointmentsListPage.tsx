@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Stethoscope, X } from 'lucide-react'
+import { Plus, Receipt, Stethoscope, X } from 'lucide-react'
 import {
   deleteAppointment,
   listAppointments,
@@ -9,6 +9,7 @@ import {
 } from '../services/appointmentService'
 import { listDoctors } from '../services/doctorService'
 import { useAuth } from '../store/auth'
+import { canManageBilling } from '../config/access'
 import { toastError, toastSuccess } from '../lib/toast'
 import {
   AppointmentStatus,
@@ -78,7 +79,8 @@ function formatEndTime(iso: string): string {
 }
 
 export default function AppointmentsListPage() {
-  const { canManage, canRecordEncounter } = useAuth()
+  const { user, canManage, canRecordEncounter } = useAuth()
+  const canBilling = canManageBilling(user?.role)
   const [date, setDate] = useState('')
   const [doctorId, setDoctorId] = useState('')
   const [status, setStatus] = useState('')
@@ -280,6 +282,21 @@ export default function AppointmentsListPage() {
                             </Link>
                           </Button>
                         )}
+                        {canBilling &&
+                          a.status !== AppointmentStatus.Cancelled &&
+                          a.status !== AppointmentStatus.NoShow && (
+                            <>
+                              <Button asChild size="sm" variant="outline">
+                                <Link to={`/invoices/new?patientId=${a.patientId}&appointmentId=${a.id}`}>
+                                  <Receipt className="size-4" />
+                                  Lập HĐ
+                                </Link>
+                              </Button>
+                              <Button asChild size="sm" variant="ghost">
+                                <Link to={`/invoices?appointmentId=${a.id}`}>HĐ lượt</Link>
+                              </Button>
+                            </>
+                          )}
                         {canManage &&
                           actionsByStatus[a.status].map((x) =>
                             x.danger ? (
@@ -326,7 +343,7 @@ export default function AppointmentsListPage() {
                             onConfirm={() => void onDelete(a)}
                           />
                         )}
-                        {!canManage && !canRecordEncounter && (
+                        {!canManage && !canRecordEncounter && !canBilling && (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </div>

@@ -1,6 +1,7 @@
 import { apiClient, unwrap } from './apiClient'
 import type { ApiResponse, PagedResult } from '../types/common'
 import type {
+  AppointmentInvoices,
   CreateInvoiceInput,
   Invoice,
   InvoiceStatusValue,
@@ -12,6 +13,7 @@ export interface ListInvoicesParams {
   page: number
   pageSize: number
   patientId?: string
+  appointmentId?: string
   status?: InvoiceStatusValue
   from?: string
   to?: string
@@ -24,6 +26,14 @@ export async function listInvoices(params: ListInvoicesParams): Promise<PagedRes
 
 export async function getInvoice(id: string): Promise<Invoice> {
   const res = await apiClient.get<ApiResponse<Invoice>>(`/api/invoices/${id}`)
+  return unwrap(res.data)
+}
+
+/** Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ. */
+export async function getInvoicesByAppointment(appointmentId: string): Promise<AppointmentInvoices> {
+  const res = await apiClient.get<ApiResponse<AppointmentInvoices>>(
+    `/api/invoices/by-appointment/${appointmentId}`,
+  )
   return unwrap(res.data)
 }
 
