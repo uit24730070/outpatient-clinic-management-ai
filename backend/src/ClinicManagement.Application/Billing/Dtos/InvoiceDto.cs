@@ -9,6 +9,7 @@ public sealed record InvoiceDto(
     Guid PatientId,
     string? PatientName,
     Guid? EncounterId,
+    Guid? AppointmentId,
     InvoiceStatus Status,
     decimal TotalAmount,
     DateTimeOffset? PaidAt,

@@ -63,6 +63,12 @@ public class Encounter : Entity
     /// <summary>Đã cấp phát thuốc hay chưa.</summary>
     public bool IsDispensed => DispensedAt is not null;
 
+    /// <summary>
+    /// Thời điểm đã lập hoá đơn thuốc từ phiếu này — null nếu chưa lập.
+    /// Cờ chống lập hoá đơn thuốc trùng (thay lá chắn unique <c>EncounterId</c> đã bỏ ở Mô hình A — ADR 0014 P2).
+    /// </summary>
+    public DateTimeOffset? MedicationInvoicedAt { get; private set; }
+
     /// <summary>Cụm dòng đơn thuốc (chỉ đọc từ ngoài; thay cả cụm qua <see cref="ReplaceItems"/>).</summary>
     public IReadOnlyCollection<PrescriptionItem> PrescriptionItems => _prescriptionItems.AsReadOnly();
 
@@ -101,6 +107,20 @@ public class Encounter : Entity
 
     /// <summary>Đánh dấu đã cấp phát thuốc (chỉ đặt một lần; các lần sau bỏ qua) — ADR 0011.</summary>
     public void MarkDispensed(DateTimeOffset when) => DispensedAt ??= when;
+
+    /// <summary>
+    /// Đánh dấu đã lập hoá đơn thuốc từ phiếu này. Chỉ đặt một lần — đã đặt → lỗi để service map 409
+    /// (chống lập hoá đơn thuốc trùng, ADR 0014 P2).
+    /// </summary>
+    public Result MarkMedicationInvoiced(DateTimeOffset when)
+    {
+        if (MedicationInvoicedAt is not null)
+            return Result.Failure(Error.Conflict(
+                "Billing.MedicationAlreadyInvoiced", "Phiếu khám này đã lập hoá đơn thuốc."));
+
+        MedicationInvoicedAt = when;
+        return Result.Success();
+    }
 
     private Result InvalidTransition(string action) => Result.Failure(Error.Conflict(
         "Encounter.InvalidTransition",

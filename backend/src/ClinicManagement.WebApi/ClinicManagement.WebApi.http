@@ -475,11 +475,11 @@ Content-Type: application/json
   "description": null
 }
 
-### Lập hoá đơn TỪ PHIẾU KHÁM (công khám + thuốc đã cấp; phiếu phải Completed)
+### Lập HĐ THUỐC từ phiếu khám (Mô hình A — chỉ dòng thuốc đã cấp; phiếu phải Completed; lập lần 2 → 409)
 POST {{host}}/api/invoices/from-encounter/{{encounterId}}
 Authorization: Bearer {{token}}
 
-### Tạo hoá đơn LẺ (dòng tham chiếu servicePriceId)
+### Tạo hoá đơn DỊCH VỤ / LÚC TIẾP ĐÓN (dòng servicePriceId; appointmentId tuỳ chọn để gắn lượt)
 POST {{host}}/api/invoices
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -487,13 +487,18 @@ Content-Type: application/json
 {
   "patientId": "{{patientId}}",
   "note": null,
+  "appointmentId": "{{appointmentId}}",
   "items": [
     { "servicePriceId": "{{servicePriceId}}", "quantity": 1 }
   ]
 }
 
-### Danh sách hoá đơn (lọc trạng thái: 0=Draft, 1=Paid, 2=Cancelled)
-GET {{host}}/api/invoices?page=1&pageSize=20&status=0
+### Danh sách hoá đơn (lọc trạng thái: 0=Draft, 1=Paid, 2=Cancelled; lọc theo lượt)
+GET {{host}}/api/invoices?page=1&pageSize=20&status=0&appointmentId={{appointmentId}}
+Authorization: Bearer {{token}}
+
+### Gom hoá đơn theo LƯỢT + tổng đã lập/đã thu/còn nợ
+GET {{host}}/api/invoices/by-appointment/{{appointmentId}}
 Authorization: Bearer {{token}}
 
 ### Chi tiết hoá đơn

@@ -18,11 +18,14 @@ public class Invoice : Entity
     // EF Core cần constructor không tham số.
     private Invoice() { }
 
-    public Invoice(string code, Guid patientId, Guid? encounterId, string? note, IEnumerable<InvoiceItem> items)
+    public Invoice(
+        string code, Guid patientId, Guid? encounterId, string? note, IEnumerable<InvoiceItem> items,
+        Guid? appointmentId = null)
     {
         Code = code;
         PatientId = patientId;
         EncounterId = encounterId;
+        AppointmentId = appointmentId;
         Note = note;
         Status = InvoiceStatus.Draft;
         _items.AddRange(items);
@@ -35,8 +38,17 @@ public class Invoice : Entity
     /// <summary>Bệnh nhân (snapshot).</summary>
     public Guid PatientId { get; private set; }
 
-    /// <summary>Phiếu khám nguồn (nếu lập từ phiếu khám). Null với hoá đơn dịch vụ lẻ. Unique khi có giá trị.</summary>
+    /// <summary>
+    /// Phiếu khám nguồn (nếu lập từ phiếu khám). Null với hoá đơn dịch vụ lẻ.
+    /// Từ Sprint 14.5 <b>không còn unique</b> — một phiếu có thể có nhiều hoá đơn (Mô hình A, ADR 0014 P2).
+    /// </summary>
     public Guid? EncounterId { get; private set; }
+
+    /// <summary>
+    /// Lượt tiếp đón nguồn (nếu lập gắn một lượt khám) để gom nhiều hoá đơn cùng lượt.
+    /// Null với bệnh nhân vãng lai/chỉ-CLS chưa gắn lượt (ADR 0014 P2).
+    /// </summary>
+    public Guid? AppointmentId { get; private set; }
 
     public InvoiceStatus Status { get; private set; }
 

@@ -31,18 +31,19 @@ public sealed class InvoicesController : ApiControllerBase
         return ToResponse(result, StatusCodes.Status201Created);
     }
 
-    /// <summary>Danh sách hoá đơn có phân trang + lọc theo bệnh nhân/trạng thái/khoảng ngày lập.</summary>
+    /// <summary>Danh sách hoá đơn có phân trang + lọc theo bệnh nhân/lượt/trạng thái/khoảng ngày lập.</summary>
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] Guid? patientId = null,
+        [FromQuery] Guid? appointmentId = null,
         [FromQuery] InvoiceStatus? status = null,
         [FromQuery] DateTimeOffset? from = null,
         [FromQuery] DateTimeOffset? to = null,
         CancellationToken ct = default)
     {
-        var result = await _invoices.GetListAsync(page, pageSize, patientId, status, from, to, ct);
+        var result = await _invoices.GetListAsync(page, pageSize, patientId, appointmentId, status, from, to, ct);
         return ToResponse(result);
     }
 
@@ -51,6 +52,14 @@ public sealed class InvoicesController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var result = await _invoices.GetByIdAsync(id, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ.</summary>
+    [HttpGet("by-appointment/{appointmentId:guid}")]
+    public async Task<IActionResult> GetByAppointment(Guid appointmentId, CancellationToken ct)
+    {
+        var result = await _invoices.GetByAppointmentAsync(appointmentId, ct);
         return ToResponse(result);
     }
 

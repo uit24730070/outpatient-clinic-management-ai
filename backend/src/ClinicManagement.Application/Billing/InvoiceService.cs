@@ -11,14 +11,17 @@ public sealed class InvoiceService : IInvoiceService
 {
     private const int MaxPageSize = 100;
     private readonly IAppDbContext _db;
-    private readonly BillingOptions _options;
 
-    public InvoiceService(IAppDbContext db, BillingOptions options)
+    public InvoiceService(IAppDbContext db)
     {
         _db = db;
-        _options = options;
     }
 
+    /// <summary>
+    /// Lập hoá đơn <b>thuốc</b> từ một phiếu khám đã hoàn tất (Mô hình A, ADR 0014 P2):
+    /// chỉ gồm các dòng thuốc đã kê có gắn danh mục (công khám/CLS thu qua hoá đơn riêng lúc tiếp đón).
+    /// Chống lập trùng bằng cờ <see cref="Encounter.MedicationInvoicedAt"/> (đã lập → 409).
+    /// </summary>
     public async Task<Result<InvoiceDto>> CreateFromEncounterAsync(Guid encounterId, CancellationToken ct = default)
     {
         var encounter = await _db.Encounters.FirstOrDefaultAsync(e => e.Id == encounterId, ct);
@@ -29,60 +32,40 @@ public sealed class InvoiceService : IInvoiceService
             return Result.Failure<InvoiceDto>(Error.Conflict(
                 "Billing.EncounterNotCompleted", "Chỉ lập được hoá đơn từ phiếu khám đã hoàn tất."));
 
-        if (await _db.Invoices.AnyAsync(i => i.EncounterId == encounterId, ct))
-            return Result.Failure<InvoiceDto>(Error.Conflict(
-                "Billing.InvoiceAlreadyExists", "Phiếu khám này đã có hoá đơn."));
-
-        var items = new List<InvoiceItem>();
-
-        // Dòng công khám: lấy từ dịch vụ mặc định (cấu hình mã), snapshot đơn giá.
-        var consultation = await _db.ServicePrices
-            .FirstOrDefaultAsync(s => s.Code == _options.DefaultConsultationServiceCode, ct);
-        if (consultation is null)
-            return Error.NotFound("Billing.ConsultationServiceNotFound",
-                $"Không tìm thấy dịch vụ công khám mặc định (mã {_options.DefaultConsultationServiceCode}).");
-        items.Add(new InvoiceItem(
-            InvoiceItemType.ServiceFee, consultation.Name, consultation.UnitPrice, 1, consultation.Id));
-
-        // Dòng thuốc: các dòng đơn có gắn danh mục (MedicationId), số lượng × giá bán (snapshot).
+        // Chỉ dựng dòng thuốc: các dòng đơn có gắn danh mục (MedicationId), số lượng × giá bán (snapshot).
         var prescribed = encounter.PrescriptionItems
             .Where(p => p.MedicationId is not null)
             .ToList();
-        if (prescribed.Count > 0)
+        if (prescribed.Count == 0)
+            return Result.Failure<InvoiceDto>(Error.Validation(
+                "Billing.NoMedicationToInvoice", "Phiếu khám không có dòng thuốc gắn danh mục để lập hoá đơn."));
+
+        var medIds = prescribed.Select(p => p.MedicationId!.Value).Distinct().ToList();
+        // Gồm cả thuốc đã xoá mềm (vẫn tính tiền theo giá đã lưu) — MedicationId không FK cứng (ADR 0011).
+        var meds = await _db.Medications.IgnoreQueryFilters()
+            .Where(m => medIds.Contains(m.Id))
+            .ToDictionaryAsync(m => m.Id, ct);
+
+        var missing = medIds.Where(id => !meds.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+            return Error.NotFound("Pharmacy.MedicationNotFound",
+                $"Thuốc tham chiếu không tồn tại: {string.Join(", ", missing)}.");
+
+        var items = prescribed.Select(p =>
         {
-            var medIds = prescribed.Select(p => p.MedicationId!.Value).Distinct().ToList();
-            // Gồm cả thuốc đã xoá mềm (vẫn tính tiền theo giá đã lưu) — MedicationId không FK cứng (ADR 0011).
-            var meds = await _db.Medications.IgnoreQueryFilters()
-                .Where(m => medIds.Contains(m.Id))
-                .ToDictionaryAsync(m => m.Id, ct);
+            var med = meds[p.MedicationId!.Value];
+            return new InvoiceItem(InvoiceItemType.Medication, med.Name, med.SalePrice, p.Quantity, med.Id);
+        }).ToList();
 
-            var missing = medIds.Where(id => !meds.ContainsKey(id)).ToList();
-            if (missing.Count > 0)
-                return Error.NotFound("Pharmacy.MedicationNotFound",
-                    $"Thuốc tham chiếu không tồn tại: {string.Join(", ", missing)}.");
-
-            foreach (var p in prescribed)
-            {
-                var med = meds[p.MedicationId!.Value];
-                items.Add(new InvoiceItem(
-                    InvoiceItemType.Medication, med.Name, med.SalePrice, p.Quantity, med.Id));
-            }
-        }
+        // Cờ chống lập trùng (thay lá chắn unique EncounterId đã bỏ ở Mô hình A).
+        var mark = encounter.MarkMedicationInvoiced(DateTimeOffset.UtcNow);
+        if (mark.IsFailure)
+            return Result.Failure<InvoiceDto>(mark.Error);
 
         var code = await GenerateCodeAsync(ct);
-        var invoice = new Invoice(code, encounter.PatientId, encounterId, note: null, items);
+        var invoice = new Invoice(code, encounter.PatientId, encounterId, note: null, items, encounter.AppointmentId);
         _db.Invoices.Add(invoice);
-
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            // Chạy đua tạo trùng: unique index EncounterId chặn ở DB.
-            return Result.Failure<InvoiceDto>(Error.Conflict(
-                "Billing.InvoiceAlreadyExists", "Phiếu khám này đã có hoá đơn."));
-        }
+        await _db.SaveChangesAsync(ct);
 
         return (await ProjectByIdAsync(invoice.Id, ct))!;
     }
@@ -96,12 +79,19 @@ public sealed class InvoiceService : IInvoiceService
         if (!await _db.Patients.AnyAsync(p => p.Id == request.PatientId, ct))
             return Error.NotFound("Patient.NotFound", $"Không tìm thấy bệnh nhân với Id {request.PatientId}.");
 
+        // Lượt tiếp đón (tuỳ chọn): kiểm tồn tại khi có, để null với vãng lai/chỉ-CLS.
+        if (request.AppointmentId is not null &&
+            !await _db.Appointments.AnyAsync(a => a.Id == request.AppointmentId, ct))
+            return Error.NotFound("Appointment.NotFound",
+                $"Không tìm thấy lượt khám với Id {request.AppointmentId}.");
+
         var build = await BuildServiceItemsAsync(lines, ct);
         if (build.IsFailure)
             return Result.Failure<InvoiceDto>(build.Error);
 
         var code = await GenerateCodeAsync(ct);
-        var invoice = new Invoice(code, request.PatientId, encounterId: null, NormalizeOptional(request.Note), build.Value);
+        var invoice = new Invoice(code, request.PatientId, encounterId: null, NormalizeOptional(request.Note), build.Value,
+            request.AppointmentId);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);
 
@@ -109,7 +99,7 @@ public sealed class InvoiceService : IInvoiceService
     }
 
     public async Task<Result<PagedResult<InvoiceDto>>> GetListAsync(
-        int page, int pageSize, Guid? patientId, InvoiceStatus? status,
+        int page, int pageSize, Guid? patientId, Guid? appointmentId, InvoiceStatus? status,
         DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
@@ -118,6 +108,8 @@ public sealed class InvoiceService : IInvoiceService
         var query = _db.Invoices.AsNoTracking();
         if (patientId is not null)
             query = query.Where(i => i.PatientId == patientId);
+        if (appointmentId is not null)
+            query = query.Where(i => i.AppointmentId == appointmentId);
         if (status is not null)
             query = query.Where(i => i.Status == status);
         if (from is not null)
@@ -140,6 +132,22 @@ public sealed class InvoiceService : IInvoiceService
         return dto is null
             ? Error.NotFound("Invoice.NotFound", $"Không tìm thấy hoá đơn với Id {id}.")
             : dto;
+    }
+
+    public async Task<Result<AppointmentInvoicesDto>> GetByAppointmentAsync(
+        Guid appointmentId, CancellationToken ct = default)
+    {
+        var invoices = await Project(
+                _db.Invoices.AsNoTracking()
+                    .Where(i => i.AppointmentId == appointmentId)
+                    .OrderBy(i => i.CreatedAt))
+            .ToListAsync(ct);
+
+        // Đã huỷ không tính vào tổng đã lập; đã thu = các HĐ Paid; còn nợ = đã lập − đã thu.
+        var billed = invoices.Where(i => i.Status != InvoiceStatus.Cancelled).Sum(i => i.TotalAmount);
+        var paid = invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.TotalAmount);
+
+        return new AppointmentInvoicesDto(appointmentId, invoices, billed, paid, billed - paid);
     }
 
     public async Task<Result<InvoiceDto>> UpdateAsync(
@@ -240,6 +248,7 @@ public sealed class InvoiceService : IInvoiceService
             i.PatientId,
             _db.Patients.Where(p => p.Id == i.PatientId).Select(p => p.FullName).FirstOrDefault(),
             i.EncounterId,
+            i.AppointmentId,
             i.Status,
             i.TotalAmount,
             i.PaidAt,

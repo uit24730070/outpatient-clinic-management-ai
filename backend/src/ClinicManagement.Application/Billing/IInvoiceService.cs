@@ -12,13 +12,16 @@ public interface IInvoiceService
     /// <summary>Tạo hoá đơn dịch vụ lẻ (không gắn phiếu khám).</summary>
     Task<Result<InvoiceDto>> CreateAsync(CreateInvoiceRequest request, CancellationToken ct = default);
 
-    /// <summary>Danh sách hoá đơn có phân trang + lọc theo bệnh nhân/trạng thái/khoảng ngày lập.</summary>
+    /// <summary>Danh sách hoá đơn có phân trang + lọc theo bệnh nhân/lượt/trạng thái/khoảng ngày lập.</summary>
     Task<Result<PagedResult<InvoiceDto>>> GetListAsync(
-        int page, int pageSize, Guid? patientId, InvoiceStatus? status,
+        int page, int pageSize, Guid? patientId, Guid? appointmentId, InvoiceStatus? status,
         DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default);
 
     /// <summary>Chi tiết một hoá đơn.</summary>
     Task<Result<InvoiceDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (tính phía server).</summary>
+    Task<Result<AppointmentInvoicesDto>> GetByAppointmentAsync(Guid appointmentId, CancellationToken ct = default);
 
     /// <summary>Sửa cụm dòng dịch vụ + ghi chú của hoá đơn — chỉ khi còn <c>Draft</c>.</summary>
     Task<Result<InvoiceDto>> UpdateAsync(Guid id, UpdateInvoiceRequest request, CancellationToken ct = default);

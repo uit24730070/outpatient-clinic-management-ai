@@ -19,8 +19,12 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         builder.HasIndex(i => i.PatientId);
 
-        // 1–1 với phiếu khám khi lập từ phiếu; nullable → nhiều NULL (hoá đơn lẻ) hợp lệ trên Postgres.
-        builder.HasIndex(i => i.EncounterId).IsUnique();
+        // Từ Sprint 14.5: bỏ unique — một phiếu khám có thể có nhiều hoá đơn (Mô hình A, ADR 0014 P2).
+        // Index thường để tra hoá đơn theo phiếu.
+        builder.HasIndex(i => i.EncounterId);
+
+        // Gom hoá đơn theo lượt tiếp đón.
+        builder.HasIndex(i => i.AppointmentId);
 
         // Enum trạng thái/phương thức thu lưu dạng chuỗi (đồng nhất Gender/UserRole/AppointmentStatus).
         builder.Property(i => i.Status)
