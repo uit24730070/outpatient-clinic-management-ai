@@ -1,5 +1,6 @@
 using ClinicManagement.Application.Billing;
 using ClinicManagement.Application.Billing.Dtos;
+using ClinicManagement.Domain.Billing;
 using ClinicManagement.Shared.Results;
 using UnitTests.Common;
 
@@ -40,16 +41,43 @@ public sealed class ServicePriceServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_DefaultCategory_ShouldBeOther_ForBackCompat()
+    {
+        var service = CreateService(out _);
+
+        // Không truyền Category → mặc định Other (tương thích dữ liệu Sprint 14).
+        var result = await service.CreateAsync(new CreateServicePriceRequest("Khám", 100000m, null));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ServiceCategory.Other, result.Value.Category);
+    }
+
+    [Fact]
+    public async Task GetListAsync_ShouldFilterByCategory()
+    {
+        var service = CreateService(out _);
+        await service.CreateAsync(new CreateServicePriceRequest("Khám tổng quát", 150000m, null, ServiceCategory.Consultation));
+        await service.CreateAsync(new CreateServicePriceRequest("Công thức máu", 80000m, null, ServiceCategory.Paraclinical));
+        await service.CreateAsync(new CreateServicePriceRequest("X-quang ngực", 120000m, null, ServiceCategory.Paraclinical));
+
+        var paraclinical = await service.GetListAsync(1, 20, null, ServiceCategory.Paraclinical);
+        Assert.Equal(2, paraclinical.Value.TotalCount);
+
+        var consultation = await service.GetListAsync(1, 20, null, ServiceCategory.Consultation);
+        Assert.Equal(1, consultation.Value.TotalCount);
+    }
+
+    [Fact]
     public async Task GetListAsync_ShouldFilterBySearch_OnNameOrCode()
     {
         var service = CreateService(out _);
         await service.CreateAsync(ValidRequest("Khám tổng quát"));
         await service.CreateAsync(ValidRequest("Tái khám"));
 
-        var byName = await service.GetListAsync(1, 20, "tái");
+        var byName = await service.GetListAsync(1, 20, "tái", null);
         Assert.Equal(1, byName.Value.TotalCount);
 
-        var byCode = await service.GetListAsync(1, 20, "dv-000001");
+        var byCode = await service.GetListAsync(1, 20, "dv-000001", null);
         Assert.Equal(1, byCode.Value.TotalCount);
     }
 
@@ -89,7 +117,7 @@ public sealed class ServicePriceServiceTests
         var delete = await service.DeleteAsync(created.Value.Id);
         Assert.True(delete.IsSuccess);
 
-        var list = await service.GetListAsync(1, 20, null);
+        var list = await service.GetListAsync(1, 20, null, null);
         Assert.Equal(0, list.Value.TotalCount);
 
         // Mã vẫn đếm bản ghi đã xoá để tránh trùng.

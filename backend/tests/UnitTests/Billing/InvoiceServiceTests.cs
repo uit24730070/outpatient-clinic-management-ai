@@ -486,4 +486,85 @@ public sealed class InvoiceServiceTests
         Assert.Equal(ErrorType.NotFound, result.Error.Type);
         Assert.Equal("Appointment.NotFound", result.Error.Code);
     }
+
+    // ── CLS-04: lập hoá đơn phí cận lâm sàng từ phiếu chỉ định ─────────────────
+
+    /// <summary>Tạo nhanh một phiếu chỉ định CLS (gắn phiếu khám) trực tiếp trong DB.</summary>
+    private static async Task<ClinicManagement.Domain.Paraclinical.LabOrder> SeedLabOrderAsync(
+        TestDbContext db, Guid patientId, Guid encounterId)
+    {
+        var order = new ClinicManagement.Domain.Paraclinical.LabOrder(
+            "CLS-000001", encounterId, patientId, Guid.NewGuid(), null,
+            new[]
+            {
+                new ClinicManagement.Domain.Paraclinical.LabOrderItem(Guid.NewGuid(), "Công thức máu", 80000m),
+                new ClinicManagement.Domain.Paraclinical.LabOrderItem(Guid.NewGuid(), "X-quang ngực", 120000m)
+            });
+        db.LabOrders.Add(order);
+        await db.SaveChangesAsync();
+        return order;
+    }
+
+    [Fact]
+    public async Task CreateFromLabOrder_ShouldBuildParaclinicalLines_WithSnapshotPrices_AndLinkAppointment()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patientId = Guid.NewGuid();
+        var appointmentId = Guid.NewGuid();
+        // Phiếu khám gắn lượt (để suy ra AppointmentId cho hoá đơn CLS).
+        var encounter = new Encounter(appointmentId, patientId, Guid.NewGuid(), null, "Theo dõi", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var order = await SeedLabOrderAsync(db, patientId, encounter.Id);
+
+        var service = CreateService(db);
+        var result = await service.CreateFromLabOrderAsync(order.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(patientId, result.Value.PatientId);
+        Assert.Equal(encounter.Id, result.Value.EncounterId);
+        Assert.Equal(appointmentId, result.Value.AppointmentId);
+        Assert.Equal(2, result.Value.Items.Count);
+        Assert.All(result.Value.Items, i => Assert.Equal(InvoiceItemType.Paraclinical, i.ItemType));
+        Assert.Equal(200000m, result.Value.TotalAmount);
+    }
+
+    [Fact]
+    public async Task CreateFromLabOrder_SecondTime_ShouldReturnConflict_ParaclinicalAlreadyInvoiced()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = new Encounter(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null, "Theo dõi", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var order = await SeedLabOrderAsync(db, encounter.PatientId, encounter.Id);
+
+        var service = CreateService(db);
+        var first = await service.CreateFromLabOrderAsync(order.Id);
+        Assert.True(first.IsSuccess);
+
+        var second = await service.CreateFromLabOrderAsync(order.Id);
+        Assert.True(second.IsFailure);
+        Assert.Equal(ErrorType.Conflict, second.Error.Type);
+        Assert.Equal("Billing.ParaclinicalAlreadyInvoiced", second.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ParaclinicalOnly_AtReception_ShouldProduceParaclinicalLineType()
+    {
+        // Ca chỉ-CLS (không encounter): thu ngân lập hoá đơn dịch vụ CLS gắn lượt.
+        var db = TestDbContext.CreateInMemory();
+        var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(patient);
+        var xq = new ServicePrice("DV-000005", "X-quang ngực", 120000m, null, ServiceCategory.Paraclinical);
+        db.ServicePrices.Add(xq);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, new[] { new CreateInvoiceItemRequest(xq.Id, 1) }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.EncounterId);
+        Assert.Equal(InvoiceItemType.Paraclinical, Assert.Single(result.Value.Items).ItemType);
+    }
 }
