@@ -134,3 +134,24 @@
     font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   }
 }
+
+/* ===== In ấn (hoá đơn) =====
+   Khi in, chỉ hiện vùng .print-area; ẩn khung ứng dụng + nút thao tác (.no-print). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 24px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

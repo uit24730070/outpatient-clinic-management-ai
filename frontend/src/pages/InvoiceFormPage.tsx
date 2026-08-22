@@ -1,0 +1,332 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Plus, Trash2, UserSearch } from 'lucide-react'
+import {
+  createInvoice,
+  getInvoice,
+  updateInvoice,
+} from '../services/invoiceService'
+import { listServicePrices } from '../services/servicePriceService'
+import { listPatients } from '../services/patientService'
+import { applyServerErrors } from '../lib/form'
+import { toastError, toastSuccess } from '../lib/toast'
+import type { Patient } from '../types/patient'
+import type { ServicePrice } from '../types/invoice'
+import { InvoiceItemType } from '../types/invoice'
+import { formatVnd } from '../lib/format'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+const itemSchema = z.object({
+  servicePriceId: z.string().min(1, 'Chọn dịch vụ'),
+  quantity: z.number().min(1, 'SL ≥ 1'),
+})
+const schema = z.object({
+  patientId: z.string().min(1, 'Vui lòng chọn bệnh nhân.'),
+  note: z.string(),
+  items: z.array(itemSchema).min(1, 'Cần ít nhất một dòng dịch vụ.'),
+})
+type FormValues = z.infer<typeof schema>
+
+const emptyItem = () => ({ servicePriceId: '', quantity: 1 })
+
+export default function InvoiceFormPage() {
+  const { id } = useParams<{ id: string }>()
+  const isEdit = Boolean(id)
+  const navigate = useNavigate()
+
+  const [services, setServices] = useState<ServicePrice[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [patientSearch, setPatientSearch] = useState('')
+  const [patientName, setPatientName] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { patientId: '', note: '', items: [emptyItem()] },
+  })
+  const { register, handleSubmit, control, watch, setValue, reset, formState } = form
+  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+  const items = watch('items')
+  const patientId = watch('patientId')
+  const errors = formState.errors
+
+  // Nạp bảng giá dịch vụ (dùng cho các dòng) + dữ liệu hoá đơn khi sửa.
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const svc = await listServicePrices({ page: 1, pageSize: 100 })
+        if (active) setServices(svc.items)
+
+        if (id) {
+          const inv = await getInvoice(id)
+          if (active) {
+            setPatientName(inv.patientName ? `${inv.patientName}` : '—')
+            const serviceLines = inv.items
+              .filter((it) => it.itemType === InvoiceItemType.ServiceFee && it.referenceId)
+              .map((it) => ({ servicePriceId: it.referenceId as string, quantity: it.quantity }))
+            reset({
+              patientId: inv.patientId,
+              note: inv.note ?? '',
+              items: serviceLines.length > 0 ? serviceLines : [emptyItem()],
+            })
+          }
+        }
+      } catch (err) {
+        if (active) toastError(err)
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [id, reset])
+
+  // Tìm kiếm bệnh nhân cho dropdown (chỉ khi tạo mới).
+  useEffect(() => {
+    if (isEdit) return
+    let active = true
+    void (async () => {
+      try {
+        const result = await listPatients({
+          page: 1,
+          pageSize: 20,
+          search: patientSearch.trim() || undefined,
+        })
+        if (active) setPatients(result.items)
+      } catch {
+        // Bỏ qua lỗi tìm kiếm; người dùng thử lại.
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [isEdit, patientSearch])
+
+  const serviceById = useMemo(
+    () => new Map(services.map((s) => [s.id, s])),
+    [services],
+  )
+
+  // Tổng tạm tính phía client (server sẽ snapshot + tính lại chính thức).
+  const estimatedTotal = (items ?? []).reduce((sum, it) => {
+    const price = serviceById.get(it.servicePriceId)?.unitPrice ?? 0
+    return sum + price * (Number(it.quantity) || 0)
+  }, 0)
+
+  const onSubmit = handleSubmit(async (values) => {
+    const payload = {
+      note: values.note.trim() || null,
+      items: values.items.map((it) => ({
+        servicePriceId: it.servicePriceId,
+        quantity: Number(it.quantity),
+      })),
+    }
+    try {
+      if (isEdit && id) {
+        await updateInvoice(id, payload)
+        toastSuccess('Đã cập nhật hoá đơn.')
+        navigate(`/invoices/${id}`)
+      } else {
+        const created = await createInvoice({ patientId: values.patientId, ...payload })
+        toastSuccess('Đã tạo hoá đơn.')
+        navigate(`/invoices/${created.id}`)
+      }
+    } catch (err) {
+      applyServerErrors(form, err)
+    }
+  })
+
+  if (loading) return <p className="text-muted-foreground">Đang tải…</p>
+
+  return (
+    <section className="mx-auto max-w-3xl">
+      <PageHeader title={isEdit ? 'Sửa hoá đơn' : 'Tạo hoá đơn lẻ'} />
+
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+        <Card>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Bệnh nhân *</Label>
+              {isEdit ? (
+                <Input value={patientName} disabled />
+              ) : (
+                <>
+                  <div className="relative">
+                    <UserSearch className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      className="pl-8"
+                      placeholder="Tìm bệnh nhân theo tên, mã…"
+                      value={patientSearch}
+                      onChange={(e) => setPatientSearch(e.target.value)}
+                    />
+                  </div>
+                  <Select
+                    value={patientId}
+                    onValueChange={(v) => setValue('patientId', v, { shouldValidate: true })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="— Chọn bệnh nhân —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {patients.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.fullName} ({p.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+              {errors.patientId && (
+                <p className="text-sm text-destructive">{errors.patientId.message}</p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="note">Ghi chú</Label>
+              <Textarea id="note" rows={2} {...register('note')} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {isEdit && (
+          <p className="text-sm text-muted-foreground">
+            Lưu ý: cập nhật sẽ thay toàn bộ dòng bằng các dịch vụ chọn dưới đây (đơn giá snapshot lại
+            theo bảng giá hiện tại). Dòng tiền thuốc từ phiếu khám sẽ không còn.
+          </p>
+        )}
+
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between px-6 py-3">
+              <div>
+                <h3 className="font-semibold">Dòng dịch vụ *</h3>
+                {errors.items?.message && (
+                  <p className="text-sm text-destructive">{errors.items.message}</p>
+                )}
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={() => append(emptyItem())}>
+                <Plus className="size-4" />
+                Thêm dòng
+              </Button>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dịch vụ</TableHead>
+                  <TableHead className="w-[120px]">Đơn giá</TableHead>
+                  <TableHead className="w-[100px]">Số lượng</TableHead>
+                  <TableHead className="w-[130px] text-right">Thành tiền</TableHead>
+                  <TableHead className="w-[60px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fields.map((f, i) => {
+                  const svc = serviceById.get(items[i]?.servicePriceId)
+                  const line = (svc?.unitPrice ?? 0) * (Number(items[i]?.quantity) || 0)
+                  return (
+                    <TableRow key={f.id}>
+                      <TableCell className="align-top">
+                        <Select
+                          value={items[i]?.servicePriceId || undefined}
+                          onValueChange={(v) =>
+                            setValue(`items.${i}.servicePriceId`, v, { shouldValidate: true })
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="— Chọn dịch vụ —" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {services.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} · {formatVnd(s.unitPrice)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.items?.[i]?.servicePriceId && (
+                          <p className="mt-1 text-xs text-destructive">
+                            {errors.items[i]?.servicePriceId?.message}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top tabular-nums text-muted-foreground">
+                        {formatVnd(svc?.unitPrice ?? 0)}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          min={1}
+                          {...register(`items.${i}.quantity`, { valueAsNumber: true })}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top text-right tabular-nums">
+                        {formatVnd(line)}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {fields.length > 1 && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => remove(i)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-end gap-4 px-6 py-3 text-sm">
+              <span className="text-muted-foreground">Tạm tính</span>
+              <span className="text-lg font-semibold tabular-nums">{formatVnd(estimatedTotal)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(isEdit ? `/invoices/${id}` : '/invoices')}
+            disabled={formState.isSubmitting}
+          >
+            Huỷ
+          </Button>
+          <Button type="submit" disabled={formState.isSubmitting}>
+            {formState.isSubmitting ? 'Đang lưu…' : isEdit ? 'Lưu' : 'Tạo hoá đơn'}
+          </Button>
+        </div>
+      </form>
+    </section>
+  )
+}

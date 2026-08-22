@@ -8,6 +8,8 @@ export interface Medication {
   unit: string
   reorderLevel: number
   description: string | null
+  /** Giá bán một đơn vị (VND), dùng tính tiền thuốc trên hoá đơn (BILL-02). */
+  salePrice: number
   /** Tồn tổng = tổng tồn các lô chưa xoá (tính phía server). */
   stockOnHand: number
   createdAt: string
@@ -20,6 +22,7 @@ export interface MedicationFormValues {
   unit: string
   reorderLevel: number
   description: string | null
+  salePrice: number
 }
 
 export interface MedicationBatch {

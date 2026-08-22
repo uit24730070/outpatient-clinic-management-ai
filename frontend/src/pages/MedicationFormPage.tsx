@@ -18,6 +18,7 @@ const schema = z.object({
   activeIngredient: z.string().min(1, 'Vui lòng nhập hoạt chất.'),
   unit: z.string().min(1, 'Vui lòng nhập đơn vị tính.'),
   reorderLevel: z.number().min(0),
+  salePrice: z.number().min(0, 'Giá bán không được âm.'),
   description: z.string(),
 })
 type FormValues = z.infer<typeof schema>
@@ -30,7 +31,7 @@ export default function MedicationFormPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', activeIngredient: '', unit: '', reorderLevel: 0, description: '' },
+    defaultValues: { name: '', activeIngredient: '', unit: '', reorderLevel: 0, salePrice: 0, description: '' },
   })
   const { register, handleSubmit, reset, formState } = form
   const errors = formState.errors
@@ -47,6 +48,7 @@ export default function MedicationFormPage() {
             activeIngredient: m.activeIngredient,
             unit: m.unit,
             reorderLevel: m.reorderLevel,
+            salePrice: m.salePrice,
             description: m.description ?? '',
           })
       } catch (err) {
@@ -66,6 +68,7 @@ export default function MedicationFormPage() {
       activeIngredient: values.activeIngredient.trim(),
       unit: values.unit.trim(),
       reorderLevel: Number(values.reorderLevel),
+      salePrice: Number(values.salePrice),
       description: values.description.trim() || null,
     }
     try {
@@ -119,6 +122,22 @@ export default function MedicationFormPage() {
                   <p className="text-sm text-destructive">{errors.reorderLevel.message}</p>
                 )}
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="salePrice">Giá bán (VND)</Label>
+              <Input
+                id="salePrice"
+                type="number"
+                min={0}
+                step={1}
+                {...register('salePrice', { valueAsNumber: true })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Dùng để tính tiền thuốc trên hoá đơn. Hoá đơn snapshot giá tại thời điểm lập.
+              </p>
+              {errors.salePrice && (
+                <p className="text-sm text-destructive">{errors.salePrice.message}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Mô tả</Label>

@@ -1,12 +1,14 @@
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Sparkles, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Receipt } from 'lucide-react'
 import { listEncounters } from '../services/encounterService'
 import { getPatient } from '../services/patientService'
 import { summarizePatient, askPatient } from '../services/aiService'
+import { createInvoiceFromEncounter } from '../services/invoiceService'
 import { useAuth } from '../store/auth'
-import { toastError } from '../lib/toast'
-import { type Encounter } from '../types/encounter'
+import { canManageBilling } from '../config/access'
+import { toastError, toastSuccess } from '../lib/toast'
+import { EncounterStatus, type Encounter } from '../types/encounter'
 import type { PatientSummary, PatientAnswer } from '../types/ai'
 import type { PagedResult } from '../types/common'
 import { PageHeader } from '../components/PageHeader'
@@ -38,7 +40,10 @@ function formatDate(iso: string): string {
 
 export default function PatientEncountersPage() {
   const { id } = useParams<{ id: string }>()
-  const { canRecordEncounter } = useAuth()
+  const navigate = useNavigate()
+  const { user, canRecordEncounter } = useAuth()
+  const canBilling = canManageBilling(user?.role)
+  const [creatingInvoiceFor, setCreatingInvoiceFor] = useState<string | null>(null)
   const [patientName, setPatientName] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Encounter> | null>(null)
@@ -111,6 +116,20 @@ export default function PatientEncountersPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const createInvoice = async (encounterId: string) => {
+    setCreatingInvoiceFor(encounterId)
+    try {
+      const inv = await createInvoiceFromEncounter(encounterId)
+      toastSuccess('Đã lập hoá đơn từ phiếu khám.')
+      navigate(`/invoices/${inv.id}`)
+    } catch (err) {
+      // Đã có hoá đơn cho phiếu này (409) hoặc lỗi khác — hiển thị thông báo server.
+      toastError(err)
+    } finally {
+      setCreatingInvoiceFor(null)
+    }
+  }
 
   return (
     <section>
@@ -244,18 +263,35 @@ export default function PatientEncountersPage() {
                         <EncounterStatusBadge status={e.status} />
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setExpanded((cur) => (cur === e.id ? null : e.id))}
-                        >
-                          {expanded === e.id ? (
-                            <ChevronDown className="size-4" />
-                          ) : (
-                            <ChevronRight className="size-4" />
+                        <div className="flex items-center justify-end gap-1">
+                          {canBilling && e.status === EncounterStatus.Completed && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={creatingInvoiceFor === e.id}
+                              onClick={() => void createInvoice(e.id)}
+                            >
+                              {creatingInvoiceFor === e.id ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                <Receipt className="size-4" />
+                              )}
+                              Tạo hoá đơn
+                            </Button>
                           )}
-                          {expanded === e.id ? 'Ẩn' : 'Chi tiết'}
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setExpanded((cur) => (cur === e.id ? null : e.id))}
+                          >
+                            {expanded === e.id ? (
+                              <ChevronDown className="size-4" />
+                            ) : (
+                              <ChevronRight className="size-4" />
+                            )}
+                            {expanded === e.id ? 'Ẩn' : 'Chi tiết'}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {expanded === e.id && (

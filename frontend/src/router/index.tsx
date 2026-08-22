@@ -26,6 +26,11 @@ import MedicationBatchesPage from '../pages/MedicationBatchesPage'
 import StockReceiptsListPage from '../pages/StockReceiptsListPage'
 import StockReceiptFormPage from '../pages/StockReceiptFormPage'
 import PharmacyAlertsPage from '../pages/PharmacyAlertsPage'
+import ServicePricesListPage from '../pages/ServicePricesListPage'
+import ServicePriceFormPage from '../pages/ServicePriceFormPage'
+import InvoicesListPage from '../pages/InvoicesListPage'
+import InvoiceFormPage from '../pages/InvoiceFormPage'
+import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -33,6 +38,7 @@ const RECORD_ENCOUNTER = [UserRole.Admin, UserRole.Doctor]
 const ALL_ROLES = [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist]
 const ADMIN_ONLY = [UserRole.Admin]
 const MANAGE_PHARMACY = [UserRole.Admin, UserRole.Pharmacist]
+const MANAGE_BILLING = [UserRole.Admin, UserRole.Receptionist]
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -129,6 +135,20 @@ export const router = createBrowserRouter([
               { path: 'stock-receipts', element: <StockReceiptsListPage /> },
               { path: 'stock-receipts/new', element: <StockReceiptFormPage /> },
               { path: 'pharmacy/alerts', element: <PharmacyAlertsPage /> },
+            ],
+          },
+
+          // Viện phí — thu ngân bởi Lễ tân/Admin (ManageBilling, ADR 0014).
+          {
+            element: <RequireRole roles={MANAGE_BILLING} />,
+            children: [
+              { path: 'service-prices', element: <ServicePricesListPage /> },
+              { path: 'service-prices/new', element: <ServicePriceFormPage /> },
+              { path: 'service-prices/:id/edit', element: <ServicePriceFormPage /> },
+              { path: 'invoices', element: <InvoicesListPage /> },
+              { path: 'invoices/new', element: <InvoiceFormPage /> },
+              { path: 'invoices/:id', element: <InvoiceDetailPage /> },
+              { path: 'invoices/:id/edit', element: <InvoiceFormPage /> },
             ],
           },
         ],

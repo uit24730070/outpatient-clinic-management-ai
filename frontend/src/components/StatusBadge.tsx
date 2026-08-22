@@ -12,6 +12,11 @@ import {
   type EncounterStatusValue,
 } from '../types/encounter'
 import { UserRole, roleLabels, type UserRoleValue } from '../types/auth'
+import {
+  InvoiceStatus,
+  invoiceStatusLabels,
+  type InvoiceStatusValue,
+} from '../types/invoice'
 
 // Bảng tông màu — giữ đúng ngữ nghĩa màu cũ (ADR 0012), dùng lại khắp app.
 const tone = {
@@ -85,6 +90,20 @@ const roleTone: Record<string, Tone> = {
 
 export function RoleBadge({ role }: { role: UserRoleValue }) {
   return <TonedBadge tone={roleTone[role] ?? 'gray'}>{roleLabels[role] ?? role}</TonedBadge>
+}
+
+const invoiceTone: Record<number, Tone> = {
+  [InvoiceStatus.Draft]: 'amber',
+  [InvoiceStatus.Paid]: 'green',
+  [InvoiceStatus.Cancelled]: 'gray',
+}
+
+export function InvoiceStatusBadge({ status }: { status: InvoiceStatusValue }) {
+  return (
+    <TonedBadge tone={invoiceTone[status] ?? 'gray'}>
+      {invoiceStatusLabels[status] ?? status}
+    </TonedBadge>
+  )
 }
 
 /** Badge trạng thái hoạt động của tài khoản. */

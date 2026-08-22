@@ -27,6 +27,11 @@ export function canManagePharmacy(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin || role === UserRole.Pharmacist
 }
 
+/** Có quyền ghi/đọc nghiệp vụ viện phí (bảng giá, hoá đơn, thu tiền): Admin hoặc Lễ tân — khớp Roles.ManageBilling (ADR 0014). */
+export function canManageBilling(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.Admin || role === UserRole.Receptionist
+}
+
 /** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
 export interface NavItem {
   label: string
@@ -48,6 +53,9 @@ export const navItems: NavItem[] = [
   { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist] },
   { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Pharmacist] },
   { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Pharmacist] },
+  // Viện phí — thu ngân bởi Lễ tân (và Admin), ADR 0014.
+  { label: 'Hoá đơn', to: '/invoices', roles: [UserRole.Admin, UserRole.Receptionist] },
+  { label: 'Bảng giá dịch vụ', to: '/service-prices', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist] },
 ]
 

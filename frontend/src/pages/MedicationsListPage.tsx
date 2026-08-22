@@ -7,6 +7,7 @@ import { canManagePharmacy } from '../config/access'
 import { toastError, toastSuccess } from '../lib/toast'
 import type { PagedResult } from '../types/common'
 import type { Medication } from '../types/medication'
+import { formatVnd } from '../lib/format'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -116,6 +117,7 @@ export default function MedicationsListPage() {
                 <TableHead>Tên thuốc</TableHead>
                 <TableHead>Hoạt chất</TableHead>
                 <TableHead>Đơn vị</TableHead>
+                <TableHead className="text-right">Giá bán</TableHead>
                 <TableHead>Tồn</TableHead>
                 <TableHead>Ngưỡng</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
@@ -124,14 +126,14 @@ export default function MedicationsListPage() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     Đang tải…
                   </TableCell>
                 </TableRow>
               )}
               {!loading && data?.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     Không có thuốc nào.
                   </TableCell>
                 </TableRow>
@@ -145,6 +147,7 @@ export default function MedicationsListPage() {
                       <TableCell className="font-medium">{m.name}</TableCell>
                       <TableCell>{m.activeIngredient}</TableCell>
                       <TableCell>{m.unit}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatVnd(m.salePrice)}</TableCell>
                       <TableCell>
                         <span className={low ? 'font-semibold text-destructive' : undefined}>
                           {m.stockOnHand}

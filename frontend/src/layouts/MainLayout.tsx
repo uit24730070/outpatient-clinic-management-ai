@@ -11,6 +11,8 @@ import {
   TriangleAlert,
   Bot,
   Hospital,
+  Receipt,
+  Banknote,
   LogOut,
   Menu,
   ChevronDown,
@@ -43,6 +45,8 @@ const navIcons: Record<string, typeof Calendar> = {
   '/medications': Pill,
   '/stock-receipts': PackagePlus,
   '/pharmacy/alerts': TriangleAlert,
+  '/invoices': Receipt,
+  '/service-prices': Banknote,
   '/assistant': Bot,
 }
 
