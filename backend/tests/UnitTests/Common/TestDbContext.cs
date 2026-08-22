@@ -5,6 +5,7 @@ using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,10 @@ public sealed class TestDbContext : DbContext, IAppDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
+    public DbSet<Medication> Medications => Set<Medication>();
+    public DbSet<MedicationBatch> MedicationBatches => Set<MedicationBatch>();
+    public DbSet<StockReceipt> StockReceipts => Set<StockReceipt>();
+    public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +43,19 @@ public sealed class TestDbContext : DbContext, IAppDbContext
                 item.HasKey("Id");
             });
             builder.Navigation(e => e.PrescriptionItems)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        // Phiếu nhập kho: owned collection dòng nhập (như PrescriptionItem).
+        modelBuilder.Entity<StockReceipt>(builder =>
+        {
+            builder.OwnsMany(r => r.Items, item =>
+            {
+                item.WithOwner().HasForeignKey("StockReceiptId");
+                item.Property<int>("Id");
+                item.HasKey("Id");
+            });
+            builder.Navigation(r => r.Items)
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
