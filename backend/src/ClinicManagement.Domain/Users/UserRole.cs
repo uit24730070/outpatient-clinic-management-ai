@@ -13,5 +13,8 @@ public enum UserRole
     Doctor = 2,
 
     /// <summary>Dược sĩ — quản lý trực tiếp kho thuốc (danh mục, nhập kho, sổ cái, cảnh báo, cấp phát).</summary>
-    Pharmacist = 3
+    Pharmacist = 3,
+
+    /// <summary>Kỹ thuật viên — thực hiện dịch vụ cận lâm sàng và nhập kết quả (ADR 0016).</summary>
+    Technician = 4
 }

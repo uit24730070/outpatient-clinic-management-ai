@@ -48,6 +48,14 @@ public sealed class AppointmentsController : ApiControllerBase
         return ToResponse(result);
     }
 
+    /// <summary>Lượt khám gần nhất của bệnh nhân (prefill dịch vụ khi tái khám); data=null nếu chưa có.</summary>
+    [HttpGet("last")]
+    public async Task<IActionResult> GetLast([FromQuery] Guid patientId, CancellationToken ct)
+    {
+        var result = await _appointments.GetLastForPatientAsync(patientId, ct);
+        return ToResponse(result);
+    }
+
     /// <summary>Đổi khung giờ/lý do của lịch khám.</summary>
     [Authorize(Roles = Roles.ManageStaff)]
     [HttpPut("{id:guid}")]

@@ -10,6 +10,7 @@ public static class Roles
     public const string Receptionist = "Receptionist";
     public const string Doctor = "Doctor";
     public const string Pharmacist = "Pharmacist";
+    public const string Technician = "Technician";
 
     /// <summary>Nhóm được phép ghi (tạo/sửa/xoá) nghiệp vụ vận hành (Bệnh nhân, Lịch khám): Admin và Lễ tân.</summary>
     public const string ManageStaff = Admin + "," + Receptionist;
@@ -39,4 +40,11 @@ public static class Roles
     /// Bác sĩ/Dược sĩ không thấy dữ liệu tài chính.
     /// </summary>
     public const string ManageBilling = Admin + "," + Receptionist;
+
+    /// <summary>
+    /// Nhóm được phép nhập kết quả cận lâm sàng: Admin, Bác sĩ và Kỹ thuật viên (ADR 0016).
+    /// Tách khỏi <see cref="RecordEncounter"/> để Kỹ thuật viên thực hiện & nhập kết quả CLS mà không
+    /// đụng bệnh án/đơn thuốc. Chỉ định (encounter) vẫn là Bác sĩ; chỉ định walk-in là Lễ tân.
+    /// </summary>
+    public const string RecordLabResult = Admin + "," + Doctor + "," + Technician;
 }

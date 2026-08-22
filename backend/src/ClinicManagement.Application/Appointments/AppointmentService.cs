@@ -1,6 +1,7 @@
 using ClinicManagement.Application.Appointments.Dtos;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Appointments;
+using ClinicManagement.Domain.Billing;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,12 +29,19 @@ public sealed class AppointmentService : IAppointmentService
             return Error.Conflict("Appointment.Overlap",
                 "Bác sĩ đã có lịch khác trùng khung giờ này.");
 
+        var service = await ResolveServiceAsync(request.ServicePriceId, ct);
+        if (service.IsFailure)
+            return Result.Failure<AppointmentDto>(service.Error);
+
         var appointment = new Appointment(
             request.PatientId,
             request.DoctorId,
             request.StartTime,
             request.EndTime,
-            NormalizeOptional(request.Reason));
+            NormalizeOptional(request.Reason),
+            service.Value?.Id,
+            service.Value?.Name,
+            service.Value?.UnitPrice);
 
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync(ct);
@@ -94,13 +102,50 @@ public sealed class AppointmentService : IAppointmentService
             return Error.Conflict("Appointment.Overlap",
                 "Bác sĩ đã có lịch khác trùng khung giờ này.");
 
+        var service = await ResolveServiceAsync(request.ServicePriceId, ct);
+        if (service.IsFailure)
+            return Result.Failure<AppointmentDto>(service.Error);
+
         var reschedule = appointment.Reschedule(
             request.StartTime, request.EndTime, NormalizeOptional(request.Reason));
         if (reschedule.IsFailure)
             return Result.Failure<AppointmentDto>(reschedule.Error);
 
+        appointment.SetService(service.Value?.Id, service.Value?.Name, service.Value?.UnitPrice);
+
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(appointment.Id, ct))!;
+    }
+
+    public async Task<Result<AppointmentDto?>> GetLastForPatientAsync(Guid patientId, CancellationToken ct = default)
+    {
+        var dto = await Project(_db.Appointments.AsNoTracking()
+                .Where(a => a.PatientId == patientId)
+                .OrderByDescending(a => a.StartTime))
+            .FirstOrDefaultAsync(ct);
+        return Result.Success<AppointmentDto?>(dto);
+    }
+
+    /// <summary>
+    /// Tra dịch vụ khám theo Id (nếu có): phải tồn tại và thuộc loại <see cref="ServiceCategory.Consultation"/>.
+    /// Trả null khi không gắn dịch vụ (tương thích lịch không dịch vụ).
+    /// </summary>
+    private async Task<Result<ServicePrice?>> ResolveServiceAsync(Guid? servicePriceId, CancellationToken ct)
+    {
+        if (servicePriceId is null)
+            return Result.Success<ServicePrice?>(null);
+
+        var service = await _db.ServicePrices.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == servicePriceId, ct);
+        if (service is null)
+            return Error.NotFound("ServicePrice.NotFound",
+                $"Dịch vụ khám với Id {servicePriceId} không tồn tại.");
+
+        if (service.Category != ServiceCategory.Consultation)
+            return Error.Validation("Appointment.ServiceNotConsultation",
+                "Dịch vụ đăng ký khi đặt lịch phải thuộc loại công khám (Consultation).");
+
+        return Result.Success<ServicePrice?>(service);
     }
 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
@@ -167,6 +212,9 @@ public sealed class AppointmentService : IAppointmentService
             a.Reason,
             a.Status,
             a.CheckedInAt,
+            a.ServicePriceId,
+            a.ServiceName,
+            a.ServicePrice,
             a.CreatedAt,
             a.UpdatedAt));
 

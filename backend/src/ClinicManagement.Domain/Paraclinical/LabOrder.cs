@@ -4,12 +4,14 @@ using ClinicManagement.Shared.Results;
 namespace ClinicManagement.Domain.Paraclinical;
 
 /// <summary>
-/// Phiếu chỉ định cận lâm sàng: bác sĩ chỉ định các dịch vụ CLS (xét nghiệm/CĐHA) trong lúc khám.
-/// Mã phiếu (<see cref="Code"/>, dạng CLS-) là định danh nghiệp vụ. Gắn phiếu khám nguồn
-/// (<see cref="EncounterId"/>) và lưu <b>snapshot</b> bệnh nhân/bác sĩ. Là <b>aggregate root</b> của cụm
-/// mục chỉ định (<see cref="Items"/>, owned collection). Vòng đời <see cref="LabOrderStatus"/> chuyển
-/// tự động theo tiến độ nhập kết quả. Phí CLS được lập <b>hoá đơn riêng</b> (Mô hình A) — chống lập trùng
-/// bằng cờ <see cref="InvoicedAt"/> (ADR 0015).
+/// Phiếu chỉ định cận lâm sàng. Có <b>hai nguồn phát sinh</b> (ADR 0016):
+/// (1) <b>bác sĩ chỉ định trong lúc khám</b> — gắn phiếu khám nguồn (<see cref="EncounterId"/>) + bác sĩ
+/// (<see cref="DoctorId"/>); (2) <b>walk-in do lễ tân đăng ký</b> — không cần phiếu khám/bác sĩ
+/// (<see cref="EncounterId"/>/<see cref="DoctorId"/> null), có thể gắn lượt tiếp đón (<see cref="AppointmentId"/>).
+/// Mã phiếu (<see cref="Code"/>, dạng CLS-) là định danh nghiệp vụ; lưu <b>snapshot</b> bệnh nhân/bác sĩ.
+/// Là <b>aggregate root</b> của cụm mục chỉ định (<see cref="Items"/>, owned collection). Vòng đời
+/// <see cref="LabOrderStatus"/> chuyển tự động theo tiến độ nhập kết quả. Phí CLS được lập <b>hoá đơn riêng</b>
+/// (Mô hình A) — chống lập trùng bằng cờ <see cref="InvoicedAt"/> (ADR 0015).
 /// </summary>
 public class LabOrder : Entity
 {
@@ -18,6 +20,7 @@ public class LabOrder : Entity
     // EF Core cần constructor không tham số.
     private LabOrder() { }
 
+    /// <summary>Đường bác sĩ chỉ định trong lúc khám (Sprint 15): encounter/doctor bắt buộc.</summary>
     public LabOrder(
         string code, Guid encounterId, Guid patientId, Guid doctorId, string? note,
         IEnumerable<LabOrderItem> items)
@@ -31,17 +34,40 @@ public class LabOrder : Entity
         _items.AddRange(items);
     }
 
+    /// <summary>
+    /// Đường <b>walk-in</b> do lễ tân đăng ký (ADR 0016): không có phiếu khám/bác sĩ; có thể gắn lượt tiếp đón.
+    /// </summary>
+    public static LabOrder CreateWalkIn(
+        string code, Guid patientId, Guid? appointmentId, string? note, IEnumerable<LabOrderItem> items)
+    {
+        var order = new LabOrder
+        {
+            Code = code,
+            PatientId = patientId,
+            AppointmentId = appointmentId,
+            EncounterId = null,
+            DoctorId = null,
+            Note = note,
+            Status = LabOrderStatus.Ordered
+        };
+        order._items.AddRange(items);
+        return order;
+    }
+
     /// <summary>Mã phiếu chỉ định duy nhất, ví dụ CLS-000001.</summary>
     public string Code { get; private set; } = null!;
 
-    /// <summary>Phiếu khám nguồn (bác sĩ chỉ định trong lúc khám).</summary>
-    public Guid EncounterId { get; private set; }
+    /// <summary>Phiếu khám nguồn (bác sĩ chỉ định trong lúc khám); null với walk-in.</summary>
+    public Guid? EncounterId { get; private set; }
 
-    /// <summary>Bệnh nhân (snapshot từ phiếu khám).</summary>
+    /// <summary>Lượt tiếp đón gắn kèm (nếu có) — dùng gom hoá đơn theo lượt cho walk-in.</summary>
+    public Guid? AppointmentId { get; private set; }
+
+    /// <summary>Bệnh nhân (snapshot từ phiếu khám hoặc do lễ tân chọn khi walk-in).</summary>
     public Guid PatientId { get; private set; }
 
-    /// <summary>Bác sĩ chỉ định (snapshot từ phiếu khám).</summary>
-    public Guid DoctorId { get; private set; }
+    /// <summary>Bác sĩ chỉ định (snapshot từ phiếu khám); null với walk-in.</summary>
+    public Guid? DoctorId { get; private set; }
 
     /// <summary>Ghi chú/chỉ định thêm (tuỳ chọn).</summary>
     public string? Note { get; private set; }

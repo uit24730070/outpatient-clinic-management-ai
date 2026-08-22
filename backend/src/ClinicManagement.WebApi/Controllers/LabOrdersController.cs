@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace ClinicManagement.WebApi.Controllers;
 
 /// <summary>
-/// Phiếu chỉ định cận lâm sàng. Đọc mở cho mọi vai trò lâm sàng (đã đăng nhập); chỉ định/nhập kết quả/huỷ
-/// giới hạn Bác sĩ/Admin (<see cref="Roles.RecordEncounter"/>). Lập hoá đơn phí CLS nằm ở InvoicesController.
+/// Phiếu chỉ định cận lâm sàng. Đọc mở cho mọi vai trò lâm sàng (đã đăng nhập). Chỉ định trong lúc khám =
+/// Bác sĩ/Admin (<see cref="Roles.RecordEncounter"/>); đăng ký walk-in = Admin/Lễ tân (<see cref="Roles.ManageStaff"/>);
+/// nhập kết quả = Admin/Bác sĩ/Kỹ thuật viên (<see cref="Roles.RecordLabResult"/>). Lập hoá đơn phí CLS ở InvoicesController.
 /// </summary>
 [Authorize]
 [Route("api/lab-orders")]
@@ -25,6 +26,15 @@ public sealed class LabOrdersController : ApiControllerBase
     public async Task<IActionResult> Create([FromBody] CreateLabOrderRequest request, CancellationToken ct)
     {
         var result = await _labOrders.CreateFromEncounterAsync(request, ct);
+        return ToResponse(result, StatusCodes.Status201Created);
+    }
+
+    /// <summary>Đăng ký cận lâm sàng walk-in (lễ tân): không cần phiếu khám, có thể gắn lượt tiếp đón (ADR 0016).</summary>
+    [HttpPost("walk-in")]
+    [Authorize(Roles = Roles.ManageStaff)]
+    public async Task<IActionResult> CreateWalkIn([FromBody] CreateWalkInLabOrderRequest request, CancellationToken ct)
+    {
+        var result = await _labOrders.CreateWalkInAsync(request, ct);
         return ToResponse(result, StatusCodes.Status201Created);
     }
 
@@ -50,9 +60,9 @@ public sealed class LabOrdersController : ApiControllerBase
         return ToResponse(result);
     }
 
-    /// <summary>Nhập kết quả cho một mục chỉ định (chuyển vòng đời mục/phiếu).</summary>
+    /// <summary>Nhập kết quả cho một mục chỉ định (chuyển vòng đời mục/phiếu) — Admin/Bác sĩ/Kỹ thuật viên.</summary>
     [HttpPost("{id:guid}/items/{itemId:guid}/result")]
-    [Authorize(Roles = Roles.RecordEncounter)]
+    [Authorize(Roles = Roles.RecordLabResult)]
     public async Task<IActionResult> SetItemResult(
         Guid id, Guid itemId, [FromBody] SetLabResultRequest request, CancellationToken ct)
     {

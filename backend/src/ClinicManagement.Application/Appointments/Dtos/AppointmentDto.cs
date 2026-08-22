@@ -14,5 +14,8 @@ public sealed record AppointmentDto(
     string? Reason,
     AppointmentStatus Status,
     DateTimeOffset? CheckedInAt,
+    Guid? ServicePriceId,
+    string? ServiceName,
+    decimal? ServicePrice,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

@@ -1,3 +1,4 @@
+using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
@@ -20,9 +21,10 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
             .IsRequired();
         builder.HasIndex(o => o.Code).IsUnique();
 
-        // Tra phiếu chỉ định theo phiếu khám / bệnh nhân.
+        // Tra phiếu chỉ định theo phiếu khám / bệnh nhân / lượt tiếp đón (walk-in).
         builder.HasIndex(o => o.EncounterId);
         builder.HasIndex(o => o.PatientId);
+        builder.HasIndex(o => o.AppointmentId);
 
         builder.Property(o => o.Status)
             .HasConversion<string>()
@@ -35,6 +37,7 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
         builder.Ignore(o => o.TotalAmount);
 
         // Khoá ngoại tới phiếu khám/bệnh nhân/bác sĩ; chặn xoá (vật lý) khi còn phiếu chỉ định tham chiếu.
+        // Encounter/Doctor nay tuỳ chọn (null với walk-in — ADR 0016); Appointment gắn tuỳ chọn cho walk-in.
         builder.HasOne<Encounter>()
             .WithMany()
             .HasForeignKey(o => o.EncounterId)
@@ -48,6 +51,11 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
         builder.HasOne<Doctor>()
             .WithMany()
             .HasForeignKey(o => o.DoctorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Appointment>()
+            .WithMany()
+            .HasForeignKey(o => o.AppointmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Cha–con: owned collection ở bảng riêng, vòng đời gắn chặt phiếu chỉ định (như InvoiceItem, ADR 0015).

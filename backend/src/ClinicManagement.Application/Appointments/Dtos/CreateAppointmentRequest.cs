@@ -6,4 +6,5 @@ public sealed record CreateAppointmentRequest(
     Guid DoctorId,
     DateTimeOffset StartTime,
     DateTimeOffset EndTime,
-    string? Reason);
+    string? Reason,
+    Guid? ServicePriceId = null);

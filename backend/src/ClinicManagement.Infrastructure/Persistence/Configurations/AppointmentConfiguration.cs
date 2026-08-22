@@ -18,6 +18,10 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.Property(a => a.EndTime).IsRequired();
         builder.Property(a => a.Reason).HasMaxLength(500);
 
+        // Dịch vụ khám đăng ký lúc đặt lịch (snapshot tên/giá) — tuỳ chọn (ADR 0016).
+        builder.Property(a => a.ServiceName).HasMaxLength(200);
+        builder.Property(a => a.ServicePrice).HasColumnType("numeric(18,2)");
+
         // Enum trạng thái lưu dạng chuỗi (đồng nhất Gender/UserRole).
         builder.Property(a => a.Status)
             .HasConversion<string>()

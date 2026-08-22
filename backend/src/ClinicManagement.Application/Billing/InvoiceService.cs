@@ -99,11 +99,16 @@ public sealed class InvoiceService : IInvoiceService
         if (mark.IsFailure)
             return Result.Failure<InvoiceDto>(mark.Error);
 
-        // Suy ra lượt tiếp đón từ phiếu khám nguồn để gom hoá đơn theo lượt.
-        var appointmentId = await _db.Encounters.AsNoTracking()
-            .Where(e => e.Id == order.EncounterId)
-            .Select(e => (Guid?)e.AppointmentId)
-            .FirstOrDefaultAsync(ct);
+        // Suy ra lượt tiếp đón: ưu tiên lượt gắn trực tiếp trên phiếu chỉ định (walk-in, ADR 0016),
+        // fallback từ phiếu khám nguồn (đường bác sĩ Sprint 15) — giữ nguyên hành vi cũ khi có encounter.
+        var appointmentId = order.AppointmentId;
+        if (appointmentId is null && order.EncounterId is not null)
+        {
+            appointmentId = await _db.Encounters.AsNoTracking()
+                .Where(e => e.Id == order.EncounterId)
+                .Select(e => (Guid?)e.AppointmentId)
+                .FirstOrDefaultAsync(ct);
+        }
 
         var code = await GenerateCodeAsync(ct);
         var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId);

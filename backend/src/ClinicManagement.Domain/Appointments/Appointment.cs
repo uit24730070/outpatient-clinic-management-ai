@@ -18,13 +18,19 @@ public class Appointment : Entity
         Guid doctorId,
         DateTimeOffset startTime,
         DateTimeOffset endTime,
-        string? reason)
+        string? reason,
+        Guid? servicePriceId = null,
+        string? serviceName = null,
+        decimal? servicePrice = null)
     {
         PatientId = patientId;
         DoctorId = doctorId;
         StartTime = startTime;
         EndTime = endTime;
         Reason = reason;
+        ServicePriceId = servicePriceId;
+        ServiceName = serviceName;
+        ServicePrice = servicePrice;
         Status = AppointmentStatus.Scheduled;
     }
 
@@ -35,6 +41,23 @@ public class Appointment : Entity
 
     /// <summary>Lý do khám (tuỳ chọn).</summary>
     public string? Reason { get; private set; }
+
+    /// <summary>Dịch vụ khám lễ tân đăng ký khi đặt lịch (bảng giá loại Consultation); null nếu chưa gắn (ADR 0016).</summary>
+    public Guid? ServicePriceId { get; private set; }
+
+    /// <summary>Tên dịch vụ khám — snapshot lúc gắn (đổi giá/tên sau không ảnh hưởng lịch cũ).</summary>
+    public string? ServiceName { get; private set; }
+
+    /// <summary>Đơn giá dịch vụ khám (VND) — snapshot lúc gắn.</summary>
+    public decimal? ServicePrice { get; private set; }
+
+    /// <summary>Gắn/đổi dịch vụ khám (snapshot tên/giá). Truyền null để gỡ.</summary>
+    public void SetService(Guid? servicePriceId, string? serviceName, decimal? servicePrice)
+    {
+        ServicePriceId = servicePriceId;
+        ServiceName = serviceName;
+        ServicePrice = servicePrice;
+    }
 
     public AppointmentStatus Status { get; private set; }
 

@@ -32,7 +32,56 @@ public sealed class LabOrderService : ILabOrderService
             return Result.Failure<LabOrderDto>(Error.Conflict(
                 "Paraclinical.EncounterNotDraft", "Chỉ chỉ định cận lâm sàng khi phiếu khám còn ở trạng thái nháp."));
 
-        // Snapshot tên/giá dịch vụ; mọi dịch vụ phải tồn tại và thuộc loại Paraclinical.
+        var itemsResult = await BuildItemsAsync(lines, ct);
+        if (itemsResult.IsFailure)
+            return Result.Failure<LabOrderDto>(itemsResult.Error);
+
+        var code = await GenerateCodeAsync(ct);
+        var order = new LabOrder(
+            code, encounter.Id, encounter.PatientId, encounter.DoctorId,
+            NormalizeOptional(request.Note), itemsResult.Value);
+
+        _db.LabOrders.Add(order);
+        await _db.SaveChangesAsync(ct);
+
+        return (await ProjectByIdAsync(order.Id, ct))!;
+    }
+
+    public async Task<Result<LabOrderDto>> CreateWalkInAsync(
+        CreateWalkInLabOrderRequest request, CancellationToken ct = default)
+    {
+        var lines = request.Items ?? Array.Empty<CreateLabOrderItemRequest>();
+        if (lines.Count == 0)
+            return Error.Validation("Paraclinical.NoItems", "Phiếu chỉ định phải có ít nhất một dịch vụ.");
+
+        if (!await _db.Patients.AnyAsync(p => p.Id == request.PatientId, ct))
+            return Error.NotFound("Patient.NotFound", $"Không tìm thấy bệnh nhân với Id {request.PatientId}.");
+
+        // Lượt tiếp đón tuỳ chọn: kiểm tồn tại khi có (để null với bệnh nhân vãng lai chỉ làm CLS).
+        if (request.AppointmentId is not null &&
+            !await _db.Appointments.AnyAsync(a => a.Id == request.AppointmentId, ct))
+            return Error.NotFound("Appointment.NotFound",
+                $"Không tìm thấy lượt khám với Id {request.AppointmentId}.");
+
+        var itemsResult = await BuildItemsAsync(lines, ct);
+        if (itemsResult.IsFailure)
+            return Result.Failure<LabOrderDto>(itemsResult.Error);
+
+        var code = await GenerateCodeAsync(ct);
+        var order = LabOrder.CreateWalkIn(
+            code, request.PatientId, request.AppointmentId,
+            NormalizeOptional(request.Note), itemsResult.Value);
+
+        _db.LabOrders.Add(order);
+        await _db.SaveChangesAsync(ct);
+
+        return (await ProjectByIdAsync(order.Id, ct))!;
+    }
+
+    /// <summary>Snapshot tên/giá dịch vụ cho các dòng chỉ định; mọi dịch vụ phải tồn tại và thuộc loại Paraclinical.</summary>
+    private async Task<Result<List<LabOrderItem>>> BuildItemsAsync(
+        IReadOnlyList<CreateLabOrderItemRequest> lines, CancellationToken ct)
+    {
         var serviceIds = lines.Select(l => l.ServicePriceId).Distinct().ToList();
         var services = await _db.ServicePrices
             .Where(s => serviceIds.Contains(s.Id))
@@ -48,21 +97,11 @@ public sealed class LabOrderService : ILabOrderService
             return Error.Validation("Paraclinical.ServiceNotParaclinical",
                 $"Dịch vụ không thuộc loại cận lâm sàng: {string.Join(", ", notParaclinical)}.");
 
-        var items = lines.Select(l =>
+        return lines.Select(l =>
         {
             var svc = services[l.ServicePriceId];
             return new LabOrderItem(svc.Id, svc.Name, svc.UnitPrice);
         }).ToList();
-
-        var code = await GenerateCodeAsync(ct);
-        var order = new LabOrder(
-            code, encounter.Id, encounter.PatientId, encounter.DoctorId,
-            NormalizeOptional(request.Note), items);
-
-        _db.LabOrders.Add(order);
-        await _db.SaveChangesAsync(ct);
-
-        return (await ProjectByIdAsync(order.Id, ct))!;
     }
 
     public async Task<Result<PagedResult<LabOrderDto>>> GetListAsync(
@@ -134,6 +173,7 @@ public sealed class LabOrderService : ILabOrderService
             o.Id,
             o.Code,
             o.EncounterId,
+            o.AppointmentId,
             o.PatientId,
             _db.Patients.Where(p => p.Id == o.PatientId).Select(p => p.FullName).FirstOrDefault(),
             o.DoctorId,

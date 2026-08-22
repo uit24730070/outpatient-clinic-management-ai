@@ -4,4 +4,5 @@ namespace ClinicManagement.Application.Appointments.Dtos;
 public sealed record UpdateAppointmentRequest(
     DateTimeOffset StartTime,
     DateTimeOffset EndTime,
-    string? Reason);
+    string? Reason,
+    Guid? ServicePriceId = null);

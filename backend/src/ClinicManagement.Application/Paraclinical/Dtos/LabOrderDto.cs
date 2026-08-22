@@ -6,10 +6,11 @@ namespace ClinicManagement.Application.Paraclinical.Dtos;
 public sealed record LabOrderDto(
     Guid Id,
     string Code,
-    Guid EncounterId,
+    Guid? EncounterId,
+    Guid? AppointmentId,
     Guid PatientId,
     string? PatientName,
-    Guid DoctorId,
+    Guid? DoctorId,
     string? DoctorName,
     LabOrderStatus Status,
     string? Note,

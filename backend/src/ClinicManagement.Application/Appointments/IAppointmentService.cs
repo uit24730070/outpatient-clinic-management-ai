@@ -18,6 +18,9 @@ public interface IAppointmentService
     Task<Result<AppointmentDto>> CreateAsync(CreateAppointmentRequest request, CancellationToken ct = default);
     Task<Result<PagedResult<AppointmentDto>>> GetListAsync(AppointmentFilter filter, CancellationToken ct = default);
     Task<Result<AppointmentDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Lượt khám gần nhất của bệnh nhân (để prefill dịch vụ khi tái khám); null nếu chưa có.</summary>
+    Task<Result<AppointmentDto?>> GetLastForPatientAsync(Guid patientId, CancellationToken ct = default);
     Task<Result<AppointmentDto>> UpdateAsync(Guid id, UpdateAppointmentRequest request, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
 
