@@ -9,6 +9,8 @@ public sealed record MedicationDto(
     string Unit,
     int ReorderLevel,
     string? Description,
+    /// <summary>Giá bán một đơn vị (VND), dùng tính tiền thuốc trên hoá đơn (BILL-02).</summary>
+    decimal SalePrice,
     /// <summary>Tồn tổng = tổng QuantityOnHand các lô chưa xoá của thuốc.</summary>
     int StockOnHand,
     DateTimeOffset CreatedAt,

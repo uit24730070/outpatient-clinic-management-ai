@@ -6,4 +6,5 @@ public sealed record CreateMedicationRequest(
     string ActiveIngredient,
     string Unit,
     int ReorderLevel,
-    string? Description);
+    string? Description,
+    decimal SalePrice = 0m);

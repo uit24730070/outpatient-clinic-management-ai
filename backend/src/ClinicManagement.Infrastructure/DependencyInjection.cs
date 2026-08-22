@@ -1,3 +1,4 @@
+using ClinicManagement.Application.Billing;
 using ClinicManagement.Application.Common.Ai;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Infrastructure.Ai;
@@ -24,6 +25,12 @@ public static class DependencyInjection
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IEncounterEmbeddingStore, PgEncounterEmbeddingStore>();
+
+        // Viện phí: mã dịch vụ công khám mặc định (section "Billing"). POCO singleton — không dùng IOptions
+        // để tránh thêm phụ thuộc package cho lớp Application (ADR 0014).
+        var billingOptions = configuration.GetSection(BillingOptions.SectionName).Get<BillingOptions>()
+            ?? new BillingOptions();
+        services.AddSingleton(billingOptions);
 
         // Xác thực: cấu hình JWT + băm mật khẩu + phát token.
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));

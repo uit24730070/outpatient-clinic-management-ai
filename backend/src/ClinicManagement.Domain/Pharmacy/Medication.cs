@@ -18,7 +18,8 @@ public class Medication : Entity
         string activeIngredient,
         string unit,
         int reorderLevel,
-        string? description)
+        string? description,
+        decimal salePrice = 0m)
     {
         Code = code;
         Name = name;
@@ -26,6 +27,7 @@ public class Medication : Entity
         Unit = unit;
         ReorderLevel = reorderLevel;
         Description = description;
+        SalePrice = salePrice;
     }
 
     /// <summary>Mã thuốc duy nhất, ví dụ TH-000001.</summary>
@@ -46,18 +48,26 @@ public class Medication : Entity
     /// <summary>Mô tả thêm (tuỳ chọn).</summary>
     public string? Description { get; private set; }
 
+    /// <summary>
+    /// Giá bán một đơn vị thuốc (VND), dùng để tính tiền thuốc trên hoá đơn (BILL-02).
+    /// Mặc định 0; không liên quan tồn kho/FEFO. Dòng hoá đơn snapshot giá này lúc lập.
+    /// </summary>
+    public decimal SalePrice { get; private set; }
+
     /// <summary>Cập nhật các trường có thể chỉnh sửa của thuốc.</summary>
     public void UpdateDetails(
         string name,
         string activeIngredient,
         string unit,
         int reorderLevel,
-        string? description)
+        string? description,
+        decimal salePrice = 0m)
     {
         Name = name;
         ActiveIngredient = activeIngredient;
         Unit = unit;
         ReorderLevel = reorderLevel;
         Description = description;
+        SalePrice = salePrice;
     }
 }

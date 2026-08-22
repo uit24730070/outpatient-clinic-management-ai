@@ -22,6 +22,9 @@ public sealed class CreateMedicationRequestValidator : AbstractValidator<CreateM
         RuleFor(x => x.ReorderLevel)
             .GreaterThanOrEqualTo(0).WithMessage("Ngưỡng tồn tối thiểu không được âm.");
 
+        RuleFor(x => x.SalePrice)
+            .GreaterThanOrEqualTo(0).WithMessage("Giá bán không được âm.");
+
         RuleFor(x => x.Description)
             .MaximumLength(1000)
             .When(x => !string.IsNullOrWhiteSpace(x.Description));

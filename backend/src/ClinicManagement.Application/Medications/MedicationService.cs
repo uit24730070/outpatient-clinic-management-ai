@@ -23,7 +23,8 @@ public sealed class MedicationService : IMedicationService
             request.ActiveIngredient.Trim(),
             request.Unit.Trim(),
             request.ReorderLevel,
-            NormalizeOptional(request.Description));
+            NormalizeOptional(request.Description),
+            request.SalePrice);
 
         _db.Medications.Add(medication);
         await _db.SaveChangesAsync(ct);
@@ -77,7 +78,8 @@ public sealed class MedicationService : IMedicationService
             request.ActiveIngredient.Trim(),
             request.Unit.Trim(),
             request.ReorderLevel,
-            NormalizeOptional(request.Description));
+            NormalizeOptional(request.Description),
+            request.SalePrice);
 
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(medication.Id, ct))!;
@@ -121,6 +123,7 @@ public sealed class MedicationService : IMedicationService
             m.Unit,
             m.ReorderLevel,
             m.Description,
+            m.SalePrice,
             _db.MedicationBatches.Where(b => b.MedicationId == m.Id).Sum(b => (int?)b.QuantityOnHand) ?? 0,
             m.CreatedAt,
             m.UpdatedAt));

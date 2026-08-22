@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Ai;
 using ClinicManagement.Domain.Appointments;
+using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
@@ -28,6 +29,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<MedicationBatch> MedicationBatches => Set<MedicationBatch>();
     public DbSet<StockReceipt> StockReceipts => Set<StockReceipt>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
+    public DbSet<ServicePrice> ServicePrices => Set<ServicePrice>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

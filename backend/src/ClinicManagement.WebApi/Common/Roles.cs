@@ -33,4 +33,10 @@ public static class Roles
     /// đều cần thực hiện được; Lễ tân không đụng tồn kho nữa (ADR 0013).
     /// </summary>
     public const string DispenseEncounter = Admin + "," + Doctor + "," + Pharmacist;
+
+    /// <summary>
+    /// Nhóm được phép ghi/đọc nghiệp vụ viện phí (bảng giá dịch vụ, hoá đơn, thu tiền): Admin và Lễ tân (ADR 0014).
+    /// Bác sĩ/Dược sĩ không thấy dữ liệu tài chính.
+    /// </summary>
+    public const string ManageBilling = Admin + "," + Receptionist;
 }

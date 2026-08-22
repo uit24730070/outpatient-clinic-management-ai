@@ -1,4 +1,5 @@
 using ClinicManagement.Domain.Appointments;
+using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
@@ -24,6 +25,8 @@ public interface IAppDbContext
     DbSet<MedicationBatch> MedicationBatches { get; }
     DbSet<StockReceipt> StockReceipts { get; }
     DbSet<StockTransaction> StockTransactions { get; }
+    DbSet<ServicePrice> ServicePrices { get; }
+    DbSet<Invoice> Invoices { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
