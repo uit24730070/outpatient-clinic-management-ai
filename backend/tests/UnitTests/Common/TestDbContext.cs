@@ -10,6 +10,7 @@ using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
+using ClinicManagement.Domain.Visits;
 using Microsoft.EntityFrameworkCore;
 
 namespace UnitTests.Common;
@@ -26,6 +27,7 @@ public sealed class TestDbContext : DbContext, IAppDbContext
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<Doctor> Doctors => Set<Doctor>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Visit> Visits => Set<Visit>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<Medication> Medications => Set<Medication>();
