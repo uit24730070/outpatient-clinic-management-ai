@@ -15,7 +15,7 @@ public sealed class SpecialtiesController : ApiControllerBase
     public SpecialtiesController(ISpecialtyService specialties) => _specialties = specialties;
 
     /// <summary>Tạo chuyên khoa mới.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.ManageCatalog)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSpecialtyRequest request, CancellationToken ct)
     {
@@ -44,7 +44,7 @@ public sealed class SpecialtiesController : ApiControllerBase
     }
 
     /// <summary>Cập nhật thông tin chuyên khoa.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.ManageCatalog)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSpecialtyRequest request, CancellationToken ct)
     {
@@ -53,7 +53,7 @@ public sealed class SpecialtiesController : ApiControllerBase
     }
 
     /// <summary>Ngừng sử dụng (xoá mềm) chuyên khoa.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.ManageCatalog)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

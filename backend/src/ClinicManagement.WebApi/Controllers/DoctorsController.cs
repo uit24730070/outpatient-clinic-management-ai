@@ -15,7 +15,7 @@ public sealed class DoctorsController : ApiControllerBase
     public DoctorsController(IDoctorService doctors) => _doctors = doctors;
 
     /// <summary>Tạo hồ sơ bác sĩ mới.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.ManageCatalog)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDoctorRequest request, CancellationToken ct)
     {
@@ -44,7 +44,7 @@ public sealed class DoctorsController : ApiControllerBase
     }
 
     /// <summary>Cập nhật thông tin bác sĩ.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.ManageCatalog)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDoctorRequest request, CancellationToken ct)
     {
@@ -53,7 +53,7 @@ public sealed class DoctorsController : ApiControllerBase
     }
 
     /// <summary>Ngừng sử dụng (xoá mềm) hồ sơ bác sĩ.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.ManageCatalog)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

@@ -1,7 +1,10 @@
 using System.Reflection;
 using ClinicManagement.Application.Ai;
 using ClinicManagement.Application.Appointments;
+using ClinicManagement.Application.Assistant;
+using ClinicManagement.Application.Assistant.Tools;
 using ClinicManagement.Application.Auth;
+using ClinicManagement.Application.Common.Ai;
 using ClinicManagement.Application.Doctors;
 using ClinicManagement.Application.Encounters;
 using ClinicManagement.Application.Patients;
@@ -27,6 +30,13 @@ public static class DependencyInjection
         services.AddScoped<IPatientSummaryService, PatientSummaryService>();
         services.AddScoped<IEncounterEmbeddingIndexer, EncounterEmbeddingIndexer>();
         services.AddScoped<IPatientQuestionService, PatientQuestionService>();
+
+        // Trợ lý hội thoại (AI-03): bộ công cụ chỉ-đọc + orchestrator tool-calling.
+        services.AddScoped<IAssistantTool, SearchPatientsTool>();
+        services.AddScoped<IAssistantTool, ListDoctorsTool>();
+        services.AddScoped<IAssistantTool, ListAppointmentsTool>();
+        services.AddScoped<IAssistantTool, GetPatientEncountersTool>();
+        services.AddScoped<IAssistantService, AssistantService>();
         return services;
     }
 }

@@ -12,6 +12,9 @@ public abstract class ApiControllerBase : ControllerBase
     protected Guid CurrentUserId =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : Guid.Empty;
 
+    /// <summary>Vai trò người dùng đang đăng nhập lấy từ claim (chuỗi rỗng nếu không có).</summary>
+    protected string CurrentUserRole => User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+
     /// <summary>Ánh xạ <see cref="Result{T}"/> sang phản hồi HTTP với envelope <see cref="ApiResponse{T}"/>.</summary>
     protected IActionResult ToResponse<T>(Result<T> result, int successStatusCode = StatusCodes.Status200OK)
     {

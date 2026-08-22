@@ -53,6 +53,25 @@ public static class DependencyInjection
             services.AddSingleton<IChatCompletionService, FakeChatCompletionService>();
         }
 
+        // Trợ lý hội thoại có tool-use (AI-03): client thật khi đủ cấu hình, ngược lại fake.
+        if (aiSettings.IsRealClientConfigured)
+        {
+            services.AddSingleton<IAssistantCompletionService>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AiSettings>>();
+                var http = new HttpClient
+                {
+                    BaseAddress = new Uri(opts.Value.BaseUrl),
+                    Timeout = TimeSpan.FromSeconds(opts.Value.TimeoutSeconds)
+                };
+                return new ClaudeAssistantCompletionService(http, opts);
+            });
+        }
+        else
+        {
+            services.AddSingleton<IAssistantCompletionService, FakeAssistantCompletionService>();
+        }
+
         // Embedding cho RAG: client Voyage thật khi có khoá, ngược lại fake (vector tất định).
         if (aiSettings.IsRealEmbeddingConfigured)
         {
