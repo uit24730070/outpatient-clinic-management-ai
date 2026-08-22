@@ -1,130 +1,145 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { createMedication, getMedication, updateMedication } from '../services/medicationService'
-import { ApiException, toApiException } from '../services/apiClient'
-import type { MedicationFormValues } from '../types/medication'
+import { applyServerErrors } from '../lib/form'
+import { toastError, toastSuccess } from '../lib/toast'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
 
-const emptyForm: MedicationFormValues = {
-  name: '',
-  activeIngredient: '',
-  unit: '',
-  reorderLevel: 0,
-  description: null,
-}
+const schema = z.object({
+  name: z.string().min(1, 'Vui lòng nhập tên thuốc.'),
+  activeIngredient: z.string().min(1, 'Vui lòng nhập hoạt chất.'),
+  unit: z.string().min(1, 'Vui lòng nhập đơn vị tính.'),
+  reorderLevel: z.number().min(0),
+  description: z.string(),
+})
+type FormValues = z.infer<typeof schema>
 
 export default function MedicationFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(isEdit)
 
-  const [values, setValues] = useState<MedicationFormValues>(emptyForm)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
-  const [formError, setFormError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', activeIngredient: '', unit: '', reorderLevel: 0, description: '' },
+  })
+  const { register, handleSubmit, reset, formState } = form
+  const errors = formState.errors
 
   useEffect(() => {
+    if (!id) return
     let active = true
     void (async () => {
       try {
-        if (id) {
-          const m = await getMedication(id)
-          if (active) {
-            setValues({
-              name: m.name,
-              activeIngredient: m.activeIngredient,
-              unit: m.unit,
-              reorderLevel: m.reorderLevel,
-              description: m.description,
-            })
-          }
-        }
+        const m = await getMedication(id)
+        if (active)
+          reset({
+            name: m.name,
+            activeIngredient: m.activeIngredient,
+            unit: m.unit,
+            reorderLevel: m.reorderLevel,
+            description: m.description ?? '',
+          })
       } catch (err) {
-        setFormError(toApiException(err).message)
+        toastError(err)
       } finally {
         if (active) setLoading(false)
       }
     })()
-    return () => { active = false }
-  }, [id])
+    return () => {
+      active = false
+    }
+  }, [id, reset])
 
-  const setField = <K extends keyof MedicationFormValues>(key: K, value: MedicationFormValues[K]) => {
-    setValues((v) => ({ ...v, [key]: value }))
-  }
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setFormError(null)
-    setFieldErrors({})
+  const onSubmit = handleSubmit(async (values) => {
+    const payload = {
+      name: values.name.trim(),
+      activeIngredient: values.activeIngredient.trim(),
+      unit: values.unit.trim(),
+      reorderLevel: Number(values.reorderLevel),
+      description: values.description.trim() || null,
+    }
     try {
       if (isEdit && id) {
-        await updateMedication(id, values)
+        await updateMedication(id, payload)
       } else {
-        await createMedication(values)
+        await createMedication(payload)
       }
+      toastSuccess(isEdit ? 'Đã cập nhật thuốc.' : 'Đã thêm thuốc.')
       navigate('/medications')
     } catch (err) {
-      const ex = toApiException(err)
-      if (ex instanceof ApiException && ex.details) setFieldErrors(ex.details)
-      setFormError(ex.message)
-    } finally {
-      setSaving(false)
+      applyServerErrors(form, err)
     }
-  }
+  })
 
-  if (loading) return <p>Đang tải…</p>
-
-  const err = (field: string) => fieldErrors[field]?.[0]
+  if (loading) return <p className="text-muted-foreground">Đang tải…</p>
 
   return (
-    <section className="form-wrap">
-      <h1>{isEdit ? 'Sửa thuốc' : 'Thêm thuốc'}</h1>
-      {formError && <p className="alert alert--error">{formError}</p>}
-
-      <form className="form" onSubmit={onSubmit} noValidate>
-        <label className="field">
-          <span>Tên thuốc *</span>
-          <input value={values.name} onChange={(e) => setField('name', e.target.value)} />
-          {err('Name') && <small className="field__error">{err('Name')}</small>}
-        </label>
-
-        <label className="field">
-          <span>Hoạt chất *</span>
-          <input value={values.activeIngredient} onChange={(e) => setField('activeIngredient', e.target.value)} />
-          {err('ActiveIngredient') && <small className="field__error">{err('ActiveIngredient')}</small>}
-        </label>
-
-        <label className="field">
-          <span>Đơn vị tính *</span>
-          <input placeholder="viên / vỉ / chai / ống…" value={values.unit}
-            onChange={(e) => setField('unit', e.target.value)} />
-          {err('Unit') && <small className="field__error">{err('Unit')}</small>}
-        </label>
-
-        <label className="field">
-          <span>Ngưỡng tồn tối thiểu</span>
-          <input type="number" min={0} value={values.reorderLevel}
-            onChange={(e) => setField('reorderLevel', Number(e.target.value))} />
-          {err('ReorderLevel') && <small className="field__error">{err('ReorderLevel')}</small>}
-        </label>
-
-        <label className="field">
-          <span>Mô tả</span>
-          <textarea rows={2} value={values.description ?? ''}
-            onChange={(e) => setField('description', e.target.value || null)} />
-          {err('Description') && <small className="field__error">{err('Description')}</small>}
-        </label>
-
-        <div className="form__actions">
-          <button className="btn" type="button" onClick={() => navigate('/medications')} disabled={saving}>
-            Huỷ
-          </button>
-          <button className="btn btn--primary" type="submit" disabled={saving}>
-            {saving ? 'Đang lưu…' : 'Lưu'}
-          </button>
-        </div>
-      </form>
+    <section className="mx-auto max-w-xl">
+      <PageHeader title={isEdit ? 'Sửa thuốc' : 'Thêm thuốc'} />
+      <Card>
+        <CardContent>
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Tên thuốc *</Label>
+              <Input id="name" {...register('name')} />
+              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="activeIngredient">Hoạt chất *</Label>
+              <Input id="activeIngredient" {...register('activeIngredient')} />
+              {errors.activeIngredient && (
+                <p className="text-sm text-destructive">{errors.activeIngredient.message}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="unit">Đơn vị tính *</Label>
+                <Input id="unit" placeholder="viên / vỉ / chai / ống…" {...register('unit')} />
+                {errors.unit && <p className="text-sm text-destructive">{errors.unit.message}</p>}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="reorderLevel">Ngưỡng tồn tối thiểu</Label>
+                <Input
+                  id="reorderLevel"
+                  type="number"
+                  min={0}
+                  {...register('reorderLevel', { valueAsNumber: true })}
+                />
+                {errors.reorderLevel && (
+                  <p className="text-sm text-destructive">{errors.reorderLevel.message}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Mô tả</Label>
+              <Textarea id="description" rows={2} {...register('description')} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/medications')}
+                disabled={formState.isSubmitting}
+              >
+                Huỷ
+              </Button>
+              <Button type="submit" disabled={formState.isSubmitting}>
+                {formState.isSubmitting ? 'Đang lưu…' : 'Lưu'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </section>
   )
 }

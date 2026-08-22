@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus, Stethoscope, X } from 'lucide-react'
 import {
   deleteAppointment,
   listAppointments,
@@ -7,34 +8,56 @@ import {
   type AppointmentAction,
 } from '../services/appointmentService'
 import { listDoctors } from '../services/doctorService'
-import { toApiException } from '../services/apiClient'
 import { useAuth } from '../store/auth'
+import { toastError, toastSuccess } from '../lib/toast'
 import {
   AppointmentStatus,
-  appointmentStatusClass,
   appointmentStatusLabels,
   type Appointment,
 } from '../types/appointment'
 import type { Doctor } from '../types/doctor'
 import type { PagedResult } from '../types/common'
+import { PageHeader } from '../components/PageHeader'
+import { Pager } from '../components/Pager'
+import { AppointmentStatusBadge } from '../components/StatusBadge'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const PAGE_SIZE = 10
+const ALL = 'all'
 
 // Các hành động chuyển trạng thái khả dụng theo trạng thái hiện tại.
-const actionsByStatus: Record<number, { action: AppointmentAction; label: string }[]> = {
+const actionsByStatus: Record<number, { action: AppointmentAction; label: string; danger?: boolean }[]> = {
   [AppointmentStatus.Scheduled]: [
     { action: 'check-in', label: 'Check-in' },
-    { action: 'cancel', label: 'Huỷ' },
-    { action: 'no-show', label: 'Không đến' },
+    { action: 'cancel', label: 'Huỷ', danger: true },
+    { action: 'no-show', label: 'Không đến', danger: true },
   ],
   [AppointmentStatus.CheckedIn]: [
     { action: 'start', label: 'Bắt đầu khám' },
-    { action: 'cancel', label: 'Huỷ' },
-    { action: 'no-show', label: 'Không đến' },
+    { action: 'cancel', label: 'Huỷ', danger: true },
+    { action: 'no-show', label: 'Không đến', danger: true },
   ],
   [AppointmentStatus.InProgress]: [
     { action: 'complete', label: 'Hoàn tất' },
-    { action: 'cancel', label: 'Huỷ' },
+    { action: 'cancel', label: 'Huỷ', danger: true },
   ],
   [AppointmentStatus.Completed]: [],
   [AppointmentStatus.Cancelled]: [],
@@ -50,6 +73,10 @@ function formatTime(iso: string): string {
   })
 }
 
+function formatEndTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
 export default function AppointmentsListPage() {
   const { canManage, canRecordEncounter } = useAuth()
   const [date, setDate] = useState('')
@@ -59,13 +86,12 @@ export default function AppointmentsListPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [data, setData] = useState<PagedResult<Appointment> | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
       try {
-        const page = await listDoctors({ page: 1, pageSize: 100 })
-        setDoctors(page.items)
+        const result = await listDoctors({ page: 1, pageSize: 100 })
+        setDoctors(result.items)
       } catch {
         // Danh sách bác sĩ chỉ phục vụ bộ lọc; lỗi ở đây không chặn danh sách lịch.
       }
@@ -74,7 +100,6 @@ export default function AppointmentsListPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const result = await listAppointments({
         page,
@@ -85,7 +110,7 @@ export default function AppointmentsListPage() {
       })
       setData(result)
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     } finally {
       setLoading(false)
     }
@@ -96,130 +121,230 @@ export default function AppointmentsListPage() {
   }, [load])
 
   const onAction = async (a: Appointment, action: AppointmentAction) => {
-    const labels: Record<AppointmentAction, string> = {
-      'check-in': 'check-in',
-      start: 'bắt đầu khám',
-      complete: 'hoàn tất',
-      cancel: 'huỷ',
-      'no-show': 'đánh dấu không đến',
-    }
-    if ((action === 'cancel' || action === 'no-show') &&
-        !window.confirm(`Xác nhận ${labels[action]} lịch của "${a.patientName ?? ''}"?`)) return
     try {
       await transitionAppointment(a.id, action)
+      toastSuccess('Đã cập nhật trạng thái lịch khám.')
       void load()
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     }
   }
 
   const onDelete = async (a: Appointment) => {
-    if (!window.confirm(`Xoá lịch khám của "${a.patientName ?? ''}"?`)) return
     try {
       await deleteAppointment(a.id)
+      toastSuccess('Đã xoá lịch khám.')
       void load()
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     }
   }
 
   const canEdit = (a: Appointment) =>
     a.status === AppointmentStatus.Scheduled || a.status === AppointmentStatus.CheckedIn
 
+  const hasFilter = Boolean(date || doctorId || status)
+
   return (
     <section>
-      <div className="page-head">
-        <h1>Lịch khám</h1>
-        {canManage && <Link className="btn btn--primary" to="/appointments/new">+ Đặt lịch</Link>}
-      </div>
+      <PageHeader
+        title="Lịch khám"
+        description="Quản lý lịch hẹn & tiếp đón bệnh nhân"
+        actions={
+          canManage && (
+            <Button asChild>
+              <Link to="/appointments/new">
+                <Plus className="size-4" />
+                Đặt lịch
+              </Link>
+            </Button>
+          )
+        }
+      />
 
-      <div className="toolbar">
-        <input type="date" value={date} onChange={(e) => { setPage(1); setDate(e.target.value) }} />
-        <select value={doctorId} onChange={(e) => { setPage(1); setDoctorId(e.target.value) }}>
-          <option value="">— Tất cả bác sĩ —</option>
-          {doctors.map((d) => (
-            <option key={d.id} value={d.id}>{d.fullName}</option>
-          ))}
-        </select>
-        <select value={status} onChange={(e) => { setPage(1); setStatus(e.target.value) }}>
-          <option value="">— Tất cả trạng thái —</option>
-          {Object.values(AppointmentStatus).map((v) => (
-            <option key={v} value={v}>{appointmentStatusLabels[v]}</option>
-          ))}
-        </select>
-        {(date || doctorId || status) && (
-          <button className="btn" onClick={() => { setPage(1); setDate(''); setDoctorId(''); setStatus('') }}>
-            Xoá lọc
-          </button>
-        )}
-      </div>
+      <Card className="mb-4">
+        <CardContent className="flex flex-wrap items-center gap-3">
+          <Input
+            type="date"
+            className="w-auto"
+            value={date}
+            onChange={(e) => {
+              setPage(1)
+              setDate(e.target.value)
+            }}
+          />
+          <Select
+            value={doctorId || ALL}
+            onValueChange={(v) => {
+              setPage(1)
+              setDoctorId(v === ALL ? '' : v)
+            }}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Bác sĩ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Tất cả bác sĩ</SelectItem>
+              {doctors.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.fullName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={status === '' ? ALL : status}
+            onValueChange={(v) => {
+              setPage(1)
+              setStatus(v === ALL ? '' : v)
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Tất cả trạng thái</SelectItem>
+              {Object.values(AppointmentStatus).map((v) => (
+                <SelectItem key={v} value={String(v)}>
+                  {appointmentStatusLabels[v]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hasFilter && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPage(1)
+                setDate('')
+                setDoctorId('')
+                setStatus('')
+              }}
+            >
+              <X className="size-4" />
+              Xoá lọc
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-      {error && <p className="alert alert--error">{error}</p>}
-      {loading && <p>Đang tải…</p>}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thời gian</TableHead>
+                <TableHead>Bệnh nhân</TableHead>
+                <TableHead>Bác sĩ</TableHead>
+                <TableHead>Lý do</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    Đang tải…
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && data?.items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    Không có lịch khám nào.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                data?.items.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="whitespace-nowrap font-medium">
+                      {formatTime(a.startTime)} – {formatEndTime(a.endTime)}
+                    </TableCell>
+                    <TableCell>{a.patientName ?? '—'}</TableCell>
+                    <TableCell>{a.doctorName ?? '—'}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                      {a.reason ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <AppointmentStatusBadge status={a.status} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        {canRecordEncounter && a.status === AppointmentStatus.InProgress && (
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/appointments/${a.id}/encounter`}>
+                              <Stethoscope className="size-4" />
+                              Khám
+                            </Link>
+                          </Button>
+                        )}
+                        {canManage &&
+                          actionsByStatus[a.status].map((x) =>
+                            x.danger ? (
+                              <ConfirmDialog
+                                key={x.action}
+                                trigger={
+                                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                    {x.label}
+                                  </Button>
+                                }
+                                title={`${x.label} lịch khám?`}
+                                description={`Xác nhận ${x.label.toLowerCase()} lịch của "${a.patientName ?? ''}"?`}
+                                confirmText={x.label}
+                                destructive
+                                onConfirm={() => void onAction(a, x.action)}
+                              />
+                            ) : (
+                              <Button
+                                key={x.action}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => void onAction(a, x.action)}
+                              >
+                                {x.label}
+                              </Button>
+                            ),
+                          )}
+                        {canManage && canEdit(a) && (
+                          <Button asChild size="sm" variant="ghost">
+                            <Link to={`/appointments/${a.id}/edit`}>Sửa</Link>
+                          </Button>
+                        )}
+                        {canManage && (
+                          <ConfirmDialog
+                            trigger={
+                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                Xoá
+                              </Button>
+                            }
+                            title="Xoá lịch khám?"
+                            description={`Xoá lịch khám của "${a.patientName ?? ''}"? Hành động này không thể hoàn tác.`}
+                            confirmText="Xoá"
+                            destructive
+                            onConfirm={() => void onDelete(a)}
+                          />
+                        )}
+                        {!canManage && !canRecordEncounter && (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {data && (
-        <>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Thời gian</th>
-                <th>Bệnh nhân</th>
-                <th>Bác sĩ</th>
-                <th>Lý do</th>
-                <th>Trạng thái</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.length === 0 && (
-                <tr><td colSpan={6} className="table__empty">Không có lịch khám nào.</td></tr>
-              )}
-              {data.items.map((a) => (
-                <tr key={a.id}>
-                  <td>{formatTime(a.startTime)} – {formatTime(a.endTime).split(', ')[1] ?? formatTime(a.endTime)}</td>
-                  <td>{a.patientName ?? '—'}</td>
-                  <td>{a.doctorName ?? '—'}</td>
-                  <td>{a.reason ?? '—'}</td>
-                  <td>
-                    <span className={`badge ${appointmentStatusClass[a.status]}`}>
-                      {appointmentStatusLabels[a.status]}
-                    </span>
-                  </td>
-                  <td className="table__actions">
-                    {canRecordEncounter && a.status === AppointmentStatus.InProgress && (
-                      <Link to={`/appointments/${a.id}/encounter`}>Khám</Link>
-                    )}
-                    {canManage ? (
-                      <>
-                        {actionsByStatus[a.status].map((x) => (
-                          <button
-                            key={x.action}
-                            className={`link-btn${x.action === 'cancel' || x.action === 'no-show' ? ' link-btn--danger' : ''}`}
-                            onClick={() => onAction(a, x.action)}
-                          >
-                            {x.label}
-                          </button>
-                        ))}
-                        {canEdit(a) && <Link to={`/appointments/${a.id}/edit`}>Sửa</Link>}
-                        <button className="link-btn link-btn--danger" onClick={() => onDelete(a)}>Xoá</button>
-                      </>
-                    ) : (!canRecordEncounter && '—')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="pager">
-            <button className="btn" disabled={!data.hasPreviousPage} onClick={() => setPage((p) => p - 1)}>
-              ← Trước
-            </button>
-            <span>Trang {data.page}/{Math.max(data.totalPages, 1)} · {data.totalCount} bản ghi</span>
-            <button className="btn" disabled={!data.hasNextPage} onClick={() => setPage((p) => p + 1)}>
-              Sau →
-            </button>
-          </div>
-        </>
+        <Pager
+          page={data.page}
+          totalPages={data.totalPages}
+          totalCount={data.totalCount}
+          onPageChange={setPage}
+        />
       )}
     </section>
   )

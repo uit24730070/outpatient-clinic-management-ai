@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus, Search, Pencil } from 'lucide-react'
 import { deleteDoctor, listDoctors } from '../services/doctorService'
-import { toApiException } from '../services/apiClient'
 import { useAuth } from '../store/auth'
+import { toastError, toastSuccess } from '../lib/toast'
 import type { PagedResult } from '../types/common'
 import type { Doctor } from '../types/doctor'
+import { PageHeader } from '../components/PageHeader'
+import { Pager } from '../components/Pager'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const PAGE_SIZE = 10
 
@@ -14,16 +29,14 @@ export default function DoctorsListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Doctor> | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const result = await listDoctors({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
       setData(result)
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     } finally {
       setLoading(false)
     }
@@ -40,82 +53,127 @@ export default function DoctorsListPage() {
   }
 
   const onDelete = async (d: Doctor) => {
-    if (!window.confirm(`Ngừng sử dụng hồ sơ bác sĩ "${d.fullName}"?`)) return
     try {
       await deleteDoctor(d.id)
+      toastSuccess('Đã ngừng sử dụng hồ sơ bác sĩ.')
       void load()
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     }
   }
 
   return (
     <section>
-      <div className="page-head">
-        <h1>Quản lý bác sĩ</h1>
-        {canManage && <Link className="btn btn--primary" to="/doctors/new">+ Thêm bác sĩ</Link>}
-      </div>
+      <PageHeader
+        title="Quản lý bác sĩ"
+        description="Hồ sơ bác sĩ và chuyên khoa"
+        actions={
+          canManage && (
+            <Button asChild>
+              <Link to="/doctors/new">
+                <Plus className="size-4" />
+                Thêm bác sĩ
+              </Link>
+            </Button>
+          )
+        }
+      />
 
-      <form className="toolbar" onSubmit={onSearchSubmit}>
-        <input
-          type="search"
-          placeholder="Tìm theo tên, mã, số điện thoại…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button className="btn" type="submit">Tìm</button>
-      </form>
+      <Card className="mb-4">
+        <CardContent>
+          <form className="flex gap-2" onSubmit={onSearchSubmit}>
+            <Input
+              type="search"
+              placeholder="Tìm theo tên, mã, số điện thoại…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button type="submit" variant="secondary">
+              <Search className="size-4" />
+              Tìm
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      {error && <p className="alert alert--error">{error}</p>}
-      {loading && <p>Đang tải…</p>}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mã BS</TableHead>
+                <TableHead>Họ tên</TableHead>
+                <TableHead>Chuyên khoa</TableHead>
+                <TableHead>Điện thoại</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    Đang tải…
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && data?.items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    Không có bác sĩ nào.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                data?.items.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-mono text-sm">{d.code}</TableCell>
+                    <TableCell className="font-medium">{d.fullName}</TableCell>
+                    <TableCell>{d.specialtyName ?? '—'}</TableCell>
+                    <TableCell>{d.phoneNumber ?? '—'}</TableCell>
+                    <TableCell>{d.email ?? '—'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {canManage ? (
+                          <>
+                            <Button asChild size="sm" variant="ghost">
+                              <Link to={`/doctors/${d.id}/edit`}>
+                                <Pencil className="size-4" />
+                                Sửa
+                              </Link>
+                            </Button>
+                            <ConfirmDialog
+                              trigger={
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                  Xoá
+                                </Button>
+                              }
+                              title="Ngừng sử dụng hồ sơ?"
+                              description={`Ngừng sử dụng hồ sơ bác sĩ "${d.fullName}"?`}
+                              confirmText="Xoá"
+                              destructive
+                              onConfirm={() => void onDelete(d)}
+                            />
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {data && (
-        <>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Mã BS</th>
-                <th>Họ tên</th>
-                <th>Chuyên khoa</th>
-                <th>Điện thoại</th>
-                <th>Email</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.length === 0 && (
-                <tr><td colSpan={6} className="table__empty">Không có bác sĩ nào.</td></tr>
-              )}
-              {data.items.map((d) => (
-                <tr key={d.id}>
-                  <td>{d.code}</td>
-                  <td>{d.fullName}</td>
-                  <td>{d.specialtyName ?? '—'}</td>
-                  <td>{d.phoneNumber ?? '—'}</td>
-                  <td>{d.email ?? '—'}</td>
-                  <td className="table__actions">
-                    {canManage ? (
-                      <>
-                        <Link to={`/doctors/${d.id}/edit`}>Sửa</Link>
-                        <button className="link-btn link-btn--danger" onClick={() => onDelete(d)}>Xoá</button>
-                      </>
-                    ) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="pager">
-            <button className="btn" disabled={!data.hasPreviousPage} onClick={() => setPage((p) => p - 1)}>
-              ← Trước
-            </button>
-            <span>Trang {data.page}/{Math.max(data.totalPages, 1)} · {data.totalCount} bản ghi</span>
-            <button className="btn" disabled={!data.hasNextPage} onClick={() => setPage((p) => p + 1)}>
-              Sau →
-            </button>
-          </div>
-        </>
+        <Pager
+          page={data.page}
+          totalPages={data.totalPages}
+          totalCount={data.totalCount}
+          onPageChange={setPage}
+        />
       )}
     </section>
   )

@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Bot, Send, Wrench } from 'lucide-react'
 import { chatWithAssistant } from '../services/assistantService'
-import { toApiException } from '../services/apiClient'
+import { toastError } from '../lib/toast'
 import type { AssistantMessage, AssistantToolCall } from '../types/assistant'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 // Nhãn thân thiện cho các công cụ đã gọi (hiển thị truy vết).
 const toolLabels: Record<string, string> = {
@@ -26,7 +32,6 @@ export default function AssistantPage() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   // Cuộn xuống cuối mỗi khi có lượt mới.
@@ -34,30 +39,31 @@ export default function AssistantPage() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [turns, loading])
 
-  const send = useCallback(async (text: string) => {
-    const question = text.trim()
-    if (!question || loading) return
+  const send = useCallback(
+    async (text: string) => {
+      const question = text.trim()
+      if (!question || loading) return
 
-    setError(null)
-    setInput('')
-    const nextTurns: Turn[] = [...turns, { role: 'user', content: question }]
-    setTurns(nextTurns)
-    setLoading(true)
+      setInput('')
+      const nextTurns: Turn[] = [...turns, { role: 'user', content: question }]
+      setTurns(nextTurns)
+      setLoading(true)
 
-    try {
-      // Gửi toàn bộ lịch sử (chỉ role + content) để trợ lý có ngữ cảnh multi-turn.
-      const history: AssistantMessage[] = nextTurns.map((t) => ({ role: t.role, content: t.content }))
-      const reply = await chatWithAssistant(history)
-      setTurns((cur) => [
-        ...cur,
-        { role: 'assistant', content: reply.answer, toolCalls: reply.toolCalls, model: reply.model },
-      ])
-    } catch (err) {
-      setError(toApiException(err).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [turns, loading])
+      try {
+        const history: AssistantMessage[] = nextTurns.map((t) => ({ role: t.role, content: t.content }))
+        const reply = await chatWithAssistant(history)
+        setTurns((cur) => [
+          ...cur,
+          { role: 'assistant', content: reply.answer, toolCalls: reply.toolCalls, model: reply.model },
+        ])
+      } catch (err) {
+        toastError(err)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [turns, loading],
+  )
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -65,37 +71,55 @@ export default function AssistantPage() {
   }
 
   return (
-    <section className="assistant">
-      <div className="page-head">
-        <h1>Trợ lý ảo</h1>
-      </div>
-      <p className="muted">
-        Hỏi đáp về bệnh nhân, lịch khám, bác sĩ và lịch sử khám. Trợ lý tự truy vấn dữ liệu trong hệ
-        thống theo quyền của bạn. Đây là thông tin hỗ trợ, cần kiểm chứng — không thay thế đánh giá chuyên môn.
-      </p>
+    <section className="flex h-[calc(100vh-8rem)] flex-col">
+      <PageHeader
+        title="Trợ lý ảo"
+        description="Hỏi đáp về bệnh nhân, lịch khám, bác sĩ và lịch sử khám. Trợ lý tự truy vấn dữ liệu theo quyền của bạn — thông tin cần kiểm chứng, không thay thế đánh giá chuyên môn."
+      />
 
-      <div className="assistant__chat" ref={listRef}>
+      <div
+        ref={listRef}
+        className="flex-1 space-y-4 overflow-y-auto rounded-xl border bg-muted/30 p-4"
+      >
         {turns.length === 0 && !loading && (
-          <div className="assistant__empty">
-            <p className="muted">Bắt đầu bằng một câu hỏi, ví dụ:</p>
-            <div className="assistant__suggestions">
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Bot className="size-6" />
+            </div>
+            <p className="text-muted-foreground">Bắt đầu bằng một câu hỏi, ví dụ:</p>
+            <div className="flex flex-wrap justify-center gap-2">
               {suggestions.map((s) => (
-                <button key={s} type="button" className="chip" onClick={() => void send(s)}>
+                <Button key={s} type="button" variant="outline" size="sm" onClick={() => void send(s)}>
                   {s}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
 
         {turns.map((t, i) => (
-          <div key={i} className={`msg msg--${t.role}`}>
-            <div className="msg__bubble">{t.content}</div>
+          <div
+            key={i}
+            className={cn('flex flex-col gap-1', t.role === 'user' ? 'items-end' : 'items-start')}
+          >
+            <div
+              className={cn(
+                'max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+                t.role === 'user'
+                  ? 'rounded-br-sm bg-primary text-primary-foreground'
+                  : 'rounded-bl-sm border bg-card',
+              )}
+            >
+              {t.content}
+            </div>
             {t.toolCalls && t.toolCalls.length > 0 && (
-              <div className="msg__tools muted">
-                Đã tra cứu:{' '}
+              <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                <Wrench className="size-3" />
+                Đã tra cứu:
                 {t.toolCalls.map((c, j) => (
-                  <span key={j} className="chip chip--sm">{toolLabels[c.name] ?? c.name}</span>
+                  <Badge key={j} variant="secondary" className="font-normal">
+                    {toolLabels[c.name] ?? c.name}
+                  </Badge>
                 ))}
               </div>
             )}
@@ -103,25 +127,25 @@ export default function AssistantPage() {
         ))}
 
         {loading && (
-          <div className="msg msg--assistant">
-            <div className="msg__bubble msg__bubble--loading">Đang xử lý…</div>
+          <div className="flex items-start">
+            <div className="rounded-2xl rounded-bl-sm border bg-card px-4 py-2.5 text-sm italic text-muted-foreground">
+              Đang xử lý…
+            </div>
           </div>
         )}
       </div>
 
-      {error && <p className="alert alert--error">{error}</p>}
-
-      <form className="assistant__form" onSubmit={onSubmit}>
-        <input
-          className="input assistant__input"
+      <form className="mt-3 flex gap-2" onSubmit={onSubmit}>
+        <Input
           placeholder="Nhập câu hỏi của bạn…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={loading}
         />
-        <button className="btn btn--primary" type="submit" disabled={loading || !input.trim()}>
+        <Button type="submit" disabled={loading || !input.trim()}>
+          <Send className="size-4" />
           Gửi
-        </button>
+        </Button>
       </form>
     </section>
   )

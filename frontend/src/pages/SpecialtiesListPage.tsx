@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus, Search, Pencil } from 'lucide-react'
 import { deleteSpecialty, listSpecialties } from '../services/specialtyService'
-import { toApiException } from '../services/apiClient'
 import { useAuth } from '../store/auth'
+import { toastError, toastSuccess } from '../lib/toast'
 import type { PagedResult } from '../types/common'
 import type { Specialty } from '../types/specialty'
+import { PageHeader } from '../components/PageHeader'
+import { Pager } from '../components/Pager'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const PAGE_SIZE = 10
 
@@ -14,16 +29,14 @@ export default function SpecialtiesListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Specialty> | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const result = await listSpecialties({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
       setData(result)
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     } finally {
       setLoading(false)
     }
@@ -40,76 +53,121 @@ export default function SpecialtiesListPage() {
   }
 
   const onDelete = async (s: Specialty) => {
-    if (!window.confirm(`Ngừng sử dụng chuyên khoa "${s.name}"?`)) return
     try {
       await deleteSpecialty(s.id)
+      toastSuccess('Đã ngừng sử dụng chuyên khoa.')
       void load()
     } catch (err) {
-      setError(toApiException(err).message)
+      toastError(err)
     }
   }
 
   return (
     <section>
-      <div className="page-head">
-        <h1>Quản lý chuyên khoa</h1>
-        {canManage && <Link className="btn btn--primary" to="/specialties/new">+ Thêm chuyên khoa</Link>}
-      </div>
+      <PageHeader
+        title="Quản lý chuyên khoa"
+        description="Danh mục chuyên khoa của phòng khám"
+        actions={
+          canManage && (
+            <Button asChild>
+              <Link to="/specialties/new">
+                <Plus className="size-4" />
+                Thêm chuyên khoa
+              </Link>
+            </Button>
+          )
+        }
+      />
 
-      <form className="toolbar" onSubmit={onSearchSubmit}>
-        <input
-          type="search"
-          placeholder="Tìm theo tên chuyên khoa…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button className="btn" type="submit">Tìm</button>
-      </form>
+      <Card className="mb-4">
+        <CardContent>
+          <form className="flex gap-2" onSubmit={onSearchSubmit}>
+            <Input
+              type="search"
+              placeholder="Tìm theo tên chuyên khoa…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button type="submit" variant="secondary">
+              <Search className="size-4" />
+              Tìm
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      {error && <p className="alert alert--error">{error}</p>}
-      {loading && <p>Đang tải…</p>}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tên chuyên khoa</TableHead>
+                <TableHead>Mô tả</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                    Đang tải…
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && data?.items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                    Không có chuyên khoa nào.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                data?.items.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.description ?? '—'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {canManage ? (
+                          <>
+                            <Button asChild size="sm" variant="ghost">
+                              <Link to={`/specialties/${s.id}/edit`}>
+                                <Pencil className="size-4" />
+                                Sửa
+                              </Link>
+                            </Button>
+                            <ConfirmDialog
+                              trigger={
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                  Xoá
+                                </Button>
+                              }
+                              title="Ngừng sử dụng chuyên khoa?"
+                              description={`Ngừng sử dụng chuyên khoa "${s.name}"?`}
+                              confirmText="Xoá"
+                              destructive
+                              onConfirm={() => void onDelete(s)}
+                            />
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {data && (
-        <>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Tên chuyên khoa</th>
-                <th>Mô tả</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.length === 0 && (
-                <tr><td colSpan={3} className="table__empty">Không có chuyên khoa nào.</td></tr>
-              )}
-              {data.items.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.name}</td>
-                  <td>{s.description ?? '—'}</td>
-                  <td className="table__actions">
-                    {canManage ? (
-                      <>
-                        <Link to={`/specialties/${s.id}/edit`}>Sửa</Link>
-                        <button className="link-btn link-btn--danger" onClick={() => onDelete(s)}>Xoá</button>
-                      </>
-                    ) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="pager">
-            <button className="btn" disabled={!data.hasPreviousPage} onClick={() => setPage((p) => p - 1)}>
-              ← Trước
-            </button>
-            <span>Trang {data.page}/{Math.max(data.totalPages, 1)} · {data.totalCount} bản ghi</span>
-            <button className="btn" disabled={!data.hasNextPage} onClick={() => setPage((p) => p + 1)}>
-              Sau →
-            </button>
-          </div>
-        </>
+        <Pager
+          page={data.page}
+          totalPages={data.totalPages}
+          totalCount={data.totalCount}
+          onPageChange={setPage}
+        />
       )}
     </section>
   )

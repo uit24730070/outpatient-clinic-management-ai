@@ -1,146 +1,163 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { createDoctor, getDoctor, updateDoctor } from '../services/doctorService'
 import { listSpecialties } from '../services/specialtyService'
-import { ApiException, toApiException } from '../services/apiClient'
-import type { DoctorFormValues } from '../types/doctor'
+import { applyServerErrors } from '../lib/form'
+import { toastError, toastSuccess } from '../lib/toast'
 import type { Specialty } from '../types/specialty'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
-const emptyForm: DoctorFormValues = {
-  fullName: '',
-  specialtyId: '',
-  phoneNumber: null,
-  email: null,
-}
+const schema = z.object({
+  fullName: z.string().min(1, 'Vui lòng nhập họ tên.'),
+  specialtyId: z.string().min(1, 'Vui lòng chọn chuyên khoa.'),
+  phoneNumber: z.string(),
+  email: z.string(),
+})
+type FormValues = z.infer<typeof schema>
 
 export default function DoctorFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
-
-  const [values, setValues] = useState<DoctorFormValues>(emptyForm)
   const [specialties, setSpecialties] = useState<Specialty[]>([])
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
-  const [formError, setFormError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { fullName: '', specialtyId: '', phoneNumber: '', email: '' },
+  })
+  const { register, handleSubmit, watch, setValue, reset, formState } = form
+  const errors = formState.errors
 
   useEffect(() => {
     let active = true
     void (async () => {
       try {
-        // Nạp danh sách chuyên khoa cho dropdown (lấy tối đa 100).
         const specialtyPage = await listSpecialties({ page: 1, pageSize: 100 })
         if (active) setSpecialties(specialtyPage.items)
-
         if (id) {
           const d = await getDoctor(id)
-          if (active) {
-            setValues({
+          if (active)
+            reset({
               fullName: d.fullName,
               specialtyId: d.specialtyId,
-              phoneNumber: d.phoneNumber,
-              email: d.email,
+              phoneNumber: d.phoneNumber ?? '',
+              email: d.email ?? '',
             })
-          }
         }
       } catch (err) {
-        setFormError(toApiException(err).message)
+        toastError(err)
       } finally {
         if (active) setLoading(false)
       }
     })()
-    return () => { active = false }
-  }, [id])
+    return () => {
+      active = false
+    }
+  }, [id, reset])
 
-  const setField = <K extends keyof DoctorFormValues>(key: K, value: DoctorFormValues[K]) => {
-    setValues((v) => ({ ...v, [key]: value }))
-  }
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setFormError(null)
-    setFieldErrors({})
+  const onSubmit = handleSubmit(async (values) => {
+    const payload = {
+      fullName: values.fullName.trim(),
+      specialtyId: values.specialtyId,
+      phoneNumber: values.phoneNumber.trim() || null,
+      email: values.email.trim() || null,
+    }
     try {
       if (isEdit && id) {
-        await updateDoctor(id, values)
+        await updateDoctor(id, payload)
       } else {
-        await createDoctor(values)
+        await createDoctor(payload)
       }
+      toastSuccess(isEdit ? 'Đã cập nhật bác sĩ.' : 'Đã thêm bác sĩ.')
       navigate('/doctors')
     } catch (err) {
-      const ex = toApiException(err)
-      if (ex instanceof ApiException && ex.details) {
-        setFieldErrors(ex.details)
-      }
-      setFormError(ex.message)
-    } finally {
-      setSaving(false)
+      applyServerErrors(form, err)
     }
-  }
+  })
 
-  if (loading) return <p>Đang tải…</p>
-
-  const err = (field: string) => fieldErrors[field]?.[0]
+  if (loading) return <p className="text-muted-foreground">Đang tải…</p>
 
   return (
-    <section className="form-wrap">
-      <h1>{isEdit ? 'Sửa bác sĩ' : 'Thêm bác sĩ'}</h1>
-      {formError && <p className="alert alert--error">{formError}</p>}
+    <section className="mx-auto max-w-xl">
+      <PageHeader title={isEdit ? 'Sửa bác sĩ' : 'Thêm bác sĩ'} />
+      <Card>
+        <CardContent>
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="fullName">Họ tên *</Label>
+              <Input id="fullName" {...register('fullName')} />
+              {errors.fullName && (
+                <p className="text-sm text-destructive">{errors.fullName.message}</p>
+              )}
+            </div>
 
-      <form className="form" onSubmit={onSubmit} noValidate>
-        <label className="field">
-          <span>Họ tên *</span>
-          <input
-            value={values.fullName}
-            onChange={(e) => setField('fullName', e.target.value)}
-          />
-          {err('FullName') && <small className="field__error">{err('FullName')}</small>}
-        </label>
+            <div className="grid gap-2">
+              <Label>Chuyên khoa *</Label>
+              <Select
+                value={watch('specialtyId')}
+                onValueChange={(v) => setValue('specialtyId', v, { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— Chọn chuyên khoa —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {specialties.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.specialtyId && (
+                <p className="text-sm text-destructive">{errors.specialtyId.message}</p>
+              )}
+            </div>
 
-        <label className="field">
-          <span>Chuyên khoa *</span>
-          <select
-            value={values.specialtyId}
-            onChange={(e) => setField('specialtyId', e.target.value)}
-          >
-            <option value="" disabled>— Chọn chuyên khoa —</option>
-            {specialties.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-          {err('SpecialtyId') && <small className="field__error">{err('SpecialtyId')}</small>}
-        </label>
+            <div className="grid gap-2">
+              <Label htmlFor="phoneNumber">Số điện thoại</Label>
+              <Input id="phoneNumber" {...register('phoneNumber')} />
+              {errors.phoneNumber && (
+                <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>
+              )}
+            </div>
 
-        <label className="field">
-          <span>Số điện thoại</span>
-          <input
-            value={values.phoneNumber ?? ''}
-            onChange={(e) => setField('phoneNumber', e.target.value || null)}
-          />
-          {err('PhoneNumber') && <small className="field__error">{err('PhoneNumber')}</small>}
-        </label>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" {...register('email')} />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+            </div>
 
-        <label className="field">
-          <span>Email</span>
-          <input
-            type="email"
-            value={values.email ?? ''}
-            onChange={(e) => setField('email', e.target.value || null)}
-          />
-          {err('Email') && <small className="field__error">{err('Email')}</small>}
-        </label>
-
-        <div className="form__actions">
-          <button className="btn" type="button" onClick={() => navigate('/doctors')} disabled={saving}>
-            Huỷ
-          </button>
-          <button className="btn btn--primary" type="submit" disabled={saving}>
-            {saving ? 'Đang lưu…' : 'Lưu'}
-          </button>
-        </div>
-      </form>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/doctors')}
+                disabled={formState.isSubmitting}
+              >
+                Huỷ
+              </Button>
+              <Button type="submit" disabled={formState.isSubmitting}>
+                {formState.isSubmitting ? 'Đang lưu…' : 'Lưu'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </section>
   )
 }

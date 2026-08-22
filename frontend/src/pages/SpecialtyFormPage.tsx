@@ -1,24 +1,36 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { createSpecialty, getSpecialty, updateSpecialty } from '../services/specialtyService'
-import { ApiException, toApiException } from '../services/apiClient'
-import type { SpecialtyFormValues } from '../types/specialty'
+import { applyServerErrors } from '../lib/form'
+import { toastError, toastSuccess } from '../lib/toast'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
 
-const emptyForm: SpecialtyFormValues = {
-  name: '',
-  description: null,
-}
+const schema = z.object({
+  name: z.string().min(1, 'Vui lòng nhập tên chuyên khoa.'),
+  description: z.string(),
+})
+type FormValues = z.infer<typeof schema>
 
 export default function SpecialtyFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
-
-  const [values, setValues] = useState<SpecialtyFormValues>(emptyForm)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
-  const [formError, setFormError] = useState<string | null>(null)
   const [loading, setLoading] = useState(isEdit)
-  const [saving, setSaving] = useState(false)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', description: '' },
+  })
+  const { register, handleSubmit, reset, formState } = form
+  const errors = formState.errors
 
   useEffect(() => {
     if (!id) return
@@ -26,82 +38,69 @@ export default function SpecialtyFormPage() {
     void (async () => {
       try {
         const s = await getSpecialty(id)
-        if (!active) return
-        setValues({ name: s.name, description: s.description })
+        if (active) reset({ name: s.name, description: s.description ?? '' })
       } catch (err) {
-        setFormError(toApiException(err).message)
+        toastError(err)
       } finally {
         if (active) setLoading(false)
       }
     })()
-    return () => { active = false }
-  }, [id])
+    return () => {
+      active = false
+    }
+  }, [id, reset])
 
-  const setField = <K extends keyof SpecialtyFormValues>(key: K, value: SpecialtyFormValues[K]) => {
-    setValues((v) => ({ ...v, [key]: value }))
-  }
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setFormError(null)
-    setFieldErrors({})
+  const onSubmit = handleSubmit(async (values) => {
+    const payload = { name: values.name.trim(), description: values.description.trim() || null }
     try {
       if (isEdit && id) {
-        await updateSpecialty(id, values)
+        await updateSpecialty(id, payload)
       } else {
-        await createSpecialty(values)
+        await createSpecialty(payload)
       }
+      toastSuccess(isEdit ? 'Đã cập nhật chuyên khoa.' : 'Đã thêm chuyên khoa.')
       navigate('/specialties')
     } catch (err) {
-      const ex = toApiException(err)
-      if (ex instanceof ApiException && ex.details) {
-        setFieldErrors(ex.details)
-      }
-      setFormError(ex.message)
-    } finally {
-      setSaving(false)
+      applyServerErrors(form, err)
     }
-  }
+  })
 
-  if (loading) return <p>Đang tải…</p>
-
-  const err = (field: string) => fieldErrors[field]?.[0]
+  if (loading) return <p className="text-muted-foreground">Đang tải…</p>
 
   return (
-    <section className="form-wrap">
-      <h1>{isEdit ? 'Sửa chuyên khoa' : 'Thêm chuyên khoa'}</h1>
-      {formError && <p className="alert alert--error">{formError}</p>}
-
-      <form className="form" onSubmit={onSubmit} noValidate>
-        <label className="field">
-          <span>Tên chuyên khoa *</span>
-          <input
-            value={values.name}
-            onChange={(e) => setField('name', e.target.value)}
-          />
-          {err('Name') && <small className="field__error">{err('Name')}</small>}
-        </label>
-
-        <label className="field">
-          <span>Mô tả</span>
-          <textarea
-            rows={3}
-            value={values.description ?? ''}
-            onChange={(e) => setField('description', e.target.value || null)}
-          />
-          {err('Description') && <small className="field__error">{err('Description')}</small>}
-        </label>
-
-        <div className="form__actions">
-          <button className="btn" type="button" onClick={() => navigate('/specialties')} disabled={saving}>
-            Huỷ
-          </button>
-          <button className="btn btn--primary" type="submit" disabled={saving}>
-            {saving ? 'Đang lưu…' : 'Lưu'}
-          </button>
-        </div>
-      </form>
+    <section className="mx-auto max-w-xl">
+      <PageHeader title={isEdit ? 'Sửa chuyên khoa' : 'Thêm chuyên khoa'} />
+      <Card>
+        <CardContent>
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Tên chuyên khoa *</Label>
+              <Input id="name" {...register('name')} />
+              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Mô tả</Label>
+              <Textarea id="description" rows={3} {...register('description')} />
+              {errors.description && (
+                <p className="text-sm text-destructive">{errors.description.message}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/specialties')}
+                disabled={formState.isSubmitting}
+              >
+                Huỷ
+              </Button>
+              <Button type="submit" disabled={formState.isSubmitting}>
+                {formState.isSubmitting ? 'Đang lưu…' : 'Lưu'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </section>
   )
 }

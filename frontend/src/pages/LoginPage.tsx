@@ -1,7 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { Hospital, Loader2 } from 'lucide-react'
 import { useAuth } from '../store/auth'
 import { toApiException } from '../services/apiClient'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -31,35 +42,56 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-wrap">
-      <form className="login-card form" onSubmit={onSubmit} noValidate>
-        <h1>Đăng nhập</h1>
-        <p className="login-hint">Hệ thống quản lý phòng khám</p>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Hospital className="size-7" />
+          </div>
+          <h1 className="text-xl font-bold">Clinic Management AI</h1>
+        </div>
 
-        {error && <p className="alert alert--error">{error}</p>}
+        <Card>
+          <CardHeader>
+            <CardTitle>Đăng nhập</CardTitle>
+            <CardDescription>Hệ thống quản lý phòng khám</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+              {error && (
+                <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
 
-        <label className="field">
-          <span>Tên đăng nhập</span>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoFocus
-          />
-        </label>
+              <div className="grid gap-2">
+                <Label htmlFor="username">Tên đăng nhập</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoFocus
+                />
+              </div>
 
-        <label className="field">
-          <span>Mật khẩu</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Mật khẩu</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
 
-        <button className="btn btn--primary" type="submit" disabled={submitting}>
-          {submitting ? 'Đang đăng nhập…' : 'Đăng nhập'}
-        </button>
-      </form>
+              <Button type="submit" disabled={submitting} className="mt-1 w-full">
+                {submitting && <Loader2 className="size-4 animate-spin" />}
+                {submitting ? 'Đang đăng nhập…' : 'Đăng nhập'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

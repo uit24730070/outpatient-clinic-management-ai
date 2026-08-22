@@ -1,27 +1,47 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { createPatient, getPatient, updatePatient } from '../services/patientService'
-import { ApiException, toApiException } from '../services/apiClient'
-import { Gender, genderLabels, type GenderValue, type PatientFormValues } from '../types/patient'
+import { applyServerErrors } from '../lib/form'
+import { toastError, toastSuccess } from '../lib/toast'
+import { Gender, genderLabels, type GenderValue } from '../types/patient'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
-const emptyForm: PatientFormValues = {
-  fullName: '',
-  dateOfBirth: null,
-  gender: Gender.Unknown,
-  phoneNumber: null,
-  address: null,
-}
+const schema = z.object({
+  fullName: z.string().min(1, 'Vui lòng nhập họ tên.'),
+  gender: z.number(),
+  dateOfBirth: z.string(),
+  phoneNumber: z.string(),
+  address: z.string(),
+})
+type FormValues = z.infer<typeof schema>
 
 export default function PatientFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
-
-  const [values, setValues] = useState<PatientFormValues>(emptyForm)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
-  const [formError, setFormError] = useState<string | null>(null)
   const [loading, setLoading] = useState(isEdit)
-  const [saving, setSaving] = useState(false)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { fullName: '', gender: Gender.Unknown, dateOfBirth: '', phoneNumber: '', address: '' },
+  })
+  const { register, handleSubmit, watch, setValue, reset, formState } = form
+  const errors = formState.errors
 
   useEffect(() => {
     if (!id) return
@@ -30,118 +50,122 @@ export default function PatientFormPage() {
       try {
         const p = await getPatient(id)
         if (!active) return
-        setValues({
+        reset({
           fullName: p.fullName,
-          dateOfBirth: p.dateOfBirth,
           gender: p.gender,
-          phoneNumber: p.phoneNumber,
-          address: p.address,
+          dateOfBirth: p.dateOfBirth ?? '',
+          phoneNumber: p.phoneNumber ?? '',
+          address: p.address ?? '',
         })
       } catch (err) {
-        setFormError(toApiException(err).message)
+        toastError(err)
       } finally {
         if (active) setLoading(false)
       }
     })()
-    return () => { active = false }
-  }, [id])
+    return () => {
+      active = false
+    }
+  }, [id, reset])
 
-  const setField = <K extends keyof PatientFormValues>(key: K, value: PatientFormValues[K]) => {
-    setValues((v) => ({ ...v, [key]: value }))
-  }
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setFormError(null)
-    setFieldErrors({})
+  const onSubmit = handleSubmit(async (values) => {
+    const payload = {
+      fullName: values.fullName.trim(),
+      gender: values.gender as GenderValue,
+      dateOfBirth: values.dateOfBirth || null,
+      phoneNumber: values.phoneNumber.trim() || null,
+      address: values.address.trim() || null,
+    }
     try {
       if (isEdit && id) {
-        await updatePatient(id, values)
+        await updatePatient(id, payload)
       } else {
-        await createPatient(values)
+        await createPatient(payload)
       }
+      toastSuccess(isEdit ? 'Đã cập nhật bệnh nhân.' : 'Đã thêm bệnh nhân.')
       navigate('/patients')
     } catch (err) {
-      const ex = toApiException(err)
-      if (ex instanceof ApiException && ex.details) {
-        setFieldErrors(ex.details)
-      }
-      setFormError(ex.message)
-    } finally {
-      setSaving(false)
+      applyServerErrors(form, err)
     }
-  }
+  })
 
-  if (loading) return <p>Đang tải…</p>
-
-  const err = (field: string) => fieldErrors[field]?.[0]
+  if (loading) return <p className="text-muted-foreground">Đang tải…</p>
 
   return (
-    <section className="form-wrap">
-      <h1>{isEdit ? 'Sửa bệnh nhân' : 'Thêm bệnh nhân'}</h1>
-      {formError && <p className="alert alert--error">{formError}</p>}
+    <section className="mx-auto max-w-xl">
+      <PageHeader title={isEdit ? 'Sửa bệnh nhân' : 'Thêm bệnh nhân'} />
 
-      <form className="form" onSubmit={onSubmit} noValidate>
-        <label className="field">
-          <span>Họ tên *</span>
-          <input
-            value={values.fullName}
-            onChange={(e) => setField('fullName', e.target.value)}
-          />
-          {err('FullName') && <small className="field__error">{err('FullName')}</small>}
-        </label>
+      <Card>
+        <CardContent>
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="fullName">Họ tên *</Label>
+              <Input id="fullName" {...register('fullName')} />
+              {errors.fullName && (
+                <p className="text-sm text-destructive">{errors.fullName.message}</p>
+              )}
+            </div>
 
-        <label className="field">
-          <span>Giới tính</span>
-          <select
-            value={values.gender}
-            onChange={(e) => setField('gender', Number(e.target.value) as GenderValue)}
-          >
-            {Object.entries(genderLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Giới tính</Label>
+                <Select
+                  value={String(watch('gender'))}
+                  onValueChange={(v) => setValue('gender', Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(genderLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="dateOfBirth">Ngày sinh</Label>
+                <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+                {errors.dateOfBirth && (
+                  <p className="text-sm text-destructive">{errors.dateOfBirth.message}</p>
+                )}
+              </div>
+            </div>
 
-        <label className="field">
-          <span>Ngày sinh</span>
-          <input
-            type="date"
-            value={values.dateOfBirth ?? ''}
-            onChange={(e) => setField('dateOfBirth', e.target.value || null)}
-          />
-          {err('DateOfBirth') && <small className="field__error">{err('DateOfBirth')}</small>}
-        </label>
+            <div className="grid gap-2">
+              <Label htmlFor="phoneNumber">Số điện thoại</Label>
+              <Input id="phoneNumber" {...register('phoneNumber')} />
+              {errors.phoneNumber && (
+                <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>
+              )}
+            </div>
 
-        <label className="field">
-          <span>Số điện thoại</span>
-          <input
-            value={values.phoneNumber ?? ''}
-            onChange={(e) => setField('phoneNumber', e.target.value || null)}
-          />
-          {err('PhoneNumber') && <small className="field__error">{err('PhoneNumber')}</small>}
-        </label>
+            <div className="grid gap-2">
+              <Label htmlFor="address">Địa chỉ</Label>
+              <Textarea id="address" rows={2} {...register('address')} />
+              {errors.address && (
+                <p className="text-sm text-destructive">{errors.address.message}</p>
+              )}
+            </div>
 
-        <label className="field">
-          <span>Địa chỉ</span>
-          <textarea
-            rows={2}
-            value={values.address ?? ''}
-            onChange={(e) => setField('address', e.target.value || null)}
-          />
-          {err('Address') && <small className="field__error">{err('Address')}</small>}
-        </label>
-
-        <div className="form__actions">
-          <button className="btn" type="button" onClick={() => navigate('/patients')} disabled={saving}>
-            Huỷ
-          </button>
-          <button className="btn btn--primary" type="submit" disabled={saving}>
-            {saving ? 'Đang lưu…' : 'Lưu'}
-          </button>
-        </div>
-      </form>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/patients')}
+                disabled={formState.isSubmitting}
+              >
+                Huỷ
+              </Button>
+              <Button type="submit" disabled={formState.isSubmitting}>
+                {formState.isSubmitting ? 'Đang lưu…' : 'Lưu'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </section>
   )
 }
