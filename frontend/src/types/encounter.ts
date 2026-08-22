@@ -28,6 +28,45 @@ export interface PrescriptionItem {
   instruction: string | null
 }
 
+/**
+ * Liều theo buổi trong ngày (số viên mỗi buổi) + số ngày dùng.
+ * Dùng ở form kê đơn để nhập trực quan; khi lưu quy về `dosage` (chuỗi) +
+ * `quantity` (tổng số lượng) theo hợp đồng backend hiện có.
+ */
+export interface DoseSchedule {
+  morning: number
+  noon: number
+  afternoon: number
+  evening: number
+  days: number
+}
+
+/** Tổng số lượng cần kê = (sáng + trưa + chiều + tối) × số ngày. */
+export function totalQuantity(s: DoseSchedule): number {
+  return (s.morning + s.noon + s.afternoon + s.evening) * s.days
+}
+
+/** Soạn chuỗi liều người-đọc-được, cũng là định dạng để parse ngược khi mở lại. */
+export function buildDosageText(s: DoseSchedule): string {
+  return `Sáng ${s.morning} - Trưa ${s.noon} - Chiều ${s.afternoon} - Tối ${s.evening} × ${s.days} ngày`
+}
+
+/** Parse chuỗi liều do `buildDosageText` sinh ra; trả null nếu không khớp (đơn cũ nhập tay). */
+export function parseDosageText(text: string | null | undefined): DoseSchedule | null {
+  if (!text) return null
+  const m = text.match(
+    /Sáng\s+(\d+)\s*-\s*Trưa\s+(\d+)\s*-\s*Chiều\s+(\d+)\s*-\s*Tối\s+(\d+)\s*×\s*(\d+)\s*ngày/i,
+  )
+  if (!m) return null
+  return {
+    morning: Number(m[1]),
+    noon: Number(m[2]),
+    afternoon: Number(m[3]),
+    evening: Number(m[4]),
+    days: Number(m[5]),
+  }
+}
+
 export interface Encounter {
   id: string
   appointmentId: string

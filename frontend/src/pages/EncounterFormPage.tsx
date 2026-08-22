@@ -14,7 +14,14 @@ import { getAppointment } from '../services/appointmentService'
 import { listMedications } from '../services/medicationService'
 import { applyServerErrors } from '../lib/form'
 import { toastError, toastSuccess } from '../lib/toast'
-import { EncounterStatus, type Encounter } from '../types/encounter'
+import {
+  EncounterStatus,
+  buildDosageText,
+  parseDosageText,
+  totalQuantity,
+  type Encounter,
+  type PrescriptionItem,
+} from '../types/encounter'
 import type { Medication } from '../types/medication'
 import { PageHeader } from '../components/PageHeader'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -41,13 +48,25 @@ import {
 
 const OUT = 'out' // giá trị sentinel cho "ngoài danh mục" (Select không nhận value rỗng)
 
-const itemSchema = z.object({
-  medicationId: z.string().nullable(),
-  drugName: z.string(),
-  dosage: z.string(),
-  quantity: z.number(),
-  instruction: z.string().nullable(),
-})
+// Ô nhập số: rỗng → 0 (tránh NaN khi người dùng xoá trắng ô).
+const toNum = (v: unknown) => (v === '' || v === null || v === undefined ? 0 : Number(v))
+
+const itemSchema = z
+  .object({
+    medicationId: z.string().nullable(),
+    drugName: z.string().min(1, 'Nhập tên thuốc'),
+    morning: z.number().min(0),
+    noon: z.number().min(0),
+    afternoon: z.number().min(0),
+    evening: z.number().min(0),
+    days: z.number().min(1, 'Số ngày ≥ 1'),
+    instruction: z.string().nullable(),
+  })
+  // Tổng liều mỗi ngày phải > 0 (nếu không, tổng SL = 0 → backend từ chối).
+  .refine((it) => it.morning + it.noon + it.afternoon + it.evening > 0, {
+    message: 'Cần ít nhất một buổi có liều',
+    path: ['morning'],
+  })
 const schema = z.object({
   symptoms: z.string(),
   diagnosis: z.string().min(1, 'Vui lòng nhập chẩn đoán.'),
@@ -55,6 +74,25 @@ const schema = z.object({
   prescriptionItems: z.array(itemSchema),
 })
 type FormValues = z.infer<typeof schema>
+type FormItem = z.infer<typeof itemSchema>
+
+// Chuyển đơn thuốc từ backend (dosage chuỗi + quantity) về dạng nhập theo buổi.
+// Đơn cũ nhập tay không parse được → mặc định 1 ngày, chưa chia buổi (bác sĩ nhập lại).
+function toFormItems(items: PrescriptionItem[]): FormItem[] {
+  return items.map((it) => {
+    const s = parseDosageText(it.dosage)
+    return {
+      medicationId: it.medicationId,
+      drugName: it.drugName,
+      morning: s?.morning ?? 0,
+      noon: s?.noon ?? 0,
+      afternoon: s?.afternoon ?? 0,
+      evening: s?.evening ?? 0,
+      days: s?.days ?? 1,
+      instruction: it.instruction,
+    }
+  })
+}
 
 export default function EncounterFormPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>()
@@ -101,7 +139,7 @@ export default function EncounterFormPage() {
             symptoms: existing.symptoms ?? '',
             diagnosis: existing.diagnosis,
             notes: existing.notes ?? '',
-            prescriptionItems: existing.prescriptionItems,
+            prescriptionItems: toFormItems(existing.prescriptionItems),
           })
         }
       } catch (err) {
@@ -119,13 +157,22 @@ export default function EncounterFormPage() {
     symptoms: values.symptoms.trim() || null,
     diagnosis: values.diagnosis.trim(),
     notes: values.notes.trim() || null,
-    prescriptionItems: values.prescriptionItems.map((it) => ({
-      medicationId: it.medicationId,
-      drugName: it.drugName.trim(),
-      dosage: it.dosage.trim(),
-      quantity: Number(it.quantity),
-      instruction: it.instruction?.trim() || null,
-    })),
+    prescriptionItems: values.prescriptionItems.map((it) => {
+      const schedule = {
+        morning: Number(it.morning) || 0,
+        noon: Number(it.noon) || 0,
+        afternoon: Number(it.afternoon) || 0,
+        evening: Number(it.evening) || 0,
+        days: Number(it.days) || 0,
+      }
+      return {
+        medicationId: it.medicationId,
+        drugName: it.drugName.trim(),
+        dosage: buildDosageText(schedule),
+        quantity: totalQuantity(schedule),
+        instruction: it.instruction?.trim() || null,
+      }
+    }),
   })
 
   const onSubmit = handleSubmit(async (values) => {
@@ -139,7 +186,7 @@ export default function EncounterFormPage() {
         symptoms: saved.symptoms ?? '',
         diagnosis: saved.diagnosis,
         notes: saved.notes ?? '',
-        prescriptionItems: saved.prescriptionItems,
+        prescriptionItems: toFormItems(saved.prescriptionItems),
       })
       toastSuccess(encounter ? 'Đã lưu phiếu khám.' : 'Đã tạo phiếu khám.')
     } catch (err) {
@@ -177,7 +224,7 @@ export default function EncounterFormPage() {
     : 'Sau khi chốt sẽ không sửa được và lịch khám chuyển sang Hoàn tất.'
 
   return (
-    <section className="mx-auto max-w-4xl">
+    <section className="mx-auto max-w-6xl">
       <PageHeader
         title="Phiếu khám"
         description={
@@ -221,7 +268,17 @@ export default function EncounterFormPage() {
                   size="sm"
                   variant="outline"
                   onClick={() =>
-                    append({ medicationId: null, drugName: '', dosage: '', quantity: 1, instruction: null })
+                    append({
+                      medicationId: null,
+                      drugName: '',
+                      morning: 0,
+                      noon: 0,
+                      afternoon: 0,
+                      evening: 0,
+                      // Kế thừa số ngày của dòng cuối (tiện kê nhiều thuốc cùng đợt).
+                      days: items.length ? Number(items[items.length - 1]?.days) || 1 : 1,
+                      instruction: null,
+                    })
                   }
                 >
                   <Plus className="size-4" />
@@ -232,18 +289,22 @@ export default function EncounterFormPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[220px]">Danh mục (để trừ tồn)</TableHead>
+                  <TableHead className="w-[200px]">Danh mục (để trừ tồn)</TableHead>
                   <TableHead>Tên thuốc</TableHead>
-                  <TableHead className="w-[110px]">Liều</TableHead>
-                  <TableHead className="w-[100px]">Số lượng</TableHead>
+                  <TableHead className="w-[72px] text-center">Số ngày</TableHead>
+                  <TableHead className="w-[64px] text-center">Sáng</TableHead>
+                  <TableHead className="w-[64px] text-center">Trưa</TableHead>
+                  <TableHead className="w-[64px] text-center">Chiều</TableHead>
+                  <TableHead className="w-[64px] text-center">Tối</TableHead>
+                  <TableHead className="w-[80px] text-center">Tổng SL</TableHead>
                   <TableHead>Cách dùng</TableHead>
-                  <TableHead className="w-[60px]" />
+                  <TableHead className="w-[52px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {fields.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-16 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="h-16 text-center text-muted-foreground">
                       Chưa có thuốc nào.
                     </TableCell>
                   </TableRow>
@@ -251,7 +312,14 @@ export default function EncounterFormPage() {
                 {fields.map((f, i) => {
                   const row = items[i]
                   const med = row?.medicationId ? medMap.get(row.medicationId) : undefined
-                  const notEnough = med != null && Number(row.quantity) > med.stockOnHand
+                  const total = row
+                    ? ((Number(row.morning) || 0) +
+                        (Number(row.noon) || 0) +
+                        (Number(row.afternoon) || 0) +
+                        (Number(row.evening) || 0)) *
+                      (Number(row.days) || 0)
+                    : 0
+                  const notEnough = med != null && total > med.stockOnHand
                   return (
                     <TableRow key={f.id}>
                       <TableCell className="align-top">
@@ -281,17 +349,69 @@ export default function EncounterFormPage() {
                       </TableCell>
                       <TableCell className="align-top">
                         <Input disabled={isCompleted} {...register(`prescriptionItems.${i}.drugName`)} />
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <Input disabled={isCompleted} {...register(`prescriptionItems.${i}.dosage`)} />
+                        {formState.errors.prescriptionItems?.[i]?.drugName && (
+                          <p className="mt-1 text-xs text-destructive">
+                            {formState.errors.prescriptionItems[i]?.drugName?.message}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell className="align-top">
                         <Input
                           type="number"
-                          min={1}
+                          min={0}
+                          className="text-center"
                           disabled={isCompleted}
-                          {...register(`prescriptionItems.${i}.quantity`, { valueAsNumber: true })}
+                          {...register(`prescriptionItems.${i}.days`, { setValueAs: toNum })}
                         />
+                        {formState.errors.prescriptionItems?.[i]?.days && (
+                          <p className="mt-1 text-xs text-destructive">
+                            {formState.errors.prescriptionItems[i]?.days?.message}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="text-center"
+                          disabled={isCompleted}
+                          {...register(`prescriptionItems.${i}.morning`, { setValueAs: toNum })}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="text-center"
+                          disabled={isCompleted}
+                          {...register(`prescriptionItems.${i}.noon`, { setValueAs: toNum })}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="text-center"
+                          disabled={isCompleted}
+                          {...register(`prescriptionItems.${i}.afternoon`, { setValueAs: toNum })}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="text-center"
+                          disabled={isCompleted}
+                          {...register(`prescriptionItems.${i}.evening`, { setValueAs: toNum })}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top text-center font-medium tabular-nums">
+                        {total || '—'}
+                        {formState.errors.prescriptionItems?.[i]?.morning && (
+                          <p className="mt-1 text-xs font-normal text-destructive">
+                            {formState.errors.prescriptionItems[i]?.morning?.message}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell className="align-top">
                         <Input disabled={isCompleted} {...register(`prescriptionItems.${i}.instruction`)} />

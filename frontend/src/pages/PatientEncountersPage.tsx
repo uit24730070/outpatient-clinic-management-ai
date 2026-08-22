@@ -315,7 +315,7 @@ export default function PatientEncountersPage() {
                               <ul className="list-disc space-y-1 pl-5">
                                 {e.prescriptionItems.map((it, i) => (
                                   <li key={i}>
-                                    {it.drugName} — {it.dosage} × {it.quantity}
+                                    {it.drugName} — {it.dosage} · tổng {it.quantity}
                                     {it.instruction ? ` (${it.instruction})` : ''}
                                   </li>
                                 ))}
