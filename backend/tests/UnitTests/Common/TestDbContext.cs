@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Appointments;
+using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
@@ -30,6 +31,8 @@ public sealed class TestDbContext : DbContext, IAppDbContext
     public DbSet<MedicationBatch> MedicationBatches => Set<MedicationBatch>();
     public DbSet<StockReceipt> StockReceipts => Set<StockReceipt>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
+    public DbSet<ServicePrice> ServicePrices => Set<ServicePrice>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +59,19 @@ public sealed class TestDbContext : DbContext, IAppDbContext
                 item.HasKey("Id");
             });
             builder.Navigation(r => r.Items)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        // Hoá đơn: owned collection dòng hoá đơn (như PrescriptionItem/StockReceiptItem).
+        modelBuilder.Entity<Invoice>(builder =>
+        {
+            builder.OwnsMany(i => i.Items, item =>
+            {
+                item.WithOwner().HasForeignKey("InvoiceId");
+                item.Property<int>("Id");
+                item.HasKey("Id");
+            });
+            builder.Navigation(i => i.Items)
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 

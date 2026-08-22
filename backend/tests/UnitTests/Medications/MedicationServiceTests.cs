@@ -70,6 +70,33 @@ public sealed class MedicationServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_ShouldDefaultSalePriceZero_WhenOmitted()
+    {
+        var service = CreateService(out _);
+
+        // Request cũ không truyền SalePrice → mặc định 0, không gãy (BILL-02).
+        var result = await service.CreateAsync(ValidRequest());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0m, result.Value.SalePrice);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldChangeSalePrice()
+    {
+        var service = CreateService(out _);
+        var created = await service.CreateAsync(
+            new CreateMedicationRequest("Paracetamol 500mg", "Paracetamol", "viên", 100, null, 1500m));
+        Assert.Equal(1500m, created.Value.SalePrice);
+
+        var updated = await service.UpdateAsync(created.Value.Id,
+            new UpdateMedicationRequest("Paracetamol 500mg", "Paracetamol", "viên", 100, null, 2500m));
+
+        Assert.True(updated.IsSuccess);
+        Assert.Equal(2500m, updated.Value.SalePrice);
+    }
+
+    [Fact]
     public async Task DeleteAsync_ShouldSoftDelete_HideFromList()
     {
         var service = CreateService(out _);
