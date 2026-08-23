@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Plus, Receipt, Stethoscope } from 'lucide-react'
 import { addVisitService, cancelVisit, closeVisit, getVisit } from '../services/visitService'
-import { getInvoicesByVisit, payVisitInvoices } from '../services/invoiceService'
+import { createInvoiceFromLabOrder, getInvoicesByVisit, payVisitInvoices } from '../services/invoiceService'
 import { listDoctors } from '../services/doctorService'
 import { listServicePrices } from '../services/servicePriceService'
 import { transitionAppointment, type AppointmentAction } from '../services/appointmentService'
@@ -22,7 +22,12 @@ import {
 import { VisitStatus, type Visit } from '../types/visit'
 import type { Doctor } from '../types/doctor'
 import { PageHeader } from '../components/PageHeader'
-import { AppointmentStatusBadge, InvoiceStatusBadge, VisitStatusBadge } from '../components/StatusBadge'
+import {
+  AppointmentStatusBadge,
+  InvoiceStatusBadge,
+  LabOrderStatusBadge,
+  VisitStatusBadge,
+} from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -149,6 +154,16 @@ export default function VisitDetailPage() {
       setAdding(false)
       setNewDoctorId('')
       setNewServiceId('')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  const onBillLab = async (labOrderId: string) => {
+    try {
+      await createInvoiceFromLabOrder(labOrderId)
+      toastSuccess('Đã lập hoá đơn phí cận lâm sàng.')
       void load()
     } catch (err) {
       toastError(err)
@@ -406,6 +421,54 @@ export default function VisitDetailPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Cận lâm sàng của lượt */}
+      {visit.labOrders.length > 0 && (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Phiếu CLS</TableHead>
+                  <TableHead className="text-center">Số mục</TableHead>
+                  <TableHead className="text-right">Phí</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visit.labOrders.map((o) => (
+                  <TableRow key={o.id}>
+                    <TableCell className="font-medium">{o.code}</TableCell>
+                    <TableCell className="text-center">{o.itemCount}</TableCell>
+                    <TableCell className="text-right">{formatVnd(o.totalAmount)}</TableCell>
+                    <TableCell>
+                      <LabOrderStatusBadge status={o.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        <Button asChild size="sm" variant="ghost">
+                          <Link to={`/lab-orders/${o.id}/print`} target="_blank">
+                            In phiếu
+                          </Link>
+                        </Button>
+                        {canBilling && o.invoicedAt == null && (
+                          <Button size="sm" variant="outline" onClick={() => void onBillLab(o.id)}>
+                            Lập HĐ CLS
+                          </Button>
+                        )}
+                        {o.invoicedAt != null && (
+                          <span className="text-xs text-muted-foreground">Đã lập HĐ</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Thêm dịch vụ khám (khi lượt còn mở) */}
       {canManage && isOpen && (

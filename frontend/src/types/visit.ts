@@ -1,6 +1,7 @@
 // Kiểu dữ liệu miền Lượt tiếp đón (Visit), khớp API backend (ADR 0017).
 
 import type { Appointment } from './appointment'
+import type { LabOrderStatusValue } from './labOrder'
 
 // Const-map thay enum (erasableSyntaxOnly). Giá trị số khớp VisitStatus backend (serialize số).
 export const VisitStatus = {
@@ -17,7 +18,17 @@ export const visitStatusLabels: Record<number, string> = {
   2: 'Đã huỷ',
 }
 
-/** Chi tiết một lượt tiếp đón: các dịch vụ khám + tổng viện phí gom cả lượt. */
+/** Phiếu CLS gắn lượt (tóm tắt). */
+export interface VisitLabOrder {
+  id: string
+  code: string
+  status: LabOrderStatusValue
+  totalAmount: number
+  invoicedAt: string | null
+  itemCount: number
+}
+
+/** Chi tiết một lượt tiếp đón: các dịch vụ khám + CLS + tổng viện phí gom cả lượt. */
 export interface Visit {
   id: string
   code: string
@@ -26,6 +37,7 @@ export interface Visit {
   status: VisitStatusValue
   note: string | null
   appointments: Appointment[]
+  labOrders: VisitLabOrder[]
   totalBilled: number
   totalPaid: number
   totalOutstanding: number
@@ -58,6 +70,8 @@ export interface CreateVisitInput {
   patientId: string
   note: string | null
   services: VisitServiceLineInput[]
+  /** Dịch vụ CLS (loại Paraclinical) đăng ký ngay lúc tiếp đón — tạo phiếu CLS walk-in gắn lượt (ADR 0017). */
+  paraclinicalServiceIds?: string[]
 }
 
 export type AddVisitServiceInput = VisitServiceLineInput

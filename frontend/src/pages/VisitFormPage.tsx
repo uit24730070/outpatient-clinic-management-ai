@@ -59,6 +59,8 @@ export default function VisitFormPage() {
   const [patientId, setPatientId] = useState('')
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [services, setServices] = useState<ServicePrice[]>([])
+  const [clsServices, setClsServices] = useState<ServicePrice[]>([])
+  const [pickedCls, setPickedCls] = useState<string[]>([])
   const [note, setNote] = useState('')
   const [rows, setRows] = useState<Row[]>([defaultRow()])
   const [submitting, setSubmitting] = useState(false)
@@ -66,12 +68,14 @@ export default function VisitFormPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const [d, s] = await Promise.all([
+        const [d, s, cls] = await Promise.all([
           listDoctors({ page: 1, pageSize: 100 }),
           listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Consultation }),
+          listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Paraclinical }),
         ])
         setDoctors(d.items)
         setServices(s.items)
+        setClsServices(cls.items)
       } catch (err) {
         toastError(err)
       }
@@ -94,7 +98,12 @@ export default function VisitFormPage() {
   }, [patientSearch])
 
   const serviceMap = useMemo(() => new Map(services.map((s) => [s.id, s])), [services])
-  const total = rows.reduce((sum, r) => sum + (serviceMap.get(r.servicePriceId)?.unitPrice ?? 0), 0)
+  const clsMap = useMemo(() => new Map(clsServices.map((s) => [s.id, s])), [clsServices])
+  const consultTotal = rows.reduce((sum, r) => sum + (serviceMap.get(r.servicePriceId)?.unitPrice ?? 0), 0)
+  const clsTotal = pickedCls.reduce((sum, id) => sum + (clsMap.get(id)?.unitPrice ?? 0), 0)
+  const total = consultTotal + clsTotal
+  const toggleCls = (id: string) =>
+    setPickedCls((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
 
   const updateRow = (idx: number, patch: Partial<Row>) =>
     setRows((cur) => cur.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
@@ -119,7 +128,12 @@ export default function VisitFormPage() {
         reason: r.reason.trim() || null,
         servicePriceId: r.servicePriceId || null,
       }))
-      const visit = await createVisit({ patientId, note: note.trim() || null, services: servicesInput })
+      const visit = await createVisit({
+        patientId,
+        note: note.trim() || null,
+        services: servicesInput,
+        paraclinicalServiceIds: pickedCls,
+      })
       toastSuccess(`Đã tạo lượt tiếp đón ${visit.code}.`)
       navigate(`/visits/${visit.id}`)
     } catch (err) {
@@ -260,12 +274,43 @@ export default function VisitFormPage() {
         </div>
       </div>
 
+      {/* Cận lâm sàng đăng ký ngay lúc tiếp đón (tạo phiếu CLS walk-in gắn lượt) */}
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4">
+          <Label>Cận lâm sàng (tuỳ chọn)</Label>
+          {clsServices.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Chưa có dịch vụ cận lâm sàng trong bảng giá.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {clsServices.map((s) => {
+                const on = pickedCls.includes(s.id)
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggleCls(s.id)}
+                    className={
+                      on
+                        ? 'rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm text-primary'
+                        : 'rounded-full border px-3 py-1 text-sm text-muted-foreground hover:bg-muted'
+                    }
+                  >
+                    {s.name} · {formatVnd(s.unitPrice)}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          Tạm tính công khám: <span className="font-semibold text-foreground">{formatVnd(total)}</span>
+          Tạm tính: <span className="font-semibold text-foreground">{formatVnd(total)}</span>
+          {clsTotal > 0 && <span className="ml-1">(khám {formatVnd(consultTotal)} + CLS {formatVnd(clsTotal)})</span>}
         </span>
         <Button type="button" onClick={() => void submit()} disabled={submitting}>
-          Tạo lượt tiếp đón ({rows.length} dịch vụ)
+          Tạo lượt tiếp đón ({rows.length} khám{pickedCls.length > 0 ? ` + ${pickedCls.length} CLS` : ''})
         </Button>
       </div>
     </section>
