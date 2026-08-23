@@ -23,8 +23,14 @@ public interface IInvoiceService
     /// <summary>Chi tiết một hoá đơn.</summary>
     Task<Result<InvoiceDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (tính phía server).</summary>
+    /// <summary>Gom các hoá đơn theo một lịch khám + tổng đã lập/đã thu/còn nợ (tính phía server).</summary>
     Task<Result<AppointmentInvoicesDto>> GetByAppointmentAsync(Guid appointmentId, CancellationToken ct = default);
+
+    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (ADR 0017).</summary>
+    Task<Result<VisitInvoicesDto>> GetByVisitAsync(Guid visitId, CancellationToken ct = default);
+
+    /// <summary>Thu tiền toàn bộ hoá đơn còn <c>Draft</c> của một lượt (một phương thức), trả tổng sau thu.</summary>
+    Task<Result<VisitInvoicesDto>> PayVisitAsync(Guid visitId, PayInvoiceRequest request, CancellationToken ct = default);
 
     /// <summary>Sửa cụm dòng dịch vụ + ghi chú của hoá đơn — chỉ khi còn <c>Draft</c>.</summary>
     Task<Result<InvoiceDto>> UpdateAsync(Guid id, UpdateInvoiceRequest request, CancellationToken ct = default);

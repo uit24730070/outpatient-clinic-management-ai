@@ -71,6 +71,22 @@ public sealed class InvoicesController : ApiControllerBase
         return ToResponse(result);
     }
 
+    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (ADR 0017).</summary>
+    [HttpGet("by-visit/{visitId:guid}")]
+    public async Task<IActionResult> GetByVisit(Guid visitId, CancellationToken ct)
+    {
+        var result = await _invoices.GetByVisitAsync(visitId, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Thu tiền toàn bộ hoá đơn còn Draft của một lượt (một phương thức).</summary>
+    [HttpPost("pay-visit/{visitId:guid}")]
+    public async Task<IActionResult> PayVisit(Guid visitId, [FromBody] PayInvoiceRequest request, CancellationToken ct)
+    {
+        var result = await _invoices.PayVisitAsync(visitId, request, ct);
+        return ToResponse(result);
+    }
+
     /// <summary>Sửa cụm dòng dịch vụ + ghi chú của hoá đơn (chỉ khi còn Draft).</summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateInvoiceRequest request, CancellationToken ct)

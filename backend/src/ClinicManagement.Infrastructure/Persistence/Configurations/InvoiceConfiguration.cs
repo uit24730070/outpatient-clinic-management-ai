@@ -23,8 +23,11 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         // Index thường để tra hoá đơn theo phiếu.
         builder.HasIndex(i => i.EncounterId);
 
-        // Gom hoá đơn theo lượt tiếp đón.
+        // Gom hoá đơn theo lịch khám.
         builder.HasIndex(i => i.AppointmentId);
+
+        // Gom hoá đơn theo lượt tiếp đón trực tiếp (ADR 0017).
+        builder.HasIndex(i => i.VisitId);
 
         // Enum trạng thái/phương thức thu lưu dạng chuỗi (đồng nhất Gender/UserRole/AppointmentStatus).
         builder.Property(i => i.Status)

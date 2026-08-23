@@ -20,12 +20,13 @@ public class Invoice : Entity
 
     public Invoice(
         string code, Guid patientId, Guid? encounterId, string? note, IEnumerable<InvoiceItem> items,
-        Guid? appointmentId = null)
+        Guid? appointmentId = null, Guid? visitId = null)
     {
         Code = code;
         PatientId = patientId;
         EncounterId = encounterId;
         AppointmentId = appointmentId;
+        VisitId = visitId;
         Note = note;
         Status = InvoiceStatus.Draft;
         _items.AddRange(items);
@@ -45,10 +46,16 @@ public class Invoice : Entity
     public Guid? EncounterId { get; private set; }
 
     /// <summary>
-    /// Lượt tiếp đón nguồn (nếu lập gắn một lượt khám) để gom nhiều hoá đơn cùng lượt.
-    /// Null với bệnh nhân vãng lai/chỉ-CLS chưa gắn lượt (ADR 0014 P2).
+    /// Lịch khám nguồn (nếu lập gắn một lịch) để gom hoá đơn theo lịch.
+    /// Null với bệnh nhân vãng lai/chỉ-CLS chưa gắn lịch (ADR 0014 P2).
     /// </summary>
     public Guid? AppointmentId { get; private set; }
+
+    /// <summary>
+    /// Lượt tiếp đón nguồn (ADR 0017) để gom nhiều hoá đơn cùng lượt trực tiếp — suy ra từ lịch khám
+    /// gắn hoá đơn lúc lập. Null với hoá đơn không thuộc lượt nào.
+    /// </summary>
+    public Guid? VisitId { get; private set; }
 
     public InvoiceStatus Status { get; private set; }
 

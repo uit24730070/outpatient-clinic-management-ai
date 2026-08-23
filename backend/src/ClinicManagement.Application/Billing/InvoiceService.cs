@@ -64,7 +64,8 @@ public sealed class InvoiceService : IInvoiceService
             return Result.Failure<InvoiceDto>(mark.Error);
 
         var code = await GenerateCodeAsync(ct);
-        var invoice = new Invoice(code, encounter.PatientId, encounterId, note: null, items, encounter.AppointmentId);
+        var visitId = await ResolveVisitIdAsync(encounter.AppointmentId, ct);
+        var invoice = new Invoice(code, encounter.PatientId, encounterId, note: null, items, encounter.AppointmentId, visitId);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);
 
@@ -111,7 +112,8 @@ public sealed class InvoiceService : IInvoiceService
         }
 
         var code = await GenerateCodeAsync(ct);
-        var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId);
+        var visitId = await ResolveVisitIdAsync(appointmentId, ct);
+        var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId, visitId);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);
 
@@ -138,8 +140,9 @@ public sealed class InvoiceService : IInvoiceService
             return Result.Failure<InvoiceDto>(build.Error);
 
         var code = await GenerateCodeAsync(ct);
+        var visitId = await ResolveVisitIdAsync(request.AppointmentId, ct);
         var invoice = new Invoice(code, request.PatientId, encounterId: null, NormalizeOptional(request.Note), build.Value,
-            request.AppointmentId);
+            request.AppointmentId, visitId);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);
 
@@ -196,6 +199,53 @@ public sealed class InvoiceService : IInvoiceService
         var paid = invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.TotalAmount);
 
         return new AppointmentInvoicesDto(appointmentId, invoices, billed, paid, billed - paid);
+    }
+
+    public async Task<Result<VisitInvoicesDto>> GetByVisitAsync(Guid visitId, CancellationToken ct = default)
+        => await BuildVisitInvoicesAsync(visitId, ct);
+
+    public async Task<Result<VisitInvoicesDto>> PayVisitAsync(
+        Guid visitId, PayInvoiceRequest request, CancellationToken ct = default)
+    {
+        // Thu toàn bộ hoá đơn còn Draft của lượt bằng một phương thức, trong một SaveChanges.
+        var drafts = await _db.Invoices
+            .Where(i => i.VisitId == visitId && i.Status == InvoiceStatus.Draft)
+            .ToListAsync(ct);
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var inv in drafts)
+            inv.Pay(request.PaymentMethod, now);
+
+        if (drafts.Count > 0)
+            await _db.SaveChangesAsync(ct);
+
+        return await BuildVisitInvoicesAsync(visitId, ct);
+    }
+
+    private async Task<VisitInvoicesDto> BuildVisitInvoicesAsync(Guid visitId, CancellationToken ct)
+    {
+        var invoices = await Project(
+                _db.Invoices.AsNoTracking()
+                    .Where(i => i.VisitId == visitId)
+                    .OrderBy(i => i.CreatedAt))
+            .ToListAsync(ct);
+
+        var billed = invoices.Where(i => i.Status != InvoiceStatus.Cancelled).Sum(i => i.TotalAmount);
+        var paid = invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.TotalAmount);
+
+        return new VisitInvoicesDto(visitId, invoices, billed, paid, billed - paid);
+    }
+
+    /// <summary>Suy lượt tiếp đón từ lịch khám gắn hoá đơn (nếu lịch thuộc một lượt); null nếu không.</summary>
+    private async Task<Guid?> ResolveVisitIdAsync(Guid? appointmentId, CancellationToken ct)
+    {
+        if (appointmentId is null)
+            return null;
+
+        return await _db.Appointments.AsNoTracking()
+            .Where(a => a.Id == appointmentId)
+            .Select(a => a.VisitId)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<Result<InvoiceDto>> UpdateAsync(
@@ -301,6 +351,7 @@ public sealed class InvoiceService : IInvoiceService
             _db.Patients.Where(p => p.Id == i.PatientId).Select(p => p.FullName).FirstOrDefault(),
             i.EncounterId,
             i.AppointmentId,
+            i.VisitId,
             i.Status,
             i.TotalAmount,
             i.PaidAt,

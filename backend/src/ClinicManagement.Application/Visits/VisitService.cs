@@ -226,14 +226,13 @@ public sealed class VisitService : IVisitService
                 a.UpdatedAt))
             .ToListAsync(ct);
 
-        // Viện phí gom cả lượt: các hoá đơn gắn với lịch trong lượt (Invoice.AppointmentId).
+        // Viện phí gom cả lượt: hoá đơn gắn trực tiếp lượt (Invoice.VisitId, ADR 0017) hoặc gắn lịch
+        // trong lượt (Invoice.AppointmentId — tương thích hoá đơn lập trước khi có cột VisitId).
         var apptIds = appointments.Select(a => a.Id).ToList();
-        var invoices = apptIds.Count == 0
-            ? new List<InvoiceAmount>()
-            : await _db.Invoices.AsNoTracking()
-                .Where(i => i.AppointmentId != null && apptIds.Contains(i.AppointmentId!.Value))
-                .Select(i => new InvoiceAmount(i.Status, i.TotalAmount))
-                .ToListAsync(ct);
+        var invoices = await _db.Invoices.AsNoTracking()
+            .Where(i => i.VisitId == id || (i.AppointmentId != null && apptIds.Contains(i.AppointmentId!.Value)))
+            .Select(i => new InvoiceAmount(i.Status, i.TotalAmount))
+            .ToListAsync(ct);
 
         var billed = invoices.Where(x => x.Status != InvoiceStatus.Cancelled).Sum(x => x.Total);
         var paid = invoices.Where(x => x.Status == InvoiceStatus.Paid).Sum(x => x.Total);
