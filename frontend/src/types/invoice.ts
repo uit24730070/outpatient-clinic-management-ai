@@ -108,6 +108,7 @@ export interface Invoice {
   patientName: string | null
   encounterId: string | null
   appointmentId: string | null
+  visitId: string | null
   status: InvoiceStatusValue
   totalAmount: number
   paidAt: string | null
@@ -118,9 +119,18 @@ export interface Invoice {
   updatedAt: string | null
 }
 
-/** Gom hoá đơn theo lượt tiếp đón + tổng (khớp AppointmentInvoicesDto backend). */
+/** Gom hoá đơn theo một lịch khám + tổng (khớp AppointmentInvoicesDto backend). */
 export interface AppointmentInvoices {
   appointmentId: string
+  invoices: Invoice[]
+  totalBilled: number
+  totalPaid: number
+  totalOutstanding: number
+}
+
+/** Gom hoá đơn theo lượt tiếp đón + tổng (khớp VisitInvoicesDto backend, ADR 0017). */
+export interface VisitInvoices {
+  visitId: string
   invoices: Invoice[]
   totalBilled: number
   totalPaid: number

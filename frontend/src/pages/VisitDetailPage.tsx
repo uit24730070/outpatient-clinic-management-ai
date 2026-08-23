@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Plus, Receipt, Stethoscope } from 'lucide-react'
 import { addVisitService, cancelVisit, closeVisit, getVisit } from '../services/visitService'
+import { getInvoicesByVisit, payVisitInvoices } from '../services/invoiceService'
 import { listDoctors } from '../services/doctorService'
 import { listServicePrices } from '../services/servicePriceService'
 import { transitionAppointment, type AppointmentAction } from '../services/appointmentService'
@@ -10,11 +11,18 @@ import { canManageBilling } from '../config/access'
 import { toastError, toastInfo, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import { AppointmentStatus, type Appointment } from '../types/appointment'
-import { ServiceCategory, type ServicePrice } from '../types/invoice'
+import {
+  PaymentMethod,
+  paymentMethodLabels,
+  ServiceCategory,
+  type PaymentMethodValue,
+  type ServicePrice,
+  type VisitInvoices,
+} from '../types/invoice'
 import { VisitStatus, type Visit } from '../types/visit'
 import type { Doctor } from '../types/doctor'
 import { PageHeader } from '../components/PageHeader'
-import { AppointmentStatusBadge, VisitStatusBadge } from '../components/StatusBadge'
+import { AppointmentStatusBadge, InvoiceStatusBadge, VisitStatusBadge } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -65,6 +73,8 @@ export default function VisitDetailPage() {
   const canBilling = canManageBilling(user?.role)
 
   const [visit, setVisit] = useState<Visit | null>(null)
+  const [invoices, setInvoices] = useState<VisitInvoices | null>(null)
+  const [payMethod, setPayMethod] = useState<PaymentMethodValue>(PaymentMethod.Cash)
   const [loading, setLoading] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [services, setServices] = useState<ServicePrice[]>([])
@@ -79,12 +89,13 @@ export default function VisitDetailPage() {
     setLoading(true)
     try {
       setVisit(await getVisit(id))
+      if (canBilling) setInvoices(await getInvoicesByVisit(id))
     } catch (err) {
       toastError(err)
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, canBilling])
 
   useEffect(() => {
     void load()
@@ -139,6 +150,17 @@ export default function VisitDetailPage() {
       setNewDoctorId('')
       setNewServiceId('')
       void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  const onPayAll = async () => {
+    try {
+      const result = await payVisitInvoices(id, payMethod)
+      setInvoices(result)
+      setVisit(await getVisit(id))
+      toastSuccess('Đã thu tiền toàn bộ hoá đơn còn nợ của lượt.')
     } catch (err) {
       toastError(err)
     }
@@ -221,6 +243,70 @@ export default function VisitDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Hoá đơn của lượt + thu tiền cả lượt (chỉ thu ngân) */}
+      {canBilling && invoices && (
+        <Card>
+          <CardContent className="flex flex-col gap-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-semibold">Hoá đơn của lượt</h3>
+              {invoices.totalOutstanding > 0 && (
+                <div className="flex items-center gap-2">
+                  <Select value={String(payMethod)} onValueChange={(v) => setPayMethod(Number(v) as PaymentMethodValue)}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(PaymentMethod).map((m) => (
+                        <SelectItem key={m} value={String(m)}>
+                          {paymentMethodLabels[m]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <ConfirmDialog
+                    trigger={<Button size="sm">Thu tiền cả lượt ({formatVnd(invoices.totalOutstanding)})</Button>}
+                    title="Thu tiền cả lượt?"
+                    description={`Thu ${formatVnd(invoices.totalOutstanding)} cho toàn bộ hoá đơn còn nợ của lượt bằng ${paymentMethodLabels[payMethod]}?`}
+                    confirmText="Thu tiền"
+                    onConfirm={() => void onPayAll()}
+                  />
+                </div>
+              )}
+            </div>
+            {invoices.invoices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Chưa có hoá đơn nào cho lượt này.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mã HĐ</TableHead>
+                    <TableHead className="text-right">Tổng tiền</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.invoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium">{inv.code}</TableCell>
+                      <TableCell className="text-right">{formatVnd(inv.totalAmount)}</TableCell>
+                      <TableCell>
+                        <InvoiceStatusBadge status={inv.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild size="sm" variant="ghost">
+                          <Link to={`/invoices/${inv.id}`}>Chi tiết</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Danh sách dịch vụ khám trong lượt */}
       <Card>

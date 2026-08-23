@@ -6,6 +6,7 @@ import type {
   Invoice,
   InvoiceStatusValue,
   UpdateInvoiceInput,
+  VisitInvoices,
 } from '../types/invoice'
 import { paymentMethodApiValue, type PaymentMethodValue } from '../types/invoice'
 
@@ -34,6 +35,20 @@ export async function getInvoicesByAppointment(appointmentId: string): Promise<A
   const res = await apiClient.get<ApiResponse<AppointmentInvoices>>(
     `/api/invoices/by-appointment/${appointmentId}`,
   )
+  return unwrap(res.data)
+}
+
+/** Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (ADR 0017). */
+export async function getInvoicesByVisit(visitId: string): Promise<VisitInvoices> {
+  const res = await apiClient.get<ApiResponse<VisitInvoices>>(`/api/invoices/by-visit/${visitId}`)
+  return unwrap(res.data)
+}
+
+/** Thu tiền toàn bộ hoá đơn còn Draft của một lượt (một phương thức). */
+export async function payVisitInvoices(visitId: string, method: PaymentMethodValue): Promise<VisitInvoices> {
+  const res = await apiClient.post<ApiResponse<VisitInvoices>>(`/api/invoices/pay-visit/${visitId}`, {
+    paymentMethod: paymentMethodApiValue[method],
+  })
   return unwrap(res.data)
 }
 
