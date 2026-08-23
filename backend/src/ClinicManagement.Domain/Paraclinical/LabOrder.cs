@@ -38,13 +38,15 @@ public class LabOrder : Entity
     /// Đường <b>walk-in</b> do lễ tân đăng ký (ADR 0016): không có phiếu khám/bác sĩ; có thể gắn lượt tiếp đón.
     /// </summary>
     public static LabOrder CreateWalkIn(
-        string code, Guid patientId, Guid? appointmentId, string? note, IEnumerable<LabOrderItem> items)
+        string code, Guid patientId, Guid? appointmentId, string? note, IEnumerable<LabOrderItem> items,
+        Guid? visitId = null)
     {
         var order = new LabOrder
         {
             Code = code,
             PatientId = patientId,
             AppointmentId = appointmentId,
+            VisitId = visitId,
             EncounterId = null,
             DoctorId = null,
             Note = note,
@@ -60,8 +62,11 @@ public class LabOrder : Entity
     /// <summary>Phiếu khám nguồn (bác sĩ chỉ định trong lúc khám); null với walk-in.</summary>
     public Guid? EncounterId { get; private set; }
 
-    /// <summary>Lượt tiếp đón gắn kèm (nếu có) — dùng gom hoá đơn theo lượt cho walk-in.</summary>
+    /// <summary>Lịch khám gắn kèm (nếu có) — gom hoá đơn theo lịch cho walk-in.</summary>
     public Guid? AppointmentId { get; private set; }
+
+    /// <summary>Lượt tiếp đón gắn kèm (nếu có, ADR 0017) — gom phiếu CLS & hoá đơn phí CLS theo lượt.</summary>
+    public Guid? VisitId { get; private set; }
 
     /// <summary>Bệnh nhân (snapshot từ phiếu khám hoặc do lễ tân chọn khi walk-in).</summary>
     public Guid PatientId { get; private set; }

@@ -112,7 +112,8 @@ public sealed class InvoiceService : IInvoiceService
         }
 
         var code = await GenerateCodeAsync(ct);
-        var visitId = await ResolveVisitIdAsync(appointmentId, ct);
+        // Lượt: ưu tiên lượt gắn trực tiếp phiếu chỉ định (walk-in gắn lượt, ADR 0017), fallback suy từ lịch.
+        var visitId = order.VisitId ?? await ResolveVisitIdAsync(appointmentId, ct);
         var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId, visitId);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);

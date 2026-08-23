@@ -20,4 +20,5 @@ public sealed record CreateWalkInLabOrderRequest(
     Guid PatientId,
     Guid? AppointmentId,
     string? Note,
-    IReadOnlyList<CreateLabOrderItemRequest> Items);
+    IReadOnlyList<CreateLabOrderItemRequest> Items,
+    Guid? VisitId = null);

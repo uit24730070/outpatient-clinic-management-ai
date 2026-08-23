@@ -8,6 +8,7 @@ public sealed record LabOrderDto(
     string Code,
     Guid? EncounterId,
     Guid? AppointmentId,
+    Guid? VisitId,
     Guid PatientId,
     string? PatientName,
     Guid? DoctorId,

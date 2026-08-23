@@ -3,6 +3,7 @@ using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Visits;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -25,6 +26,7 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
         builder.HasIndex(o => o.EncounterId);
         builder.HasIndex(o => o.PatientId);
         builder.HasIndex(o => o.AppointmentId);
+        builder.HasIndex(o => o.VisitId);
 
         builder.Property(o => o.Status)
             .HasConversion<string>()
@@ -56,6 +58,11 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
         builder.HasOne<Appointment>()
             .WithMany()
             .HasForeignKey(o => o.AppointmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Visit>()
+            .WithMany()
+            .HasForeignKey(o => o.VisitId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Cha–con: owned collection ở bảng riêng, vòng đời gắn chặt phiếu chỉ định (như InvoiceItem, ADR 0015).

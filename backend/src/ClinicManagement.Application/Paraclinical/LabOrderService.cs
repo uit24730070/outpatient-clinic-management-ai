@@ -57,11 +57,17 @@ public sealed class LabOrderService : ILabOrderService
         if (!await _db.Patients.AnyAsync(p => p.Id == request.PatientId, ct))
             return Error.NotFound("Patient.NotFound", $"Không tìm thấy bệnh nhân với Id {request.PatientId}.");
 
-        // Lượt tiếp đón tuỳ chọn: kiểm tồn tại khi có (để null với bệnh nhân vãng lai chỉ làm CLS).
+        // Lịch khám tuỳ chọn: kiểm tồn tại khi có (để null với bệnh nhân vãng lai chỉ làm CLS).
         if (request.AppointmentId is not null &&
             !await _db.Appointments.AnyAsync(a => a.Id == request.AppointmentId, ct))
             return Error.NotFound("Appointment.NotFound",
-                $"Không tìm thấy lượt khám với Id {request.AppointmentId}.");
+                $"Không tìm thấy lịch khám với Id {request.AppointmentId}.");
+
+        // Lượt tiếp đón tuỳ chọn (ADR 0017): kiểm tồn tại khi có, để gom phiếu CLS & hoá đơn theo lượt.
+        if (request.VisitId is not null &&
+            !await _db.Visits.AnyAsync(v => v.Id == request.VisitId, ct))
+            return Error.NotFound("Visit.NotFound",
+                $"Không tìm thấy lượt tiếp đón với Id {request.VisitId}.");
 
         var itemsResult = await BuildItemsAsync(lines, ct);
         if (itemsResult.IsFailure)
@@ -70,7 +76,7 @@ public sealed class LabOrderService : ILabOrderService
         var code = await GenerateCodeAsync(ct);
         var order = LabOrder.CreateWalkIn(
             code, request.PatientId, request.AppointmentId,
-            NormalizeOptional(request.Note), itemsResult.Value);
+            NormalizeOptional(request.Note), itemsResult.Value, request.VisitId);
 
         _db.LabOrders.Add(order);
         await _db.SaveChangesAsync(ct);
@@ -174,6 +180,7 @@ public sealed class LabOrderService : ILabOrderService
             o.Code,
             o.EncounterId,
             o.AppointmentId,
+            o.VisitId,
             o.PatientId,
             _db.Patients.Where(p => p.Id == o.PatientId).Select(p => p.FullName).FirstOrDefault(),
             o.DoctorId,
