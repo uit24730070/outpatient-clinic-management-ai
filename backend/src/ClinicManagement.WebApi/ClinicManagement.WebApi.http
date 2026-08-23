@@ -623,3 +623,14 @@ Authorization: Bearer {{token}}
 ### Huỷ lượt (Open → Cancelled)
 POST {{host}}/api/visits/{{visitId}}/cancel
 Authorization: Bearer {{token}}
+
+### Gom hoá đơn theo lượt tiếp đón + tổng (ADR 0017)
+GET {{host}}/api/invoices/by-visit/{{visitId}}
+Authorization: Bearer {{token}}
+
+### Thu tiền cả lượt (mọi HĐ Draft của lượt; RBAC ManageBilling)
+POST {{host}}/api/invoices/pay-visit/{{visitId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "paymentMethod": "Cash" }
