@@ -3,6 +3,7 @@ using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Visits.Dtos;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
+using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Visits;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
@@ -24,11 +25,23 @@ public sealed class VisitService : IVisitService
     public async Task<Result<VisitDto>> CreateAsync(CreateVisitRequest request, CancellationToken ct = default)
     {
         var lines = request.Services ?? Array.Empty<VisitServiceLine>();
-        if (lines.Count == 0)
-            return Error.Validation("Visit.NoServices", "Lượt tiếp đón phải có ít nhất một dịch vụ khám.");
+        var clsIds = (request.ParaclinicalServiceIds ?? Array.Empty<Guid>()).Distinct().ToList();
+        if (lines.Count == 0 && clsIds.Count == 0)
+            return Error.Validation("Visit.NoServices",
+                "Lượt tiếp đón phải có ít nhất một dịch vụ (khám hoặc cận lâm sàng).");
 
         if (!await _db.Patients.AnyAsync(p => p.Id == request.PatientId, ct))
             return Error.Validation("Visit.PatientNotFound", $"Bệnh nhân với Id {request.PatientId} không tồn tại.");
+
+        // Dựng cụm mục CLS trước (validate loại Paraclinical) để không tạo lượt khi CLS sai.
+        List<LabOrderItem>? labItems = null;
+        if (clsIds.Count > 0)
+        {
+            var built = await BuildLabItemsAsync(clsIds, ct);
+            if (built.IsFailure)
+                return Result.Failure<VisitDto>(built.Error);
+            labItems = built.Value;
+        }
 
         var code = await GenerateCodeAsync(ct);
         var visit = new Visit(code, request.PatientId, NormalizeOptional(request.Note));
@@ -47,8 +60,49 @@ public sealed class VisitService : IVisitService
             _db.Appointments.Add(appt.Value);
         }
 
+        // Gộp chỉ định CLS ngay lúc tiếp đón: một phiếu walk-in gắn lượt (ADR 0017).
+        if (labItems is { Count: > 0 })
+        {
+            var labCode = await GenerateLabCodeAsync(ct);
+            var order = LabOrder.CreateWalkIn(
+                labCode, request.PatientId, appointmentId: null, note: null, labItems, visit.Id);
+            _db.LabOrders.Add(order);
+        }
+
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(visit.Id, ct))!;
+    }
+
+    /// <summary>Snapshot tên/giá cho các dịch vụ CLS; mọi dịch vụ phải tồn tại và thuộc loại Paraclinical.</summary>
+    private async Task<Result<List<LabOrderItem>>> BuildLabItemsAsync(
+        IReadOnlyList<Guid> serviceIds, CancellationToken ct)
+    {
+        var services = await _db.ServicePrices
+            .Where(s => serviceIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, ct);
+
+        var missing = serviceIds.Where(id => !services.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+            return Error.NotFound("ServicePrice.NotFound",
+                $"Dịch vụ tham chiếu không tồn tại: {string.Join(", ", missing)}.");
+
+        var notParaclinical = serviceIds.Where(id => services[id].Category != ServiceCategory.Paraclinical).ToList();
+        if (notParaclinical.Count > 0)
+            return Error.Validation("Paraclinical.ServiceNotParaclinical",
+                $"Dịch vụ không thuộc loại cận lâm sàng: {string.Join(", ", notParaclinical)}.");
+
+        return serviceIds.Select(id =>
+        {
+            var svc = services[id];
+            return new LabOrderItem(svc.Id, svc.Name, svc.UnitPrice);
+        }).ToList();
+    }
+
+    /// <summary>Sinh mã phiếu chỉ định CLS dạng CLS-000001, đếm cả bản ghi đã xoá mềm.</summary>
+    private async Task<string> GenerateLabCodeAsync(CancellationToken ct)
+    {
+        var count = await _db.LabOrders.IgnoreQueryFilters().CountAsync(ct);
+        return $"CLS-{count + 1:D6}";
     }
 
     public async Task<Result<VisitDto>> AddServiceAsync(
@@ -237,9 +291,17 @@ public sealed class VisitService : IVisitService
         var billed = invoices.Where(x => x.Status != InvoiceStatus.Cancelled).Sum(x => x.Total);
         var paid = invoices.Where(x => x.Status == InvoiceStatus.Paid).Sum(x => x.Total);
 
+        // Phiếu CLS gắn lượt (walk-in gộp lúc tiếp đón, hoặc gắn sau).
+        var labOrders = await _db.LabOrders.AsNoTracking()
+            .Where(o => o.VisitId == id)
+            .OrderBy(o => o.CreatedAt)
+            .Select(o => new VisitLabOrderDto(
+                o.Id, o.Code, o.Status, o.Items.Sum(i => i.UnitPrice), o.InvoicedAt, o.Items.Count))
+            .ToListAsync(ct);
+
         return new VisitDto(
             visit.Id, visit.Code, visit.PatientId, patientName, visit.Status, visit.Note,
-            appointments, billed, paid, billed - paid, visit.CreatedAt, visit.UpdatedAt);
+            appointments, labOrders, billed, paid, billed - paid, visit.CreatedAt, visit.UpdatedAt);
     }
 
     /// <summary>Sinh mã lượt dạng LK-000001, đếm cả bản ghi đã xoá mềm để tránh trùng mã.</summary>

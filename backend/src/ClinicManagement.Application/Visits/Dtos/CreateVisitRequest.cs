@@ -7,7 +7,8 @@ namespace ClinicManagement.Application.Visits.Dtos;
 public sealed record CreateVisitRequest(
     Guid PatientId,
     string? Note,
-    IReadOnlyList<VisitServiceLine> Services);
+    IReadOnlyList<VisitServiceLine> Services,
+    IReadOnlyList<Guid>? ParaclinicalServiceIds = null);
 
 /// <summary>Một dịch vụ khám trong lượt: bác sĩ + khung giờ + dịch vụ khám (loại Consultation).</summary>
 public sealed record VisitServiceLine(

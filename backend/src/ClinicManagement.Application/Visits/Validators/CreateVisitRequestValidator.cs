@@ -21,8 +21,11 @@ public sealed class CreateVisitRequestValidator : AbstractValidator<CreateVisitR
     {
         RuleFor(x => x.PatientId).NotEmpty();
         RuleFor(x => x.Note).MaximumLength(500);
-        RuleFor(x => x.Services)
-            .NotEmpty().WithMessage("Lượt tiếp đón phải có ít nhất một dịch vụ khám.");
+        // Lượt phải có ít nhất một dịch vụ — khám hoặc cận lâm sàng.
+        RuleFor(x => x)
+            .Must(r => (r.Services is { Count: > 0 }) || (r.ParaclinicalServiceIds is { Count: > 0 }))
+            .WithName("services")
+            .WithMessage("Lượt tiếp đón phải có ít nhất một dịch vụ (khám hoặc cận lâm sàng).");
         RuleForEach(x => x.Services).SetValidator(new VisitServiceLineValidator());
     }
 }
