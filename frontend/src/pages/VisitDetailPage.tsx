@@ -200,6 +200,13 @@ export default function VisitDetailPage() {
           <div className="flex items-center gap-2">
             <VisitStatusBadge status={visit.status} />
             {canManage && isOpen && (
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/lab/walk-in?patientId=${visit.patientId}&visitId=${visit.id}`}>
+                  Đăng ký CLS
+                </Link>
+              </Button>
+            )}
+            {canManage && isOpen && (
               <>
                 <ConfirmDialog
                   trigger={<Button size="sm" variant="outline">Đóng lượt</Button>}

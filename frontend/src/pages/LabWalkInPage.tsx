@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FlaskConical, Plus } from 'lucide-react'
 import { createWalkInLabOrder, getLabOrder } from '../services/labOrderService'
 import { listPatients } from '../services/patientService'
 import { listServicePrices } from '../services/servicePriceService'
+import { listVisits } from '../services/visitService'
+import { VisitStatus, type VisitListItem } from '../types/visit'
 import { toastError, toastInfo, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import { ServiceCategory, type ServicePrice } from '../types/invoice'
@@ -26,10 +29,15 @@ import {
  * Màn "Đăng ký cận lâm sàng (walk-in)" cho Lễ tân (ADR 0016): chọn bệnh nhân + các dịch vụ CLS
  * (loại Paraclinical) → tạo phiếu chỉ định không cần phiếu khám → in phiếu + lập hoá đơn phí CLS.
  */
+const NO_VISIT = 'none'
+
 export default function LabWalkInPage() {
+  const [searchParams] = useSearchParams()
   const [patientSearch, setPatientSearch] = useState('')
   const [patients, setPatients] = useState<Patient[]>([])
-  const [patientId, setPatientId] = useState('')
+  const [patientId, setPatientId] = useState(searchParams.get('patientId') ?? '')
+  const [visits, setVisits] = useState<VisitListItem[]>([])
+  const [visitId, setVisitId] = useState(searchParams.get('visitId') ?? '')
   const [services, setServices] = useState<ServicePrice[]>([])
   const [picked, setPicked] = useState<string[]>([])
   const [note, setNote] = useState('')
@@ -70,6 +78,22 @@ export default function LabWalkInPage() {
     }
   }, [patientSearch])
 
+  // Nạp các lượt đang mở của bệnh nhân để (tuỳ chọn) gắn phiếu CLS vào lượt (ADR 0017).
+  useEffect(() => {
+    if (!patientId) {
+      setVisits([])
+      return
+    }
+    void (async () => {
+      try {
+        const res = await listVisits({ page: 1, pageSize: 50, patientId, status: VisitStatus.Open })
+        setVisits(res.items)
+      } catch {
+        // Danh sách lượt chỉ để gắn kèm; lỗi ở đây không chặn đăng ký.
+      }
+    })()
+  }, [patientId])
+
   const serviceMap = useMemo(() => new Map(services.map((s) => [s.id, s])), [services])
   const pickedTotal = picked.reduce((sum, id) => sum + (serviceMap.get(id)?.unitPrice ?? 0), 0)
 
@@ -87,6 +111,7 @@ export default function LabWalkInPage() {
       const order = await createWalkInLabOrder({
         patientId,
         appointmentId: null,
+        visitId: visitId || null,
         note: note.trim() || null,
         items: picked.map((servicePriceId) => ({ servicePriceId })),
       })
@@ -129,7 +154,13 @@ export default function LabWalkInPage() {
               value={patientSearch}
               onChange={(e) => setPatientSearch(e.target.value)}
             />
-            <Select value={patientId} onValueChange={setPatientId}>
+            <Select
+              value={patientId}
+              onValueChange={(v) => {
+                setPatientId(v)
+                setVisitId('')
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="— Chọn bệnh nhân —" />
               </SelectTrigger>
@@ -142,6 +173,26 @@ export default function LabWalkInPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Gắn vào lượt tiếp đón (tuỳ chọn) — để gom phiếu CLS & hoá đơn theo lượt (ADR 0017) */}
+          {patientId && visits.length > 0 && (
+            <div className="grid gap-2">
+              <Label>Gắn vào lượt tiếp đón (tuỳ chọn)</Label>
+              <Select value={visitId || NO_VISIT} onValueChange={(v) => setVisitId(v === NO_VISIT ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="— Không gắn lượt —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_VISIT}>— Không gắn lượt —</SelectItem>
+                  {visits.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.code} ({v.serviceCount} dịch vụ)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Dịch vụ CLS */}
           <div className="grid gap-2">
