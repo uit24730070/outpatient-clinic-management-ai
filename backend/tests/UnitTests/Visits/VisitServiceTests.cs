@@ -66,6 +66,54 @@ public sealed class VisitServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_ShouldOrderParaclinical_TogetherWithConsultations()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorA, out _, out var consultId);
+        var cls = new ServicePrice("DV-000009", "X-quang", 200000m, null, ServiceCategory.Paraclinical);
+        db.ServicePrices.Add(cls);
+        db.SaveChanges();
+
+        var result = await service.CreateAsync(new CreateVisitRequest(
+            patientId, "Khám + CLS", new[] { Line(doctorA, consultId) }, new[] { cls.Id }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Appointments);
+        Assert.Single(result.Value.LabOrders);
+        Assert.Equal(1, result.Value.LabOrders[0].ItemCount);
+        Assert.Equal(200000m, result.Value.LabOrders[0].TotalAmount);
+        Assert.StartsWith("CLS-", result.Value.LabOrders[0].Code);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldAllowParaclinicalOnlyVisit()
+    {
+        var service = CreateService(out var db, out var patientId, out _, out _, out _);
+        var cls = new ServicePrice("DV-000009", "Công thức máu", 80000m, null, ServiceCategory.Paraclinical);
+        db.ServicePrices.Add(cls);
+        db.SaveChanges();
+
+        var result = await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, Array.Empty<VisitServiceLine>(), new[] { cls.Id }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value.Appointments);
+        Assert.Single(result.Value.LabOrders);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldFail_WhenParaclinicalListHasNonParaclinical()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorA, out _, out var consultId);
+
+        // Đưa nhầm dịch vụ khám (Consultation) vào danh sách CLS.
+        var result = await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId) }, new[] { consultId }));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Paraclinical.ServiceNotParaclinical", result.Error.Code);
+    }
+
+    [Fact]
     public async Task CreateAsync_ShouldFail_WhenPatientMissing()
     {
         var service = CreateService(out _, out _, out var doctorA, out _, out var consultId);
