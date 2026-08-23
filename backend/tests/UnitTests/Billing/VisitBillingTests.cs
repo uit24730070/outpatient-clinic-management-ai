@@ -1,5 +1,7 @@
 using ClinicManagement.Application.Billing;
 using ClinicManagement.Application.Billing.Dtos;
+using ClinicManagement.Application.Paraclinical;
+using ClinicManagement.Application.Paraclinical.Dtos;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Patients;
@@ -75,6 +77,25 @@ public sealed class VisitBillingTests
         Assert.Equal(300000m, result.Value.TotalPaid);
         Assert.Equal(0m, result.Value.TotalOutstanding);
         Assert.All(result.Value.Invoices, i => Assert.Equal(InvoiceStatus.Paid, i.Status));
+    }
+
+    [Fact]
+    public async Task CreateFromLabOrder_ShouldUseVisitIdOfWalkInLabOrder()
+    {
+        var svc = Setup(out var db, out var patientId, out var visitId, out _, out _, out _);
+        var cls = new ServicePrice("DV-CLS001", "Công thức máu", 80000m, null, ServiceCategory.Paraclinical);
+        db.ServicePrices.Add(cls);
+        db.SaveChanges();
+
+        // Walk-in CLS gắn trực tiếp lượt (không qua lịch/encounter).
+        var labSvc = new LabOrderService(db);
+        var order = (await labSvc.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patientId, null, null, new[] { new CreateLabOrderItemRequest(cls.Id) }, visitId))).Value;
+
+        var inv = await svc.CreateFromLabOrderAsync(order.Id);
+
+        Assert.True(inv.IsSuccess);
+        Assert.Equal(visitId, inv.Value.VisitId);
     }
 
     [Fact]

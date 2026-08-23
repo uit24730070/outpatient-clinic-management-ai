@@ -5,6 +5,7 @@ using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Visits;
 using ClinicManagement.Shared.Results;
 using UnitTests.Common;
 
@@ -36,6 +37,40 @@ public sealed class LabOrderServiceTests
         var p = new Patient(code, "Nguyễn Văn A", null, Gender.Male, null, null);
         db.Patients.Add(p);
         return p;
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WithVisit_ShouldAttachVisitId()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Công thức máu", 80000m);
+        var visit = new Visit("LK-000001", patient.Id, null);
+        db.Visits.Add(visit);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, visit.Id));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(visit.Id, result.Value.VisitId);
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_ShouldFail_WhenVisitMissing()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, Guid.NewGuid()));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Visit.NotFound", result.Error.Code);
     }
 
     [Fact]
