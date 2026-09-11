@@ -63,7 +63,7 @@ public sealed class PatientSummaryServiceTests
     {
         var (db, patient) = SeedPatient();
         SeedEncounter(db, patient.Id);
-        var stub = StubChatCompletionService.Ok("Bệnh nhân bị viêm họng cấp.", "claude-opus-4-8");
+        var stub = StubChatCompletionService.Ok("Bệnh nhân bị viêm họng cấp.", "gpt-5-mini");
         var service = new PatientSummaryService(db, stub);
 
         var result = await service.SummarizeAsync(patient.Id);
@@ -72,7 +72,7 @@ public sealed class PatientSummaryServiceTests
         Assert.Equal(1, stub.Calls);
         Assert.Equal(1, result.Value.EncounterCount);
         Assert.Equal("Bệnh nhân bị viêm họng cấp.", result.Value.Summary);
-        Assert.Equal("claude-opus-4-8", result.Value.Model);
+        Assert.Equal("gpt-5-mini", result.Value.Model);
         // Prompt phải chứa dữ liệu bệnh án (chẩn đoán + thuốc) để LLM tóm tắt.
         var prompt = stub.LastRequest!.Messages[0].Content;
         Assert.Contains("Viêm họng cấp", prompt);

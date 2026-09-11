@@ -59,14 +59,14 @@ public sealed class PatientQuestionServiceTests
         await store.UpsertAsync(new EncounterEmbeddingRecord(a.Id, patient.Id, new float[] { 1f, 0f, 0f }, "stub"));
         await store.UpsertAsync(new EncounterEmbeddingRecord(b.Id, patient.Id, new float[] { 0f, 1f, 0f }, "stub"));
 
-        var chat = StubChatCompletionService.Ok("Bệnh nhân từng bị viêm họng cấp.", "claude-opus-4-8");
+        var chat = StubChatCompletionService.Ok("Bệnh nhân từng bị viêm họng cấp.", "gpt-5-mini");
         var service = new PatientQuestionService(db, QueryCloserToA(), store, chat);
 
         var result = await service.AnswerAsync(patient.Id, "Tiền sử viêm họng?");
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, chat.Calls);
-        Assert.Equal("claude-opus-4-8", result.Value.Model);
+        Assert.Equal("gpt-5-mini", result.Value.Model);
         Assert.NotEmpty(result.Value.Sources);
         // Phiếu A (viêm họng) tương đồng cao hơn → đứng đầu nguồn.
         Assert.Equal(a.Id, result.Value.Sources[0].EncounterId);
