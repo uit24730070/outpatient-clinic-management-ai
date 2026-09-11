@@ -65,14 +65,14 @@ Thứ tự khởi động được đảm bảo qua **healthcheck** DB (`pg_isre
 | `WEB_PORT` | `8080` | Cổng web map ra host. |
 | `AI_USE_FAKE` | `true` | `true` → tóm tắt AI mô phỏng, không gọi mạng/không tốn phí. |
 | `AI_USE_FAKE_EMBEDDING` | `true` | `true` → embedding tất định, không gọi mạng. |
-| `AI_API_KEY` | *(trống)* | Khoá Claude API — chỉ cần khi `AI_USE_FAKE=false`. |
+| `AI_API_KEY` | *(trống)* | Khoá OpenAI API (GPT-5 mini) — chỉ cần khi `AI_USE_FAKE=false`. |
 | `AI_EMBEDDING_API_KEY` | *(trống)* | Khoá Voyage AI — chỉ cần khi `AI_USE_FAKE_EMBEDDING=false`. |
 
 > **Bí mật:** `.env` đã nằm trong `.gitignore`; chỉ `.env.example` (không chứa giá trị thật) được commit. Đừng đưa khoá thật vào repo.
 
 ## Bật trợ lý AI thật (tuỳ chọn)
 
-Trong `.env` đặt `AI_USE_FAKE=false`, `AI_USE_FAKE_EMBEDDING=false` và điền `AI_API_KEY` (Claude) + `AI_EMBEDDING_API_KEY` (Voyage). Sau đó đăng nhập Admin và gọi `POST /api/ai/reindex` để lập chỉ mục embedding cho phiếu khám hiện có. Xem [ADR 0007](../adr/0007-tich-hop-llm.md) và [ADR 0008](../adr/0008-rag-va-vector-store.md).
+Trong `.env` đặt `AI_USE_FAKE=false`, `AI_USE_FAKE_EMBEDDING=false` và điền `AI_API_KEY` (OpenAI) + `AI_EMBEDDING_API_KEY` (Voyage). Sau đó đăng nhập Admin và gọi `POST /api/ai/reindex` để lập chỉ mục embedding cho phiếu khám hiện có. Xem [ADR 0007](../adr/0007-tich-hop-llm.md) và [ADR 0008](../adr/0008-rag-va-vector-store.md).
 
 ## Ghi chú vận hành
 
