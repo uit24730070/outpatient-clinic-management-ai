@@ -8,23 +8,29 @@ public sealed class AiSettings
 {
     public const string SectionName = "Ai";
 
-    /// <summary>Khoá API của provider (Claude/Anthropic). Không commit giá trị thật.</summary>
+    /// <summary>Khoá API của provider (OpenAI). Không commit giá trị thật (đặt qua <c>Ai__ApiKey</c>).</summary>
     public string ApiKey { get; set; } = string.Empty;
 
-    /// <summary>Model đang dùng. Mặc định model Claude mới nhất.</summary>
-    public string Model { get; set; } = "claude-opus-4-8";
+    /// <summary>Model đang dùng. Mặc định GPT-5 mini (OpenAI).</summary>
+    public string Model { get; set; } = "gpt-5-mini";
 
-    /// <summary>Điểm cuối API (không kèm dấu "/" cuối). Endpoint chat: <c>{BaseUrl}/v1/messages</c>.</summary>
-    public string BaseUrl { get; set; } = "https://api.anthropic.com";
+    /// <summary>Điểm cuối API (không kèm dấu "/" cuối). Endpoint chat: <c>{BaseUrl}/v1/chat/completions</c>.</summary>
+    public string BaseUrl { get; set; } = "https://api.openai.com";
 
-    /// <summary>Phiên bản API Anthropic (header <c>anthropic-version</c>).</summary>
-    public string AnthropicVersion { get; set; } = "2023-06-01";
+    /// <summary>
+    /// Mức "suy luận" của model GPT-5 (<c>reasoning_effort</c>): none/low/medium/high/xhigh.
+    /// Mặc định <c>low</c> — đủ cho tóm tắt/hỏi đáp, giảm độ trễ &amp; chi phí. Để trống ⇒ không gửi tham số.
+    /// </summary>
+    public string ReasoningEffort { get; set; } = "low";
 
-    /// <summary>Giới hạn token đầu ra mỗi lần gọi.</summary>
-    public int MaxTokens { get; set; } = 1024;
+    /// <summary>
+    /// Giới hạn token đầu ra mỗi lần gọi (<c>max_completion_tokens</c>). Với model GPT-5, token này
+    /// <b>bao gồm cả token suy luận</b> nên đặt dư (mặc định 2048) để tránh cụt câu trả lời.
+    /// </summary>
+    public int MaxTokens { get; set; } = 2048;
 
-    /// <summary>Thời gian chờ tối đa (giây) cho một lần gọi LLM.</summary>
-    public int TimeoutSeconds { get; set; } = 60;
+    /// <summary>Thời gian chờ tối đa (giây) cho một lần gọi LLM (model suy luận có thể chậm hơn).</summary>
+    public int TimeoutSeconds { get; set; } = 120;
 
     /// <summary>Bật chế độ giả lập (fake) — trả tóm tắt tất định, không gọi mạng (dev/test/thiếu khoá).</summary>
     public bool UseFake { get; set; }

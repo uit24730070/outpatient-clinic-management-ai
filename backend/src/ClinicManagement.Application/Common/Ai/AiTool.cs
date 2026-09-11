@@ -3,7 +3,7 @@ namespace ClinicManagement.Application.Common.Ai;
 /// <summary>
 /// Định nghĩa một công cụ (tool/function) trung lập provider mà LLM có thể yêu cầu gọi:
 /// tên, mô tả, và danh sách tham số. Hiện thực ở Infrastructure dịch sang định dạng
-/// tool-use của provider (vd JSON Schema <c>input_schema</c> của Claude).
+/// tool-use của provider (vd <c>tools[].function.parameters</c> JSON Schema của OpenAI).
 /// </summary>
 public sealed record AiTool(
     string Name,

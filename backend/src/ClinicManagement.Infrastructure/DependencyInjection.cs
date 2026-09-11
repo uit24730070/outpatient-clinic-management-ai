@@ -52,7 +52,7 @@ public static class DependencyInjection
                     BaseAddress = new Uri(opts.Value.BaseUrl),
                     Timeout = TimeSpan.FromSeconds(opts.Value.TimeoutSeconds)
                 };
-                return new ClaudeChatCompletionService(http, opts);
+                return new OpenAiChatCompletionService(http, opts);
             });
         }
         else
@@ -71,7 +71,7 @@ public static class DependencyInjection
                     BaseAddress = new Uri(opts.Value.BaseUrl),
                     Timeout = TimeSpan.FromSeconds(opts.Value.TimeoutSeconds)
                 };
-                return new ClaudeAssistantCompletionService(http, opts);
+                return new OpenAiAssistantCompletionService(http, opts);
             });
         }
         else

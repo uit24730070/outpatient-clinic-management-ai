@@ -24,7 +24,7 @@ public sealed record AssistantCompletionResult(
 /// <summary>
 /// Trừu tượng gọi LLM ở mức "một lượt" có tool-use (provider-neutral). Vòng lặp gọi công cụ
 /// (orchestration) nằm ở <see cref="ClinicManagement.Application.Assistant.IAssistantService"/>.
-/// Hiện thực (Claude thật hoặc fake) ở Infrastructure. Lỗi gói vào <see cref="Error"/> mã <c>Ai.*</c>.
+/// Hiện thực (OpenAI thật hoặc fake) ở Infrastructure. Lỗi gói vào <see cref="Error"/> mã <c>Ai.*</c>.
 /// </summary>
 public interface IAssistantCompletionService
 {
