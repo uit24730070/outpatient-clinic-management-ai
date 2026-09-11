@@ -22,7 +22,8 @@ public class Appointment : Entity
         Guid? servicePriceId = null,
         string? serviceName = null,
         decimal? servicePrice = null,
-        Guid? visitId = null)
+        Guid? visitId = null,
+        Guid? roomId = null)
     {
         PatientId = patientId;
         DoctorId = doctorId;
@@ -33,6 +34,7 @@ public class Appointment : Entity
         ServiceName = serviceName;
         ServicePrice = servicePrice;
         VisitId = visitId;
+        RoomId = roomId;
         Status = AppointmentStatus.Scheduled;
     }
 
@@ -69,6 +71,12 @@ public class Appointment : Entity
         ServiceName = serviceName;
         ServicePrice = servicePrice;
     }
+
+    /// <summary>Phòng khám gán cho lịch này (tuỳ chọn — ADR 0018); null nếu chưa gán.</summary>
+    public Guid? RoomId { get; private set; }
+
+    /// <summary>Gán/đổi phòng khám cho lịch. Truyền null để gỡ.</summary>
+    public void SetRoom(Guid? roomId) => RoomId = roomId;
 
     public AppointmentStatus Status { get; private set; }
 

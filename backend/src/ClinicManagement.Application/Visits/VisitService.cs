@@ -276,6 +276,8 @@ public sealed class VisitService : IVisitService
                 a.ServicePriceId,
                 a.ServiceName,
                 a.ServicePrice,
+                a.RoomId,
+                a.RoomId == null ? null : _db.Rooms.Where(r => r.Id == a.RoomId).Select(r => r.Name).FirstOrDefault(),
                 a.CreatedAt,
                 a.UpdatedAt))
             .ToListAsync(ct);

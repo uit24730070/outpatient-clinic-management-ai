@@ -10,6 +10,13 @@ namespace ClinicManagement.Application.Appointments;
 public sealed class AppointmentService : IAppointmentService
 {
     private const int MaxPageSize = 100;
+
+    /// <summary>
+    /// Múi giờ phòng khám (Việt Nam, UTC+7, không có DST). Khung làm việc bác sĩ lưu giờ địa phương
+    /// (<c>TimeOnly</c>); lịch khám lưu <c>timestamptz</c> UTC — quy đổi về giờ này khi so khung (ADR 0018).
+    /// </summary>
+    private static readonly TimeSpan ClinicOffset = TimeSpan.FromHours(7);
+
     private readonly IAppDbContext _db;
 
     public AppointmentService(IAppDbContext db) => _db = db;
@@ -29,6 +36,15 @@ public sealed class AppointmentService : IAppointmentService
             return Error.Conflict("Appointment.Overlap",
                 "Bác sĩ đã có lịch khác trùng khung giờ này.");
 
+        var withinHours = await IsWithinWorkingHoursAsync(
+            request.DoctorId, request.StartTime, request.EndTime, ct);
+        if (withinHours.IsFailure)
+            return Result.Failure<AppointmentDto>(withinHours.Error);
+
+        var roomCheck = await ValidateRoomAsync(request.RoomId, ct);
+        if (roomCheck.IsFailure)
+            return Result.Failure<AppointmentDto>(roomCheck.Error);
+
         var service = await ResolveServiceAsync(request.ServicePriceId, ct);
         if (service.IsFailure)
             return Result.Failure<AppointmentDto>(service.Error);
@@ -41,7 +57,8 @@ public sealed class AppointmentService : IAppointmentService
             NormalizeOptional(request.Reason),
             service.Value?.Id,
             service.Value?.Name,
-            service.Value?.UnitPrice);
+            service.Value?.UnitPrice,
+            roomId: request.RoomId);
 
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync(ct);
@@ -102,6 +119,15 @@ public sealed class AppointmentService : IAppointmentService
             return Error.Conflict("Appointment.Overlap",
                 "Bác sĩ đã có lịch khác trùng khung giờ này.");
 
+        var withinHours = await IsWithinWorkingHoursAsync(
+            appointment.DoctorId, request.StartTime, request.EndTime, ct);
+        if (withinHours.IsFailure)
+            return Result.Failure<AppointmentDto>(withinHours.Error);
+
+        var roomCheck = await ValidateRoomAsync(request.RoomId, ct);
+        if (roomCheck.IsFailure)
+            return Result.Failure<AppointmentDto>(roomCheck.Error);
+
         var service = await ResolveServiceAsync(request.ServicePriceId, ct);
         if (service.IsFailure)
             return Result.Failure<AppointmentDto>(service.Error);
@@ -112,6 +138,7 @@ public sealed class AppointmentService : IAppointmentService
             return Result.Failure<AppointmentDto>(reschedule.Error);
 
         appointment.SetService(service.Value?.Id, service.Value?.Name, service.Value?.UnitPrice);
+        appointment.SetRoom(request.RoomId);
 
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(appointment.Id, ct))!;
@@ -190,6 +217,47 @@ public sealed class AppointmentService : IAppointmentService
         return (await ProjectByIdAsync(appointment.Id, ct))!;
     }
 
+    /// <summary>
+    /// Kiểm giờ khám nằm trong <b>một khung làm việc</b> của bác sĩ hôm đó (ADR 0018). Quy đổi thời gian
+    /// UTC của lịch về giờ địa phương phòng khám (<see cref="ClinicOffset"/>) rồi so với <c>TimeOnly</c>.
+    /// Bác sĩ <b>chưa khai lịch làm việc nào</b> ⇒ không ràng buộc (tương thích lịch cũ). Nếu đã khai mà
+    /// giờ khám không lọt khung nào ⇒ <c>Appointment.OutsideWorkingHours</c> (409).
+    /// </summary>
+    private async Task<Result> IsWithinWorkingHoursAsync(
+        Guid doctorId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
+    {
+        var schedules = await _db.DoctorWorkSchedules.AsNoTracking()
+            .Where(s => s.DoctorId == doctorId)
+            .ToListAsync(ct);
+
+        // Chưa khai lịch làm việc → cho đặt tự do.
+        if (schedules.Count == 0)
+            return Result.Success();
+
+        var localStart = start.ToOffset(ClinicOffset);
+        var localEnd = end.ToOffset(ClinicOffset);
+        var startTime = TimeOnly.FromTimeSpan(localStart.TimeOfDay);
+        var endTime = TimeOnly.FromTimeSpan(localEnd.TimeOfDay);
+
+        // Khung khám không được vắt qua nửa đêm (giữ đơn giản; cùng ngày địa phương).
+        var fits = localStart.Date == localEnd.Date && schedules.Any(s =>
+            s.DayOfWeek == localStart.DayOfWeek &&
+            s.StartTime <= startTime && s.EndTime >= endTime);
+
+        return fits
+            ? Result.Success()
+            : Result.Failure(Error.Conflict("Appointment.OutsideWorkingHours",
+                "Giờ khám nằm ngoài khung giờ làm việc của bác sĩ."));
+    }
+
+    private async Task<Result> ValidateRoomAsync(Guid? roomId, CancellationToken ct)
+    {
+        if (roomId is null) return Result.Success();
+        return await _db.Rooms.AnyAsync(r => r.Id == roomId, ct)
+            ? Result.Success()
+            : Result.Failure(Error.NotFound("Room.NotFound", $"Không tìm thấy phòng khám với Id {roomId}."));
+    }
+
     /// <summary>Có lịch khác của cùng bác sĩ (còn chiếm chỗ) chồng khung giờ hay không.</summary>
     private async Task<bool> HasOverlapAsync(
         Guid doctorId, DateTimeOffset start, DateTimeOffset end, Guid? excludeId, CancellationToken ct) =>
@@ -215,6 +283,8 @@ public sealed class AppointmentService : IAppointmentService
             a.ServicePriceId,
             a.ServiceName,
             a.ServicePrice,
+            a.RoomId,
+            a.RoomId == null ? null : _db.Rooms.Where(r => r.Id == a.RoomId).Select(r => r.Name).FirstOrDefault(),
             a.CreatedAt,
             a.UpdatedAt));
 

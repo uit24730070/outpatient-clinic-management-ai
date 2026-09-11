@@ -5,6 +5,7 @@ using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
+using ClinicManagement.Domain.Resources;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
 using ClinicManagement.Domain.Visits;
@@ -20,6 +21,8 @@ public interface IAppDbContext
     DbSet<Patient> Patients { get; }
     DbSet<Specialty> Specialties { get; }
     DbSet<Doctor> Doctors { get; }
+    DbSet<DoctorWorkSchedule> DoctorWorkSchedules { get; }
+    DbSet<Room> Rooms { get; }
     DbSet<User> Users { get; }
     DbSet<Visit> Visits { get; }
     DbSet<Appointment> Appointments { get; }

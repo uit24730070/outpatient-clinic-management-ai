@@ -1,6 +1,7 @@
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Resources;
 using ClinicManagement.Domain.Visits;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -50,5 +51,12 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
             .WithMany()
             .HasForeignKey(a => a.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Phòng khám gán cho lịch (ADR 0018) — nullable; gỡ phòng đặt RoomId về NULL.
+        builder.HasIndex(a => a.RoomId);
+        builder.HasOne<Room>()
+            .WithMany()
+            .HasForeignKey(a => a.RoomId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

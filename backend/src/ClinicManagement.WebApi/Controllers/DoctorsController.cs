@@ -11,8 +11,13 @@ namespace ClinicManagement.WebApi.Controllers;
 public sealed class DoctorsController : ApiControllerBase
 {
     private readonly IDoctorService _doctors;
+    private readonly IDoctorScheduleService _schedules;
 
-    public DoctorsController(IDoctorService doctors) => _doctors = doctors;
+    public DoctorsController(IDoctorService doctors, IDoctorScheduleService schedules)
+    {
+        _doctors = doctors;
+        _schedules = schedules;
+    }
 
     /// <summary>Tạo hồ sơ bác sĩ mới.</summary>
     [Authorize(Roles = Roles.ManageCatalog)]
@@ -76,6 +81,45 @@ public sealed class DoctorsController : ApiControllerBase
     public async Task<IActionResult> UnlinkUser(Guid id, CancellationToken ct)
     {
         var result = await _doctors.UnlinkUserAsync(id, ct);
+        return ToResponse(result);
+    }
+
+    // --- Lịch làm việc (mẫu tuần) của bác sĩ (WS-02) ---
+
+    /// <summary>Danh sách khung giờ làm việc của một bác sĩ.</summary>
+    [HttpGet("{id:guid}/schedules")]
+    public async Task<IActionResult> GetSchedules(Guid id, CancellationToken ct)
+    {
+        var result = await _schedules.GetByDoctorAsync(id, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Thêm một khung giờ làm việc cho bác sĩ.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
+    [HttpPost("{id:guid}/schedules")]
+    public async Task<IActionResult> CreateSchedule(
+        Guid id, [FromBody] CreateDoctorScheduleRequest request, CancellationToken ct)
+    {
+        var result = await _schedules.CreateAsync(id, request, ct);
+        return ToResponse(result, StatusCodes.Status201Created);
+    }
+
+    /// <summary>Cập nhật một khung giờ làm việc của bác sĩ.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
+    [HttpPut("{id:guid}/schedules/{scheduleId:guid}")]
+    public async Task<IActionResult> UpdateSchedule(
+        Guid id, Guid scheduleId, [FromBody] UpdateDoctorScheduleRequest request, CancellationToken ct)
+    {
+        var result = await _schedules.UpdateAsync(id, scheduleId, request, ct);
+        return ToResponse(result);
+    }
+
+    /// <summary>Xoá một khung giờ làm việc của bác sĩ.</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
+    [HttpDelete("{id:guid}/schedules/{scheduleId:guid}")]
+    public async Task<IActionResult> DeleteSchedule(Guid id, Guid scheduleId, CancellationToken ct)
+    {
+        var result = await _schedules.DeleteAsync(id, scheduleId, ct);
         return ToResponse(result);
     }
 }

@@ -17,5 +17,7 @@ public sealed record AppointmentDto(
     Guid? ServicePriceId,
     string? ServiceName,
     decimal? ServicePrice,
+    Guid? RoomId,
+    string? RoomName,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

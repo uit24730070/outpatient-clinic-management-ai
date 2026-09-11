@@ -9,6 +9,7 @@ using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
+using ClinicManagement.Domain.Resources;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
 using ClinicManagement.Domain.Visits;
@@ -23,6 +24,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<Doctor> Doctors => Set<Doctor>();
+    public DbSet<DoctorWorkSchedule> DoctorWorkSchedules => Set<DoctorWorkSchedule>();
+    public DbSet<Room> Rooms => Set<Room>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Visit> Visits => Set<Visit>();
     public DbSet<Appointment> Appointments => Set<Appointment>();

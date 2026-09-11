@@ -7,4 +7,5 @@ public sealed record CreateAppointmentRequest(
     DateTimeOffset StartTime,
     DateTimeOffset EndTime,
     string? Reason,
-    Guid? ServicePriceId = null);
+    Guid? ServicePriceId = null,
+    Guid? RoomId = null);
