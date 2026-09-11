@@ -9,6 +9,7 @@ import { applyServerErrors } from '../lib/form'
 import { toastError, toastSuccess } from '../lib/toast'
 import type { Specialty } from '../types/specialty'
 import { PageHeader } from '../components/PageHeader'
+import { DoctorScheduleManager } from '../components/DoctorScheduleManager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -93,7 +94,7 @@ export default function DoctorFormPage() {
   if (loading) return <p className="text-muted-foreground">Đang tải…</p>
 
   return (
-    <section className="mx-auto max-w-xl">
+    <section className={`mx-auto ${isEdit ? 'max-w-3xl' : 'max-w-xl'}`}>
       <PageHeader title={isEdit ? 'Sửa bác sĩ' : 'Thêm bác sĩ'} />
       <Card>
         <CardContent>
@@ -158,6 +159,8 @@ export default function DoctorFormPage() {
           </form>
         </CardContent>
       </Card>
+
+      {isEdit && id && <DoctorScheduleManager doctorId={id} />}
     </section>
   )
 }

@@ -34,7 +34,7 @@ export async function createAppointment(values: AppointmentFormValues): Promise<
   return unwrap(res.data)
 }
 
-export async function updateAppointment(id: string, values: Pick<AppointmentFormValues, 'startTime' | 'endTime' | 'reason' | 'servicePriceId'>): Promise<Appointment> {
+export async function updateAppointment(id: string, values: Pick<AppointmentFormValues, 'startTime' | 'endTime' | 'reason' | 'servicePriceId' | 'roomId'>): Promise<Appointment> {
   const res = await apiClient.put<ApiResponse<Appointment>>(`/api/appointments/${id}`, values)
   return unwrap(res.data)
 }

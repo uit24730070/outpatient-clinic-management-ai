@@ -55,6 +55,8 @@ export const navItems: NavItem[] = [
   // Danh mục master Bác sĩ/Chuyên khoa — chỉ Admin (đọc vẫn dùng được ở form đặt lịch).
   { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin] },
   { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin] },
+  // Phòng khám (tài nguyên) — Admin/Lễ tân (ADR 0018).
+  { label: 'Phòng khám', to: '/rooms', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Người dùng', to: '/users', roles: [UserRole.Admin] },
   // Kho thuốc — quản lý trực tiếp bởi Dược sĩ (và Admin), ADR 0013.
   { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist] },

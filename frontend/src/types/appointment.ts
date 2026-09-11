@@ -47,6 +47,9 @@ export interface Appointment {
   servicePriceId: string | null
   serviceName: string | null
   servicePrice: number | null
+  /** Phòng khám gán cho lịch (ADR 0018); null nếu chưa gán. */
+  roomId: string | null
+  roomName: string | null
   createdAt: string
   updatedAt: string | null
 }
@@ -59,4 +62,6 @@ export interface AppointmentFormValues {
   reason: string | null
   /** Dịch vụ khám (bảng giá loại Consultation); null nếu không gắn. */
   servicePriceId: string | null
+  /** Phòng khám gán cho lịch; null nếu không gắn. */
+  roomId: string | null
 }

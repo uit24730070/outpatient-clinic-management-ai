@@ -13,6 +13,8 @@ import {
 import { listPatients, createPatient } from '../services/patientService'
 import { listDoctors } from '../services/doctorService'
 import { listServicePrices } from '../services/servicePriceService'
+import { listRooms } from '../services/roomService'
+import type { Room } from '../types/room'
 import { applyServerErrors } from '../lib/form'
 import { toastError, toastInfo, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
@@ -51,11 +53,13 @@ const schema = z.object({
   endTime: z.string().min(1, 'Vui lòng chọn thời gian kết thúc.'),
   reason: z.string(),
   servicePriceId: z.string(),
+  roomId: z.string(),
 })
 type FormValues = z.infer<typeof schema>
 
 // Giá trị Select không nhận chuỗi rỗng — dùng token này cho lựa chọn "không gắn dịch vụ".
 const NO_SERVICE = '__none__'
+const NO_ROOM = '__none__'
 
 const patientSchema = z.object({
   fullName: z.string().min(1, 'Vui lòng nhập họ tên.'),
@@ -77,6 +81,7 @@ export default function AppointmentFormPage() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [services, setServices] = useState<ServicePrice[]>([])
+  const [rooms, setRooms] = useState<Room[]>([])
   const [showCreatePatient, setShowCreatePatient] = useState(false)
 
   const form = useForm<FormValues>({
@@ -88,6 +93,7 @@ export default function AppointmentFormPage() {
       endTime: '',
       reason: '',
       servicePriceId: '',
+      roomId: '',
     },
   })
   const { register, handleSubmit, setValue, watch, reset, formState } = form
@@ -95,6 +101,7 @@ export default function AppointmentFormPage() {
   const patientId = watch('patientId')
   const doctorId = watch('doctorId')
   const servicePriceId = watch('servicePriceId')
+  const roomId = watch('roomId')
 
   const patientForm = useForm<PatientForm>({
     resolver: zodResolver(patientSchema),
@@ -105,13 +112,15 @@ export default function AppointmentFormPage() {
     let active = true
     void (async () => {
       try {
-        const [doctorPage, servicePage] = await Promise.all([
+        const [doctorPage, servicePage, roomPage] = await Promise.all([
           listDoctors({ page: 1, pageSize: 100 }),
           listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Consultation }),
+          listRooms({ page: 1, pageSize: 100 }),
         ])
         if (active) {
           setDoctors(doctorPage.items)
           setServices(servicePage.items)
+          setRooms(roomPage.items)
         }
 
         if (id) {
@@ -124,6 +133,7 @@ export default function AppointmentFormPage() {
               endTime: toLocalInput(a.endTime),
               reason: a.reason ?? '',
               servicePriceId: a.servicePriceId ?? '',
+              roomId: a.roomId ?? '',
             })
             setReadonlyNames({ patient: a.patientName ?? '—', doctor: a.doctorName ?? '—' })
           }
@@ -202,6 +212,7 @@ export default function AppointmentFormPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     const servicePriceIdOut = values.servicePriceId || null
+    const roomIdOut = values.roomId || null
     try {
       if (isEdit && id) {
         await updateAppointment(id, {
@@ -209,6 +220,7 @@ export default function AppointmentFormPage() {
           endTime: toIso(values.endTime),
           reason: values.reason.trim() || null,
           servicePriceId: servicePriceIdOut,
+          roomId: roomIdOut,
         })
       } else {
         await createAppointment({
@@ -218,6 +230,7 @@ export default function AppointmentFormPage() {
           endTime: toIso(values.endTime),
           reason: values.reason.trim() || null,
           servicePriceId: servicePriceIdOut,
+          roomId: roomIdOut,
         })
       }
       toastSuccess(isEdit ? 'Đã cập nhật lịch khám.' : 'Đã đặt lịch khám.')
@@ -431,6 +444,32 @@ export default function AppointmentFormPage() {
               {errors.servicePriceId && (
                 <p className="text-sm text-destructive">{errors.servicePriceId.message}</p>
               )}
+            </div>
+
+            {/* Phòng khám (tuỳ chọn) — ADR 0018 */}
+            <div className="grid gap-2">
+              <Label>Phòng khám</Label>
+              <Select
+                value={roomId || NO_ROOM}
+                onValueChange={(v) =>
+                  setValue('roomId', v === NO_ROOM ? '' : v, { shouldValidate: true })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— Không gán phòng —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ROOM}>— Không gán phòng —</SelectItem>
+                  {rooms.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name} ({r.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Nếu bác sĩ đã khai lịch làm việc, giờ khám phải nằm trong khung giờ đó.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2">

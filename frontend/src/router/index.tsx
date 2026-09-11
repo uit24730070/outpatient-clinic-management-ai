@@ -37,6 +37,8 @@ import TechnicianLabPage from '../pages/TechnicianLabPage'
 import VisitsListPage from '../pages/VisitsListPage'
 import VisitFormPage from '../pages/VisitFormPage'
 import VisitDetailPage from '../pages/VisitDetailPage'
+import RoomsListPage from '../pages/RoomsListPage'
+import RoomFormPage from '../pages/RoomFormPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -133,6 +135,16 @@ export const router = createBrowserRouter([
               { path: 'specialties', element: <SpecialtiesListPage /> },
               { path: 'specialties/new', element: <SpecialtyFormPage /> },
               { path: 'specialties/:id/edit', element: <SpecialtyFormPage /> },
+            ],
+          },
+
+          // Phòng khám (WS-01) — đọc/ghi Admin/Lễ tân (ManageStaff, ADR 0018).
+          {
+            element: <RequireRole roles={MANAGE_STAFF} />,
+            children: [
+              { path: 'rooms', element: <RoomsListPage /> },
+              { path: 'rooms/new', element: <RoomFormPage /> },
+              { path: 'rooms/:id/edit', element: <RoomFormPage /> },
             ],
           },
 
