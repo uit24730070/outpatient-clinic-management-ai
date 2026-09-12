@@ -81,7 +81,7 @@ public sealed class AppointmentsController : ApiControllerBase
         => ToResponse(await _appointments.CheckInAsync(id, ct));
 
     /// <summary>Bắt đầu khám: CheckedIn → InProgress.</summary>
-    [Authorize(Roles = Roles.ManageStaff)]
+    [Authorize(Roles = Roles.StartExam)]
     [HttpPost("{id:guid}/start")]
     public async Task<IActionResult> Start(Guid id, CancellationToken ct)
         => ToResponse(await _appointments.StartAsync(id, ct));

@@ -23,6 +23,13 @@ public static class Roles
     public const string RecordEncounter = Admin + "," + Doctor;
 
     /// <summary>
+    /// Nhóm được phép tự bắt đầu khám (CheckedIn → InProgress): Admin, Lễ tân và <b>Bác sĩ</b> (Epic 17,
+    /// UX-05) — Bác sĩ tự chuyển trạng thái ngay tại workspace của mình thay vì phải chờ Lễ tân/Điều
+    /// dưỡng thao tác ở màn khác. Check-in/hoàn tất/huỷ vẫn thuộc <see cref="ManageStaff"/>.
+    /// </summary>
+    public const string StartExam = ManageStaff + "," + Doctor;
+
+    /// <summary>
     /// Nhóm được phép ghi nghiệp vụ kho thuốc (danh mục, nhập kho, sổ cái, cảnh báo): Admin và Dược sĩ.
     /// Kho thuốc do Dược sĩ quản lý trực tiếp — Lễ tân/Bác sĩ không còn quản lý (ADR 0013).
     /// Đọc danh mục vẫn mở cho mọi vai trò (bác sĩ tra khi kê đơn).
@@ -30,15 +37,9 @@ public static class Roles
     public const string ManagePharmacy = Admin + "," + Pharmacist;
 
     /// <summary>
-    /// Nhóm được phép chốt phiếu khám (kèm cấp phát thuốc FEFO): Admin, Bác sĩ và Dược sĩ.
-    /// Vì cấp phát gộp vào bước chốt phiếu (ADR 0011), bác sĩ (người khám) và dược sĩ (quầy phát thuốc)
-    /// đều cần thực hiện được; Lễ tân không đụng tồn kho nữa (ADR 0013).
-    /// </summary>
-    public const string DispenseEncounter = Admin + "," + Doctor + "," + Pharmacist;
-
-    /// <summary>
-    /// Nhóm được phép ghi/đọc nghiệp vụ viện phí (bảng giá dịch vụ, hoá đơn, thu tiền): Admin và Lễ tân (ADR 0014).
-    /// Bác sĩ/Dược sĩ không thấy dữ liệu tài chính.
+    /// Nhóm được phép ghi nghiệp vụ viện phí (hoá đơn, thu tiền): Admin và Lễ tân (ADR 0014).
+    /// Riêng đọc bảng giá dịch vụ (<c>GET /api/service-prices</c>) mở cho mọi vai trò đã đăng nhập —
+    /// Bác sĩ cần tra giá khi chỉ định cận lâm sàng (xem <c>LabOrderPanel</c>).
     /// </summary>
     public const string ManageBilling = Admin + "," + Receptionist;
 
