@@ -713,3 +713,23 @@ Content-Type: application/json
 ### Gọi số / bắt đầu / hoàn tất / bỏ qua (call|start|done|skip)
 POST {{host}}/api/queue/{{queueTicketId}}/call
 Authorization: Bearer {{token}}
+
+###############################################
+# Báo cáo & Thống kê vận hành (Reporting, ADR 0020) — ManageStaff (Admin/Lễ tân)
+###############################################
+
+### R-01 · Chỉ số tổng quan (KPI hôm nay)
+GET {{host}}/api/reports/overview
+Authorization: Bearer {{token}}
+
+### R-02 · Báo cáo lịch khám theo khoảng ngày (mặc định 7 ngày; lọc tuỳ chọn theo bác sĩ)
+GET {{host}}/api/reports/appointments?from=2026-09-01&to=2026-09-07
+Authorization: Bearer {{token}}
+
+### R-03 · Năng suất theo bác sĩ (Bác sĩ đăng nhập chỉ thấy của mình)
+GET {{host}}/api/reports/by-doctor?from=2026-09-01&to=2026-09-07
+Authorization: Bearer {{token}}
+
+### R-04 · Báo cáo doanh thu theo khoảng ngày (chỉ hoá đơn Paid, tách theo loại)
+GET {{host}}/api/reports/revenue?from=2026-09-01&to=2026-09-07
+Authorization: Bearer {{token}}
