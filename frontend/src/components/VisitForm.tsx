@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, UserPlus } from 'lucide-react'
 import { createVisit } from '../services/visitService'
 import { listPatients } from '../services/patientService'
 import { listDoctors } from '../services/doctorService'
@@ -10,19 +9,15 @@ import { formatVnd } from '../lib/format'
 import { ServiceCategory, type ServicePrice } from '../types/invoice'
 import type { Patient } from '../types/patient'
 import type { Doctor } from '../types/doctor'
-import type { VisitServiceLineInput } from '../types/visit'
-import { PageHeader } from '../components/PageHeader'
+import type { Visit, VisitServiceLineInput } from '../types/visit'
+import { PageHeader } from './PageHeader'
+import { PatientQuickCreateDialog } from './PatientQuickCreateDialog'
+import { Combobox } from './Combobox'
+import { ServiceMultiPicker } from './ServiceMultiPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 // Chuỗi cho input datetime-local theo GIỜ ĐỊA PHƯƠNG (không kèm timezone).
 function toLocalInput(d: Date): string {
@@ -46,14 +41,21 @@ function defaultRow(offsetMinutes = 0): Row {
   return { doctorId: '', servicePriceId: '', startTime: toLocalInput(start), endTime: toLocalInput(end), reason: '' }
 }
 
-const NONE = 'none'
+interface Props {
+  /** Sau khi tạo lượt thành công. */
+  onCreated: (visit: Visit) => void
+  /** Quay lại (mặc định điều hướng ở page wrapper; đóng tab ở workspace Lễ tân). */
+  onBack?: () => void
+  /** Ẩn tiêu đề trang (khi nhúng trong tab đã có tiêu đề riêng). */
+  hideHeader?: boolean
+}
 
 /**
- * Màn "Tiếp đón" (walk-in) cho Lễ tân (ADR 0017): chọn bệnh nhân + đăng ký NHIỀU dịch vụ khám
- * (mỗi dòng = một bác sĩ + dịch vụ + khung giờ) → tạo một lượt gom tất cả.
+ * Thân màn "Tiếp đón" (walk-in, ADR 0017): chọn bệnh nhân + đăng ký NHIỀU dịch vụ khám (mỗi dòng =
+ * một bác sĩ + dịch vụ + khung giờ) → tạo một lượt gom tất cả. Dùng làm tab "Tiếp đón mới" trong
+ * workspace Lễ tân (`/front-desk`, Epic 17) — không còn route riêng.
  */
-export default function VisitFormPage() {
-  const navigate = useNavigate()
+export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
   const [patientSearch, setPatientSearch] = useState('')
   const [patients, setPatients] = useState<Patient[]>([])
   const [patientId, setPatientId] = useState('')
@@ -64,6 +66,7 @@ export default function VisitFormPage() {
   const [note, setNote] = useState('')
   const [rows, setRows] = useState<Row[]>([defaultRow()])
   const [submitting, setSubmitting] = useState(false)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -135,7 +138,7 @@ export default function VisitFormPage() {
         paraclinicalServiceIds: pickedCls,
       })
       toastSuccess(`Đã tạo lượt tiếp đón ${visit.code}.`)
-      navigate(`/visits/${visit.id}`)
+      onCreated(visit)
     } catch (err) {
       toastError(err)
     } finally {
@@ -145,35 +148,44 @@ export default function VisitFormPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <PageHeader
-        title="Tiếp đón bệnh nhân"
-        description="Đăng ký một lượt khám gồm một hoặc nhiều dịch vụ khám (nhiều bác sĩ/chuyên khoa)."
-      />
+      {!hideHeader && (
+        <PageHeader
+          title="Tiếp đón bệnh nhân"
+          description="Đăng ký một lượt khám gồm một hoặc nhiều dịch vụ khám (nhiều bác sĩ/chuyên khoa)."
+        />
+      )}
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-6">
           {/* Bệnh nhân */}
           <div className="grid gap-2">
             <Label>Bệnh nhân *</Label>
-            <Input
-              type="search"
-              placeholder="Tìm bệnh nhân theo tên, mã…"
-              value={patientSearch}
-              onChange={(e) => setPatientSearch(e.target.value)}
-            />
-            <Select value={patientId} onValueChange={setPatientId}>
-              <SelectTrigger>
-                <SelectValue placeholder="— Chọn bệnh nhân —" />
-              </SelectTrigger>
-              <SelectContent>
-                {patients.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.fullName} ({p.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Combobox
+                className="flex-1"
+                value={patientId}
+                onValueChange={setPatientId}
+                onSearchChange={setPatientSearch}
+                options={patients.map((p) => ({ value: p.id, label: `${p.fullName} (${p.code})` }))}
+                placeholder="— Chọn bệnh nhân —"
+                searchPlaceholder="Tìm theo tên, mã…"
+                emptyText="Không tìm thấy bệnh nhân."
+              />
+              <Button type="button" variant="outline" onClick={() => setQuickCreateOpen(true)}>
+                <UserPlus className="size-4" />
+                Bệnh nhân mới
+              </Button>
+            </div>
           </div>
+
+          <PatientQuickCreateDialog
+            open={quickCreateOpen}
+            onOpenChange={setQuickCreateOpen}
+            onCreated={(patient) => {
+              setPatientId(patient.id)
+              setPatientSearch(patient.fullName)
+            }}
+          />
 
           <div className="grid gap-2">
             <Label>Ghi chú tiếp đón</Label>
@@ -189,39 +201,34 @@ export default function VisitFormPage() {
             <CardContent className="grid gap-3 p-4 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Bác sĩ *</Label>
-                <Select value={row.doctorId} onValueChange={(v) => updateRow(idx, { doctorId: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="— Chọn bác sĩ —" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.fullName}
-                        {d.specialtyName ? ` · ${d.specialtyName}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  value={row.doctorId}
+                  onValueChange={(v) => updateRow(idx, { doctorId: v })}
+                  options={doctors.map((d) => ({
+                    value: d.id,
+                    label: d.fullName,
+                    description: d.specialtyName ?? undefined,
+                  }))}
+                  placeholder="— Chọn bác sĩ —"
+                  searchPlaceholder="Tìm bác sĩ…"
+                  emptyText="Không tìm thấy bác sĩ."
+                />
               </div>
 
               <div className="grid gap-2">
                 <Label>Dịch vụ khám</Label>
-                <Select
-                  value={row.servicePriceId || NONE}
-                  onValueChange={(v) => updateRow(idx, { servicePriceId: v === NONE ? '' : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="— Không gắn dịch vụ —" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>— Không gắn dịch vụ —</SelectItem>
-                    {services.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} · {formatVnd(s.unitPrice)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  value={row.servicePriceId}
+                  onValueChange={(v) => updateRow(idx, { servicePriceId: v })}
+                  options={services.map((s) => ({
+                    value: s.id,
+                    label: s.name,
+                    description: formatVnd(s.unitPrice),
+                  }))}
+                  placeholder="— Không gắn dịch vụ —"
+                  searchPlaceholder="Tìm dịch vụ…"
+                  emptyText="Không tìm thấy dịch vụ."
+                />
               </div>
 
               <div className="grid gap-2">
@@ -278,37 +285,27 @@ export default function VisitFormPage() {
       <Card>
         <CardContent className="flex flex-col gap-3 p-4">
           <Label>Cận lâm sàng (tuỳ chọn)</Label>
-          {clsServices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Chưa có dịch vụ cận lâm sàng trong bảng giá.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {clsServices.map((s) => {
-                const on = pickedCls.includes(s.id)
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => toggleCls(s.id)}
-                    className={
-                      on
-                        ? 'rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm text-primary'
-                        : 'rounded-full border px-3 py-1 text-sm text-muted-foreground hover:bg-muted'
-                    }
-                  >
-                    {s.name} · {formatVnd(s.unitPrice)}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <ServiceMultiPicker
+            services={clsServices}
+            picked={pickedCls}
+            onToggle={toggleCls}
+            emptyText="Chưa có dịch vụ cận lâm sàng trong bảng giá."
+          />
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          Tạm tính: <span className="font-semibold text-foreground">{formatVnd(total)}</span>
-          {clsTotal > 0 && <span className="ml-1">(khám {formatVnd(consultTotal)} + CLS {formatVnd(clsTotal)})</span>}
-        </span>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <Button type="button" variant="outline" onClick={onBack} disabled={submitting}>
+              Quay lại
+            </Button>
+          )}
+          <span className="text-sm text-muted-foreground">
+            Tạm tính: <span className="font-semibold text-foreground">{formatVnd(total)}</span>
+            {clsTotal > 0 && <span className="ml-1">(khám {formatVnd(consultTotal)} + CLS {formatVnd(clsTotal)})</span>}
+          </span>
+        </div>
         <Button type="button" onClick={() => void submit()} disabled={submitting}>
           Tạo lượt tiếp đón ({rows.length} khám{pickedCls.length > 0 ? ` + ${pickedCls.length} CLS` : ''})
         </Button>

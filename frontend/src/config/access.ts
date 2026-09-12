@@ -47,48 +47,68 @@ export function canManageQueue(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin || role === UserRole.Receptionist || role === UserRole.Nurse
 }
 
-/** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
+/** Một mục điều hướng, gắn danh sách vai trò được phép thấy + nhóm hiển thị trong sidebar. */
 export interface NavItem {
   label: string
   to: string
   roles: UserRoleValue[]
+  group: NavGroupValue
 }
+
+// Nhóm menu — thứ tự trong mảng này là thứ tự hiển thị trong sidebar (MainLayout gom theo nhóm).
+// Mục tiêu: Admin (thấy gần hết menu) không phải lướt một danh sách phẳng ~20 mục.
+export const NavGroup = {
+  Overview: 'Tổng quan',
+  Workspace: 'Workspace theo vai trò',
+  Clinical: 'Khám bệnh',
+  Paraclinical: 'Cận lâm sàng',
+  Billing: 'Viện phí',
+  Pharmacy: 'Kho thuốc',
+  Catalog: 'Danh mục hệ thống',
+  Other: 'Khác',
+} as const
+export type NavGroupValue = (typeof NavGroup)[keyof typeof NavGroup]
 
 // Menu khai báo — MainLayout render theo cấu hình này, không liệt kê cứng.
 // Bác sĩ có menu gọn theo phận sự (không thấy quản lý Bác sĩ/Chuyên khoa).
 export const navItems: NavItem[] = [
   // Tổng quan / Dashboard (Epic 7, ADR 0020) — báo cáo vận hành cho quản lý.
-  { label: 'Tổng quan', to: '/dashboard', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Phòng khám của tôi', to: '/my-clinic', roles: [UserRole.Doctor] },
-  // Workspace Lễ tân thí điểm (Epic 17, UX-03) — gộp lượt mở + hàng đợi + thu tiền nhanh 1 màn.
-  { label: 'Lễ tân — Một màn', to: '/front-desk', roles: [UserRole.Admin, UserRole.Receptionist] },
-  // Lượt tiếp đón (ADR 0017) — điểm vào quy trình tiếp đón: một lượt nhiều dịch vụ khám.
-  { label: 'Lượt tiếp đón', to: '/visits', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
-  // Hàng đợi khám (ADR 0019) — điều phối bởi Lễ tân/Điều dưỡng (và Admin).
-  { label: 'Hàng đợi', to: '/queue', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Nurse] },
-  // Sinh hiệu (ADR 0019) — điều dưỡng nhập sau tiếp đón.
-  { label: 'Sinh hiệu', to: '/vitals', roles: [UserRole.Admin, UserRole.Nurse] },
-  { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
-  // Danh mục master Bác sĩ/Chuyên khoa — chỉ Admin (đọc vẫn dùng được ở form đặt lịch).
-  { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin] },
-  { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin] },
-  // Phòng khám (tài nguyên) — Admin/Lễ tân (ADR 0018).
-  { label: 'Phòng khám', to: '/rooms', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Người dùng', to: '/users', roles: [UserRole.Admin] },
-  // Kho thuốc — quản lý trực tiếp bởi Dược sĩ (và Admin), ADR 0013.
-  { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist] },
-  { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Pharmacist] },
-  // Cấp phát thuốc sau thu tiền — Dược sĩ/Admin (ADR 0021, PAY-02).
-  { label: 'Cấp phát thuốc', to: '/pharmacy/dispense', roles: [UserRole.Admin, UserRole.Pharmacist] },
-  { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Pharmacist] },
-  // Cận lâm sàng — đăng ký walk-in (lễ tân) + thực hiện/nhập kết quả (kỹ thuật viên), ADR 0016.
-  { label: 'Đăng ký CLS', to: '/lab/walk-in', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Thực hiện CLS', to: '/lab/technician', roles: [UserRole.Admin, UserRole.Technician] },
+  { label: 'Tổng quan', to: '/dashboard', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Overview },
+
+  // Workspace theo vai trò (Epic 17) — 1 màn gộp việc lặp lại liên tiếp của từng vai trò.
+  { label: 'Bác sĩ — Một màn', to: '/my-clinic', roles: [UserRole.Doctor], group: NavGroup.Workspace },
+  { label: 'Lễ tân — Một màn', to: '/front-desk', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Workspace },
+  { label: 'Điều dưỡng — Một màn', to: '/nurse', roles: [UserRole.Admin, UserRole.Nurse], group: NavGroup.Workspace },
+
+  // Khám bệnh — tiếp đón, lịch, hàng đợi, sinh hiệu, hồ sơ bệnh nhân.
+  // Lượt tiếp đón (danh sách + tạo mới) đã gộp vào "Lễ tân — Một màn" (/front-desk) ở trên.
+  { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor], group: NavGroup.Clinical },
+  { label: 'Hàng đợi', to: '/queue', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Nurse], group: NavGroup.Clinical },
+  { label: 'Sinh hiệu', to: '/vitals', roles: [UserRole.Admin, UserRole.Nurse], group: NavGroup.Clinical },
+  { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor], group: NavGroup.Clinical },
+
+  // Cận lâm sàng — đăng ký gắn vào lượt tiếp đón (Tiếp đón/VisitDetailPage) + thực hiện/nhập kết
+  // quả (kỹ thuật viên), ADR 0016.
+  { label: 'Thực hiện CLS', to: '/lab/technician', roles: [UserRole.Admin, UserRole.Technician], group: NavGroup.Paraclinical },
+
   // Viện phí — thu ngân bởi Lễ tân (và Admin), ADR 0014.
-  { label: 'Hoá đơn', to: '/invoices', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Bảng giá dịch vụ', to: '/service-prices', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist, UserRole.Technician, UserRole.Nurse] },
+  { label: 'Hoá đơn', to: '/invoices', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Billing },
+  { label: 'Bảng giá dịch vụ', to: '/service-prices', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Billing },
+
+  // Kho thuốc — quản lý trực tiếp bởi Dược sĩ (và Admin), ADR 0013.
+  { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Pharmacy },
+  { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Pharmacy },
+  // Cấp phát thuốc sau thu tiền — Dược sĩ/Admin (ADR 0021, PAY-02).
+  { label: 'Cấp phát thuốc', to: '/pharmacy/dispense', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Pharmacy },
+  { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Pharmacy },
+
+  // Danh mục master Bác sĩ/Chuyên khoa/Phòng khám/Người dùng — chỉ Admin (trừ Phòng khám: Lễ tân cũng thấy).
+  { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin], group: NavGroup.Catalog },
+  { label: 'Chuyên khoa', to: '/specialties', roles: [UserRole.Admin], group: NavGroup.Catalog },
+  { label: 'Phòng khám', to: '/rooms', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Catalog },
+  { label: 'Người dùng', to: '/users', roles: [UserRole.Admin], group: NavGroup.Catalog },
+
+  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist, UserRole.Technician, UserRole.Nurse], group: NavGroup.Other },
 ]
 
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.
@@ -107,7 +127,15 @@ export function landingPathFor(role: UserRoleValue | undefined): string {
   return role ? roleLandingPath[role] ?? '/appointments' : '/appointments'
 }
 
-/** Các mục điều hướng mà vai trò được phép thấy. */
+/** Các mục điều hướng mà vai trò được phép thấy (danh sách phẳng, không phân nhóm). */
 export function navItemsFor(role: UserRoleValue | undefined): NavItem[] {
   return role ? navItems.filter((item) => item.roles.includes(role)) : []
+}
+
+/** Mục điều hướng mà vai trò được phép thấy, gom theo nhóm (thứ tự nhóm khớp `NavGroup`) — dùng cho sidebar. */
+export function navGroupsFor(role: UserRoleValue | undefined): { group: NavGroupValue; items: NavItem[] }[] {
+  const items = navItemsFor(role)
+  return Object.values(NavGroup)
+    .map((group) => ({ group, items: items.filter((item) => item.group === group) }))
+    .filter((g) => g.items.length > 0)
 }

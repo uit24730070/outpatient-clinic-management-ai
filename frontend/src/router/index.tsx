@@ -14,7 +14,6 @@ import SpecialtyFormPage from '../pages/SpecialtyFormPage'
 import DoctorsListPage from '../pages/DoctorsListPage'
 import DoctorFormPage from '../pages/DoctorFormPage'
 import AppointmentsListPage from '../pages/AppointmentsListPage'
-import AppointmentFormPage from '../pages/AppointmentFormPage'
 import EncounterFormPage from '../pages/EncounterFormPage'
 import PatientEncountersPage from '../pages/PatientEncountersPage'
 import UsersListPage from '../pages/UsersListPage'
@@ -33,10 +32,7 @@ import InvoicesListPage from '../pages/InvoicesListPage'
 import InvoiceFormPage from '../pages/InvoiceFormPage'
 import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 import LabOrderPrintPage from '../pages/LabOrderPrintPage'
-import LabWalkInPage from '../pages/LabWalkInPage'
 import TechnicianLabPage from '../pages/TechnicianLabPage'
-import VisitsListPage from '../pages/VisitsListPage'
-import VisitFormPage from '../pages/VisitFormPage'
 import VisitDetailPage from '../pages/VisitDetailPage'
 import RoomsListPage from '../pages/RoomsListPage'
 import RoomFormPage from '../pages/RoomFormPage'
@@ -44,6 +40,7 @@ import QueuePage from '../pages/QueuePage'
 import VitalsPage from '../pages/VitalsPage'
 import DashboardPage from '../pages/DashboardPage'
 import FrontDeskPage from '../pages/FrontDeskPage'
+import NurseWorkspacePage from '../pages/NurseWorkspacePage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -96,30 +93,24 @@ export const router = createBrowserRouter([
             children: [{ path: 'front-desk', element: <FrontDeskPage /> }],
           },
 
-          // Lượt tiếp đón (ADR 0017): đọc cho mọi vai trò; tạo/thao tác chỉ Admin/Lễ tân.
+          // Workspace Điều dưỡng (Epic 17, UX-04) — Admin/Điều dưỡng.
           {
-            element: <RequireRole roles={ALL_ROLES} />,
-            children: [
-              { path: 'visits', element: <VisitsListPage /> },
-              { path: 'visits/:id', element: <VisitDetailPage /> },
-            ],
-          },
-          {
-            element: <RequireRole roles={MANAGE_STAFF} />,
-            children: [{ path: 'visits/new', element: <VisitFormPage /> }],
+            element: <RequireRole roles={RECORD_VITALS} />,
+            children: [{ path: 'nurse', element: <NurseWorkspacePage /> }],
           },
 
-          // Lịch khám: đọc cho mọi vai trò; ghi (đặt/sửa) chỉ Admin/Lễ tân.
+          // Lượt tiếp đón (ADR 0017): chi tiết đọc cho mọi vai trò; danh sách + tạo mới gộp vào
+          // workspace Lễ tân (`/front-desk`, xem trên).
+          {
+            element: <RequireRole roles={ALL_ROLES} />,
+            children: [{ path: 'visits/:id', element: <VisitDetailPage /> }],
+          },
+
+          // Lịch khám: xem tổng quan + xử lý trạng thái mọi dịch vụ khám (mọi bác sĩ/lượt).
+          // Tạo mới dồn hết về Lượt tiếp đón (ADR 0017) — không còn đặt lịch lẻ ở đây.
           {
             element: <RequireRole roles={ALL_ROLES} />,
             children: [{ path: 'appointments', element: <AppointmentsListPage /> }],
-          },
-          {
-            element: <RequireRole roles={MANAGE_STAFF} />,
-            children: [
-              { path: 'appointments/new', element: <AppointmentFormPage /> },
-              { path: 'appointments/:id/edit', element: <AppointmentFormPage /> },
-            ],
           },
           // Lập phiếu khám: Admin/Bác sĩ.
           {
@@ -211,11 +202,6 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // Đăng ký CLS walk-in — Lễ tân/Admin (ManageStaff, ADR 0016).
-          {
-            element: <RequireRole roles={MANAGE_STAFF} />,
-            children: [{ path: 'lab/walk-in', element: <LabWalkInPage /> }],
-          },
           // Thực hiện CLS + nhập kết quả — Kỹ thuật viên/Bác sĩ/Admin (RecordLabResult, ADR 0016).
           {
             element: <RequireRole roles={RECORD_LAB_RESULT} />,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PhoneCall, Receipt, RefreshCw } from 'lucide-react'
+import { PhoneCall, Plus, Receipt, RefreshCw, X } from 'lucide-react'
 import { getVisit, listVisits } from '../services/visitService'
 import { getInvoicesByVisit, payVisitInvoices } from '../services/invoiceService'
 import { listQueue, transitionQueueTicket } from '../services/queueService'
@@ -8,8 +8,9 @@ import { useAuth } from '../store/auth'
 import { canManageBilling, canManageQueue } from '../config/access'
 import { toastError, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
-import { VisitStatus, type Visit, type VisitListItem } from '../types/visit'
+import { VisitStatus, visitStatusLabels, type Visit, type VisitListItem } from '../types/visit'
 import { QueueTicketStatus, type QueueTicket } from '../types/queue'
+import type { PagedResult } from '../types/common'
 import {
   PaymentMethod,
   paymentMethodLabels,
@@ -17,11 +18,14 @@ import {
   type VisitInvoices,
 } from '../types/invoice'
 import { PageHeader } from '../components/PageHeader'
+import { Pager } from '../components/Pager'
 import { VisitStatusBadge, QueueTicketStatusBadge } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { VisitForm } from '../components/VisitForm'
 import { useWorkspaceTabs } from '../components/workspace/useWorkspaceTabs'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Select,
@@ -38,6 +42,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+const PAGE_SIZE = 10
+const ALL_STATUS = 'all'
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// Nội dung một tab mở trong workspace: thu tiền nhanh 1 lượt, hoặc tiếp đón lượt mới.
+type FrontDeskTab = { kind: 'pay'; visitId: string } | { kind: 'new' }
+const NEW_VISIT_KEY = 'new-visit'
 
 function todayLocal(): string {
   const now = new Date()
@@ -86,6 +106,22 @@ function VisitQuickPayPanel({ visitId, onChanged }: { visitId: string; onChanged
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 p-4">
+        {visit.appointments.length > 0 && (
+          <div className="flex flex-wrap gap-2 border-b pb-3">
+            {visit.appointments.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5 text-sm"
+              >
+                <span className="text-xl font-bold tabular-nums">{a.queueNumber ?? '—'}</span>
+                <span className="text-muted-foreground">
+                  {a.doctorName ?? '—'}
+                  {a.roomName ? ` · ${a.roomName}` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-sm text-muted-foreground">Đã lập</p>
@@ -142,36 +178,46 @@ function VisitQuickPayPanel({ visitId, onChanged }: { visitId: string; onChanged
 }
 
 /**
- * Workspace Lễ tân thí điểm (Epic 17, UX-03): gộp lượt tiếp đón đang mở hôm nay + hàng đợi + thu
- * tiền nhanh trên 1 màn, thay cho việc chuyển qua lại `/visits` · `/queue` · hoá đơn (điểm nghẽn
- * ghi nhận ở UX-01). Trang `/visits`, `/queue` cũ vẫn giữ nguyên, đây là bổ sung.
+ * Workspace Lễ tân (Epic 17, UX-03; gộp `/visits` + `/visits/new` vào đây): tiếp đón mới + lượt
+ * tiếp đón (mặc định hôm nay/đang mở, có thể lọc lại để tra toàn bộ lịch sử) + hàng đợi + thu tiền
+ * nhanh trên 1 màn, thay cho việc chuyển qua lại nhiều trang riêng (điểm nghẽn ghi nhận ở UX-01).
  */
 export default function FrontDeskPage() {
   const { user } = useAuth()
   const billing = canManageBilling(user?.role)
   const queueManage = canManageQueue(user?.role)
 
-  const [visits, setVisits] = useState<VisitListItem[]>([])
+  const [visitDate, setVisitDate] = useState(todayLocal())
+  const [visitStatus, setVisitStatus] = useState<string>(String(VisitStatus.Open))
+  const [visitPage, setVisitPage] = useState(1)
+  const [visitData, setVisitData] = useState<PagedResult<VisitListItem> | null>(null)
   const [queue, setQueue] = useState<QueueTicket[]>([])
   const [loading, setLoading] = useState(false)
-  const { tabs, active, setActive, openTab, closeTab } = useWorkspaceTabs<string>()
+  const { tabs, active, setActive, openTab, closeTab } = useWorkspaceTabs<FrontDeskTab>()
+
+  const hasVisitFilter = visitDate !== todayLocal() || visitStatus !== String(VisitStatus.Open)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const today = todayLocal()
       const [v, q] = await Promise.all([
-        listVisits({ page: 1, pageSize: 50, date: today, status: VisitStatus.Open }),
+        listVisits({
+          page: visitPage,
+          pageSize: PAGE_SIZE,
+          date: visitDate || undefined,
+          status: visitStatus === ALL_STATUS ? undefined : (Number(visitStatus) as VisitListItem['status']),
+        }),
         listQueue({ date: today }),
       ])
-      setVisits(v.items)
+      setVisitData(v)
       setQueue(q)
     } catch (err) {
       toastError(err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [visitPage, visitDate, visitStatus])
 
   useEffect(() => {
     void load()
@@ -197,10 +243,19 @@ export default function FrontDeskPage() {
         title="Lễ tân — Một màn"
         description="Lượt tiếp đón đang mở, hàng đợi & thu tiền nhanh trong ca — thí điểm workspace theo vai trò (UX-03)"
         actions={
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
-            Làm mới
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => openTab(NEW_VISIT_KEY, 'Tiếp đón mới', { kind: 'new' })}
+            >
+              <Plus className="size-4" />
+              Tiếp đón mới
+            </Button>
+            <Button variant="outline" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
+              Làm mới
+            </Button>
+          </div>
         }
       />
 
@@ -255,13 +310,58 @@ export default function FrontDeskPage() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="px-4 pt-4">
-            <h3 className="font-semibold">Lượt tiếp đón đang mở hôm nay</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
+            <h3 className="font-semibold">Lượt tiếp đón</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="date"
+                className="w-auto"
+                value={visitDate}
+                onChange={(e) => {
+                  setVisitPage(1)
+                  setVisitDate(e.target.value)
+                }}
+              />
+              <Select
+                value={visitStatus === '' ? ALL_STATUS : visitStatus}
+                onValueChange={(v) => {
+                  setVisitPage(1)
+                  setVisitStatus(v)
+                }}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_STATUS}>Tất cả trạng thái</SelectItem>
+                  {Object.values(VisitStatus).map((s) => (
+                    <SelectItem key={s} value={String(s)}>
+                      {visitStatusLabels[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {hasVisitFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setVisitPage(1)
+                    setVisitDate(todayLocal())
+                    setVisitStatus(String(VisitStatus.Open))
+                  }}
+                >
+                  <X className="size-4" />
+                  Về hôm nay
+                </Button>
+              )}
+            </div>
           </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Mã lượt</TableHead>
+                <TableHead>Thời gian</TableHead>
                 <TableHead>Bệnh nhân</TableHead>
                 <TableHead className="text-center">Số dịch vụ</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -271,22 +371,23 @@ export default function FrontDeskPage() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     Đang tải…
                   </TableCell>
                 </TableRow>
               )}
-              {!loading && visits.length === 0 && (
+              {!loading && visitData?.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    Không có lượt tiếp đón nào đang mở hôm nay.
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    Không có lượt tiếp đón nào.
                   </TableCell>
                 </TableRow>
               )}
               {!loading &&
-                visits.map((v) => (
+                visitData?.items.map((v) => (
                   <TableRow key={v.id}>
                     <TableCell className="font-medium">{v.code}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(v.createdAt)}</TableCell>
                     <TableCell>{v.patientName ?? '—'}</TableCell>
                     <TableCell className="text-center">{v.serviceCount}</TableCell>
                     <TableCell>
@@ -294,7 +395,15 @@ export default function FrontDeskPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {billing ? (
-                        <Button size="sm" onClick={() => openTab(v.id, `${v.code} · ${v.patientName ?? '—'}`, v.id)}>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            openTab(v.id, `${v.code} · ${v.patientName ?? '—'}`, {
+                              kind: 'pay',
+                              visitId: v.id,
+                            })
+                          }
+                        >
                           <Receipt className="size-4" />
                           {tabs.some((t) => t.key === v.id) ? 'Mở lại' : 'Thu tiền'}
                         </Button>
@@ -308,6 +417,16 @@ export default function FrontDeskPage() {
                 ))}
             </TableBody>
           </Table>
+          {visitData && (
+            <div className="p-4 pt-0">
+              <Pager
+                page={visitData.page}
+                totalPages={visitData.totalPages}
+                totalCount={visitData.totalCount}
+                onPageChange={setVisitPage}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -316,7 +435,24 @@ export default function FrontDeskPage() {
         active={active}
         onActiveChange={setActive}
         onClose={closeTab}
-        renderContent={(t) => <VisitQuickPayPanel visitId={t.data} onChanged={() => void load()} />}
+        renderContent={(t) =>
+          t.data.kind === 'new' ? (
+            <VisitForm
+              hideHeader
+              onBack={() => closeTab(t.key)}
+              onCreated={(visit) => {
+                closeTab(t.key)
+                void load()
+                openTab(visit.id, `${visit.code} · ${visit.patientName ?? '—'}`, {
+                  kind: 'pay',
+                  visitId: visit.id,
+                })
+              }}
+            />
+          ) : (
+            <VisitQuickPayPanel visitId={t.data.visitId} onChanged={() => void load()} />
+          )
+        }
       />
     </section>
   )

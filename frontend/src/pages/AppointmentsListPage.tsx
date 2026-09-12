@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Receipt, Stethoscope, X } from 'lucide-react'
+import { Receipt, Stethoscope, X } from 'lucide-react'
 import {
   deleteAppointment,
   listAppointments,
@@ -22,6 +22,7 @@ import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { AppointmentStatusBadge } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Combobox } from '../components/Combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -142,26 +143,13 @@ export default function AppointmentsListPage() {
     }
   }
 
-  const canEdit = (a: Appointment) =>
-    a.status === AppointmentStatus.Scheduled || a.status === AppointmentStatus.CheckedIn
-
   const hasFilter = Boolean(date || doctorId || status)
 
   return (
     <section>
       <PageHeader
         title="Lịch khám"
-        description="Quản lý lịch hẹn & tiếp đón bệnh nhân"
-        actions={
-          canManage && (
-            <Button asChild>
-              <Link to="/appointments/new">
-                <Plus className="size-4" />
-                Đặt lịch
-              </Link>
-            </Button>
-          )
-        }
+        description="Xem & xử lý trạng thái mọi dịch vụ khám (mọi bác sĩ, mọi lượt) — tạo mới qua Lượt tiếp đón"
       />
 
       <Card className="mb-4">
@@ -175,25 +163,19 @@ export default function AppointmentsListPage() {
               setDate(e.target.value)
             }}
           />
-          <Select
+          <Combobox
+            className="w-[200px]"
             value={doctorId || ALL}
             onValueChange={(v) => {
               setPage(1)
               setDoctorId(v === ALL ? '' : v)
             }}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Bác sĩ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Tất cả bác sĩ</SelectItem>
-              {doctors.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.fullName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={[
+              { value: ALL, label: 'Tất cả bác sĩ' },
+              ...doctors.map((d) => ({ value: d.id, label: d.fullName })),
+            ]}
+            searchPlaceholder="Tìm bác sĩ…"
+          />
           <Select
             value={status === '' ? ALL : status}
             onValueChange={(v) => {
@@ -286,12 +268,16 @@ export default function AppointmentsListPage() {
                           a.status !== AppointmentStatus.Cancelled &&
                           a.status !== AppointmentStatus.NoShow && (
                             <>
-                              <Button asChild size="sm" variant="outline">
-                                <Link to={`/invoices/new?patientId=${a.patientId}&appointmentId=${a.id}`}>
-                                  <Receipt className="size-4" />
-                                  Lập HĐ
-                                </Link>
-                              </Button>
+                              {a.invoicedAt == null ? (
+                                <Button asChild size="sm" variant="outline">
+                                  <Link to={`/invoices/new?patientId=${a.patientId}&appointmentId=${a.id}`}>
+                                    <Receipt className="size-4" />
+                                    Lập HĐ
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Đã lập HĐ</span>
+                              )}
                               <Button asChild size="sm" variant="ghost">
                                 <Link to={`/invoices?appointmentId=${a.id}`}>HĐ lượt</Link>
                               </Button>
@@ -324,11 +310,6 @@ export default function AppointmentsListPage() {
                               </Button>
                             ),
                           )}
-                        {canManage && canEdit(a) && (
-                          <Button asChild size="sm" variant="ghost">
-                            <Link to={`/appointments/${a.id}/edit`}>Sửa</Link>
-                          </Button>
-                        )}
                         {canManage && (
                           <ConfirmDialog
                             trigger={

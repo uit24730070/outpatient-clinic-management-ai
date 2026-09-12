@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../store/auth'
 import { roleLabels } from '../types/auth'
-import { navItemsFor } from '../config/access'
+import { navGroupsFor } from '../config/access'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
@@ -67,32 +67,44 @@ export default function MainLayout() {
     navigate('/login', { replace: true })
   }
 
-  // Menu hiển thị theo vai trò (cấu hình khai báo ở config/access).
-  const items = navItemsFor(user?.role)
+  // Menu hiển thị theo vai trò, gom nhóm (cấu hình khai báo ở config/access) — Admin thấy nhiều
+  // mục nhất nên nhóm giúp sidebar đỡ rối; vai trò ít mục vẫn gọn vì nhóm rỗng bị lược bỏ.
+  const groups = navGroupsFor(user?.role)
+  // Chỉ 1 nhóm (menu ngắn) thì header nhóm chỉ thừa chữ, không cần hiện.
+  const showGroupLabels = groups.length > 1
 
   const navList = (
-    <nav className="flex flex-col gap-1 px-3">
-      {items.map((item) => {
-        const Icon = navIcons[item.to] ?? Calendar
-        return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={() => setMobileOpen(false)}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
-              )
-            }
-          >
-            <Icon className="size-4 shrink-0" />
-            <span className="truncate">{item.label}</span>
-          </NavLink>
-        )
-      })}
+    <nav className="flex flex-col gap-4 px-3">
+      {groups.map(({ group, items }) => (
+        <div key={group} className="flex flex-col gap-1">
+          {showGroupLabels && (
+            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/40">
+              {group}
+            </p>
+          )}
+          {items.map((item) => {
+            const Icon = navIcons[item.to] ?? Calendar
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
+                  )
+                }
+              >
+                <Icon className="size-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            )
+          })}
+        </div>
+      ))}
     </nav>
   )
 
