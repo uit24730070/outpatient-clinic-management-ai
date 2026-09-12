@@ -205,6 +205,48 @@ public sealed class EncounterService : IEncounterService
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
 
+    public async Task<Result<EncounterDto>> ReturnStockAsync(Guid id, CancellationToken ct = default)
+    {
+        var encounter = await _db.Encounters.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (encounter is null)
+            return Error.NotFound("Encounter.NotFound", $"Không tìm thấy phiếu khám với Id {id}.");
+
+        // Chỉ được hoàn khi đã cấp phát thực (Dispensed → Returned).
+        var mark = encounter.MarkReturned();
+        if (mark.IsFailure)
+            return Result.Failure<EncounterDto>(mark.Error);
+
+        var occurredAt = DateTimeOffset.UtcNow;
+
+        // Truy sổ cái Dispense theo encounterId để nhập lại đúng lô đã trừ (sổ cái bất biến — chỉ thêm).
+        var dispenses = await _db.StockTransactions
+            .Where(t => t.Type == StockTransactionType.Dispense
+                        && t.ReferenceType == nameof(Encounter)
+                        && t.ReferenceId == encounter.Id)
+            .ToListAsync(ct);
+
+        foreach (var tx in dispenses)
+        {
+            var batch = await _db.MedicationBatches.FindAsync(new object[] { tx.MedicationBatchId }, ct);
+            if (batch is null)
+                continue;
+
+            var qty = Math.Abs(tx.QuantityDelta);
+            batch.Increase(qty);
+
+            _db.StockTransactions.Add(new StockTransaction(
+                tx.MedicationBatchId,
+                StockTransactionType.Return,
+                qty,
+                referenceType: nameof(Encounter),
+                referenceId: encounter.Id,
+                occurredAt: occurredAt));
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return (await ProjectByIdAsync(encounter.Id, ct))!;
+    }
+
     /// <summary>
     /// Giữ tồn khi chốt phiếu (ADR 0021, PAY-02): nếu có dòng thuốc gắn danh mục, kiểm <b>tồn khả dụng</b>
     /// (tồn lô còn hạn − số lượng đang Reserved/Paid chưa cấp phát) đủ cho từng thuốc rồi đặt trạng thái

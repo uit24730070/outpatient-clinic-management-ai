@@ -78,6 +78,12 @@ public class Invoice : Entity
     /// <summary>Ghi chú (tuỳ chọn).</summary>
     public string? Note { get; private set; }
 
+    /// <summary>Thời điểm hoàn tiền (null nếu chưa hoàn). Đặt khi Paid → Refunded.</summary>
+    public DateTimeOffset? RefundedAt { get; private set; }
+
+    /// <summary>Lý do hoàn tiền (null nếu chưa hoàn).</summary>
+    public string? RefundReason { get; private set; }
+
     /// <summary>Cụm dòng hoá đơn (chỉ đọc từ ngoài; thay cả cụm qua <see cref="ReplaceItems"/>).</summary>
     public IReadOnlyCollection<InvoiceItem> Items => _items.AsReadOnly();
 
@@ -115,6 +121,21 @@ public class Invoice : Entity
             return InvalidTransition(nameof(Cancel));
 
         Status = InvoiceStatus.Cancelled;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Hoàn tiền: Paid → Refunded, đặt lý do + thời điểm. Sai vòng đời → 409 (ADR 0022, REF-01).
+    /// Không xoá — giữ vết kiểm toán; báo cáo doanh thu trừ HĐ Refunded.
+    /// </summary>
+    public Result Refund(string reason, DateTimeOffset when)
+    {
+        if (Status != InvoiceStatus.Paid)
+            return InvalidTransition(nameof(Refund));
+
+        Status = InvoiceStatus.Refunded;
+        RefundReason = reason;
+        RefundedAt = when;
         return Result.Success();
     }
 

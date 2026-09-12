@@ -10,5 +10,8 @@ public enum StockTransactionType
     Dispense,
 
     /// <summary>Điều chỉnh thủ công/kiểm kê — dành cho P2.</summary>
-    Adjust
+    Adjust,
+
+    /// <summary>Hoàn kho khi huỷ đơn đã cấp phát (tăng tồn bù) — ADR 0022, REF-02.</summary>
+    Return
 }

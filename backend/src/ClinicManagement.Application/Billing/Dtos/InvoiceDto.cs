@@ -18,4 +18,6 @@ public sealed record InvoiceDto(
     string? Note,
     IReadOnlyList<InvoiceItemDto> Items,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    DateTimeOffset? RefundedAt = null,
+    string? RefundReason = null);

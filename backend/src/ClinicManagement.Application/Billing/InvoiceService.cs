@@ -348,6 +348,25 @@ public sealed class InvoiceService : IInvoiceService
         return Result.Success();
     }
 
+    public async Task<Result<InvoiceDto>> RefundAsync(
+        Guid id, RefundInvoiceRequest request, CancellationToken ct = default)
+    {
+        var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (invoice is null)
+            return Error.NotFound("Invoice.NotFound", $"Không tìm thấy hoá đơn với Id {id}.");
+
+        var reason = request.Reason?.Trim();
+        if (string.IsNullOrEmpty(reason))
+            return Error.Validation("Billing.RefundReasonRequired", "Lý do hoàn tiền không được để trống.");
+
+        var refund = invoice.Refund(reason, DateTimeOffset.UtcNow);
+        if (refund.IsFailure)
+            return Result.Failure<InvoiceDto>(refund.Error);
+
+        await _db.SaveChangesAsync(ct);
+        return (await ProjectByIdAsync(invoice.Id, ct))!;
+    }
+
     /// <summary>Dựng danh sách dòng dịch vụ từ tham chiếu bảng giá (snapshot đơn giá). Dịch vụ thiếu → NotFound.</summary>
     private async Task<Result<List<InvoiceItem>>> BuildServiceItemsAsync(
         IReadOnlyList<CreateInvoiceItemRequest> lines, CancellationToken ct)
@@ -391,7 +410,9 @@ public sealed class InvoiceService : IInvoiceService
             i.Items.Select(it => new InvoiceItemDto(
                 it.ItemType, it.Description, it.UnitPrice, it.Quantity, it.LineTotal, it.ReferenceId)).ToList(),
             i.CreatedAt,
-            i.UpdatedAt));
+            i.UpdatedAt,
+            i.RefundedAt,
+            i.RefundReason));
 
     private async Task<InvoiceDto?> ProjectByIdAsync(Guid id, CancellationToken ct) =>
         await Project(_db.Invoices.AsNoTracking().Where(i => i.Id == id)).FirstOrDefaultAsync(ct);

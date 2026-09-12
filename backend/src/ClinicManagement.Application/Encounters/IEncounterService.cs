@@ -35,4 +35,10 @@ public interface IEncounterService
     /// Chưa thu → <c>Pharmacy.NotPaid</c>; không có thuốc → <c>Pharmacy.NothingToDispense</c> (ADR 0021, PAY-02).
     /// </summary>
     Task<Result<EncounterDto>> DispenseAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Hoàn kho đơn đã cấp phát (Dispensed → Returned): nhập lại tồn đúng lô đã trừ + ghi sổ cái bù Return.
+    /// Gọi hai lần → 409. Chưa cấp phát → 409 (ADR 0022, REF-02).
+    /// </summary>
+    Task<Result<EncounterDto>> ReturnStockAsync(Guid id, CancellationToken ct = default);
 }

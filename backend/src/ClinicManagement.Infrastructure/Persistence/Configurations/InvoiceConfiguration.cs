@@ -49,6 +49,8 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         builder.Property(i => i.Note).HasMaxLength(1000);
 
+        builder.Property(i => i.RefundReason).HasMaxLength(500);
+
         // Cha–con: owned collection ở bảng riêng, vòng đời gắn chặt hoá đơn (như PrescriptionItem, ADR 0006).
         builder.OwnsMany(i => i.Items, item =>
         {

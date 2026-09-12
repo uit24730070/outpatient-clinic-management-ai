@@ -43,4 +43,7 @@ public interface IInvoiceService
 
     /// <summary>Xoá mềm hoá đơn — chỉ khi còn <c>Draft</c>.</summary>
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Hoàn tiền hoá đơn: Paid → Refunded, ghi lý do. Sai vòng đời → 409 (ADR 0022, REF-01).</summary>
+    Task<Result<InvoiceDto>> RefundAsync(Guid id, RefundInvoiceRequest request, CancellationToken ct = default);
 }

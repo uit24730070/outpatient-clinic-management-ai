@@ -170,9 +170,24 @@ public sealed class LabOrderService : ILabOrderService
         if (order is null)
             return Error.NotFound("Paraclinical.NotFound", $"Không tìm thấy phiếu chỉ định với Id {id}.");
 
+        // REF-03 (ADR 0022): cho phép huỷ phiếu đã thu tiền khi chưa có kết quả nào (Ordered).
+        // Nếu đã nhập một phần kết quả (InProgress) → từ chối để tránh mất dữ liệu kết quả đã ghi.
+        if (order.IsPaid && order.Status == LabOrderStatus.InProgress)
+            return Result.Failure<LabOrderDto>(Error.Conflict(
+                "Paraclinical.HasPartialResults",
+                "Không thể huỷ phiếu chỉ định đã thu tiền khi đã nhập một phần kết quả."));
+
         var cancel = order.Cancel();
         if (cancel.IsFailure)
             return Result.Failure<LabOrderDto>(cancel.Error);
+
+        // Khi đã thu tiền: tìm hoá đơn CLS liên quan (Paid) và hoàn tiền (REF-01/REF-03, ADR 0022).
+        if (order.IsPaid)
+        {
+            var invoice = await _db.Invoices.FirstOrDefaultAsync(
+                i => i.LabOrderId == order.Id && i.Status == InvoiceStatus.Paid, ct);
+            invoice?.Refund("Huỷ phiếu chỉ định cận lâm sàng", DateTimeOffset.UtcNow);
+        }
 
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(order.Id, ct))!;

@@ -3,7 +3,8 @@ namespace ClinicManagement.Domain.Encounters;
 /// <summary>
 /// Trạng thái cấp phát thuốc của phiếu khám (ADR 0021, PAY-02) — lưu dạng chuỗi. Tách "giữ tồn" khỏi
 /// "xuất kho thực": chốt phiếu chỉ giữ tồn khả dụng, thu tiền rồi mới xuất kho FEFO.
-/// Vòng đời: <see cref="None"/> hoặc <see cref="Reserved"/> → <see cref="Paid"/> → <see cref="Dispensed"/>.
+/// Vòng đời: <see cref="None"/> / <see cref="Reserved"/> → <see cref="Paid"/> → <see cref="Dispensed"/>
+/// → <see cref="Returned"/> (ADR 0022, REF-02).
 /// </summary>
 public enum DispenseStatus
 {
@@ -17,5 +18,8 @@ public enum DispenseStatus
     Paid,
 
     /// <summary>Đã cấp phát thực: trừ tồn kho theo FEFO + ghi sổ cái xuất.</summary>
-    Dispensed
+    Dispensed,
+
+    /// <summary>Đã hoàn kho: nhập lại tồn đúng lô đã trừ + ghi sổ cái bù (ADR 0022, REF-02).</summary>
+    Returned
 }

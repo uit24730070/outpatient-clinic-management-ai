@@ -111,6 +111,14 @@ public sealed class InvoicesController : ApiControllerBase
         return ToResponse(result);
     }
 
+    /// <summary>Hoàn tiền hoá đơn đã thu (Paid → Refunded, ghi lý do). Sai vòng đời → 409.</summary>
+    [HttpPost("{id:guid}/refund")]
+    public async Task<IActionResult> Refund(Guid id, [FromBody] RefundInvoiceRequest request, CancellationToken ct)
+    {
+        var result = await _invoices.RefundAsync(id, request, ct);
+        return ToResponse(result);
+    }
+
     /// <summary>Xoá mềm hoá đơn (chỉ khi còn Draft).</summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

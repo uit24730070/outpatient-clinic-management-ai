@@ -168,6 +168,20 @@ public class Encounter : Entity
     }
 
     /// <summary>
+    /// Hoàn kho (Dispensed → Returned): đặt lại trạng thái sau khi service nhập lại tồn đúng lô.
+    /// Chỉ hợp lệ khi đang <see cref="DispenseStatus.Dispensed"/>; gọi hai lần → 409 (ADR 0022, REF-02).
+    /// </summary>
+    public Result MarkReturned()
+    {
+        if (DispenseStatus != DispenseStatus.Dispensed)
+            return Result.Failure(Error.Conflict("Pharmacy.InvalidDispenseTransition",
+                $"Không thể hoàn kho khi trạng thái cấp phát là {DispenseStatus}."));
+
+        DispenseStatus = DispenseStatus.Returned;
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Đánh dấu đã lập hoá đơn thuốc từ phiếu này. Chỉ đặt một lần — đã đặt → lỗi để service map 409
     /// (chống lập hoá đơn thuốc trùng, ADR 0014 P2).
     /// </summary>
