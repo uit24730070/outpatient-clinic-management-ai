@@ -92,6 +92,27 @@ public class Appointment : Entity
         AppointmentStatus.Completed
     };
 
+    /// <summary>
+    /// Thời điểm đã lập hoá đơn cho dịch vụ khám này — null nếu chưa lập. Cờ chống lập hoá đơn trùng
+    /// (như <c>LabOrder.InvoicedAt</c>), cần khi một hoá đơn ở cấp Lượt tiếp đón có
+    /// thể gộp nhiều dịch vụ khám cùng lúc (ADR 0017/0021).
+    /// </summary>
+    public DateTimeOffset? InvoicedAt { get; private set; }
+
+    /// <summary>
+    /// Đánh dấu đã lập hoá đơn cho dịch vụ khám này. Chỉ đặt một lần — đã đặt → lỗi để service map 409
+    /// (chống lập hoá đơn trùng cho cùng một dịch vụ khám).
+    /// </summary>
+    public Result MarkInvoiced(DateTimeOffset when)
+    {
+        if (InvoicedAt is not null)
+            return Result.Failure(Error.Conflict(
+                "Billing.AppointmentAlreadyInvoiced", "Dịch vụ khám này đã lập hoá đơn."));
+
+        InvoicedAt = when;
+        return Result.Success();
+    }
+
     /// <summary>Đổi khung giờ/lý do. Chỉ cho phép khi lịch chưa bắt đầu khám (Scheduled hoặc CheckedIn).</summary>
     public Result Reschedule(DateTimeOffset startTime, DateTimeOffset endTime, string? reason)
     {

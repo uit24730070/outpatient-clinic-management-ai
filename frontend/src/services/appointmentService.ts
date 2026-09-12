@@ -1,6 +1,6 @@
 import { apiClient, unwrap } from './apiClient'
 import type { ApiResponse, PagedResult } from '../types/common'
-import type { Appointment, AppointmentFormValues, AppointmentStatusValue } from '../types/appointment'
+import type { Appointment, AppointmentStatusValue } from '../types/appointment'
 
 export interface ListAppointmentsParams {
   page: number
@@ -18,24 +18,6 @@ export async function listAppointments(params: ListAppointmentsParams): Promise<
 
 export async function getAppointment(id: string): Promise<Appointment> {
   const res = await apiClient.get<ApiResponse<Appointment>>(`/api/appointments/${id}`)
-  return unwrap(res.data)
-}
-
-/** Lượt khám gần nhất của bệnh nhân (prefill dịch vụ khi tái khám); null nếu chưa có. */
-export async function getLastAppointment(patientId: string): Promise<Appointment | null> {
-  const res = await apiClient.get<ApiResponse<Appointment | null>>('/api/appointments/last', {
-    params: { patientId },
-  })
-  return unwrap(res.data)
-}
-
-export async function createAppointment(values: AppointmentFormValues): Promise<Appointment> {
-  const res = await apiClient.post<ApiResponse<Appointment>>('/api/appointments', values)
-  return unwrap(res.data)
-}
-
-export async function updateAppointment(id: string, values: Pick<AppointmentFormValues, 'startTime' | 'endTime' | 'reason' | 'servicePriceId' | 'roomId'>): Promise<Appointment> {
-  const res = await apiClient.put<ApiResponse<Appointment>>(`/api/appointments/${id}`, values)
   return unwrap(res.data)
 }
 

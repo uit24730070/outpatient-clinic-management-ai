@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ClinicManagement.WebApi.Controllers;
 
-[Authorize(Roles = Roles.ManageBilling)]
+[Authorize]
 [Route("api/service-prices")]
 public sealed class ServicePricesController : ApiControllerBase
 {
@@ -16,6 +16,7 @@ public sealed class ServicePricesController : ApiControllerBase
     public ServicePricesController(IServicePriceService servicePrices) => _servicePrices = servicePrices;
 
     /// <summary>Tạo mục bảng giá dịch vụ mới.</summary>
+    [Authorize(Roles = Roles.ManageBilling)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateServicePriceRequest request, CancellationToken ct)
     {
@@ -45,6 +46,7 @@ public sealed class ServicePricesController : ApiControllerBase
     }
 
     /// <summary>Cập nhật thông tin dịch vụ.</summary>
+    [Authorize(Roles = Roles.ManageBilling)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateServicePriceRequest request, CancellationToken ct)
     {
@@ -53,6 +55,7 @@ public sealed class ServicePricesController : ApiControllerBase
     }
 
     /// <summary>Xoá mềm một dịch vụ.</summary>
+    [Authorize(Roles = Roles.ManageBilling)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

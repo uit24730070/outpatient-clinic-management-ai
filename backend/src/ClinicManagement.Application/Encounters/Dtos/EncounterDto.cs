@@ -20,4 +20,6 @@ public sealed record EncounterDto(
     DateTimeOffset? MedicationPaidAt,
     DateTimeOffset? DispensedAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    // Thời điểm đã lập hoá đơn thuốc từ phiếu này — null nếu chưa lập.
+    DateTimeOffset? MedicationInvoicedAt);

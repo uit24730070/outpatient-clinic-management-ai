@@ -367,7 +367,8 @@ public sealed class EncounterService : IEncounterService
             e.MedicationPaidAt,
             e.DispensedAt,
             e.CreatedAt,
-            e.UpdatedAt));
+            e.UpdatedAt,
+            e.MedicationInvoicedAt));
 
     private async Task<EncounterDto?> ProjectByIdAsync(Guid id, CancellationToken ct) =>
         await Project(_db.Encounters.AsNoTracking().Where(e => e.Id == id)).FirstOrDefaultAsync(ct);

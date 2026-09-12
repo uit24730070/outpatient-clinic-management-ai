@@ -705,16 +705,20 @@ Content-Type: application/json
 
 { "username": "dieuduong", "password": "Nurse@123" }
 
-### Nhập/cập nhật sinh hiệu cho lượt khám (RecordVitals: Admin/Điều dưỡng)
-# @name upsertVitals — thay {{appointmentId}} bằng Id lịch khám đã check-in
+### Ghi một lần đo sinh hiệu mới (RecordVitals: Admin/Điều dưỡng) — luôn tạo bản ghi mới, giữ lịch sử
+# @name recordVitals — thay {{appointmentId}} bằng Id lịch khám đã check-in
 POST {{host}}/api/appointments/{{appointmentId}}/vitals
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "heightCm": 170, "weightKg": 68, "temperatureC": 37, "pulse": 78, "bloodPressureSystolic": 120, "bloodPressureDiastolic": 80, "spO2": 98, "respiratoryRate": 18, "notes": "ổn định" }
 
-### Xem sinh hiệu (bác sĩ đọc trong bệnh án)
+### Xem sinh hiệu lần gần nhất (bác sĩ đọc trong bệnh án)
 GET {{host}}/api/appointments/{{appointmentId}}/vitals
+Authorization: Bearer {{token}}
+
+### Xem toàn bộ lịch sử đo sinh hiệu (mới nhất trước)
+GET {{host}}/api/appointments/{{appointmentId}}/vitals/history
 Authorization: Bearer {{token}}
 
 ### Lấy số hàng đợi (ManageQueue; vãng lai: appointmentId null)

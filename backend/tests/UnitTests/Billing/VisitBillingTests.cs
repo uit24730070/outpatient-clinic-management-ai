@@ -35,7 +35,7 @@ public sealed class VisitBillingTests
     }
 
     private static CreateInvoiceRequest Req(Guid patientId, Guid apptId, Guid svcId) =>
-        new(patientId, null, new[] { new CreateInvoiceItemRequest(svcId, 1) }, apptId);
+        new(patientId, null, new[] { new CreateInvoiceItemRequest(svcId, 1) }, new[] { apptId });
 
     [Fact]
     public async Task CreateAsync_ShouldDeriveVisitId_FromAppointment()

@@ -85,8 +85,9 @@ public sealed class AppointmentService : IAppointmentService
 
         if (filter.Date is { } date)
         {
-            // Lọc theo ngày (UTC): [00:00, 24:00) của ngày đó.
-            var dayStart = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            // Ngày `date` là ngày theo giờ phòng khám (FE gửi lên từ ngày local trình duyệt) — quy
+            // đổi mốc 00:00 giờ phòng khám về UTC (offset=0) để so đúng với cột StartTime.
+            var dayStart = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), ClinicOffset).ToUniversalTime();
             var dayEnd = dayStart.AddDays(1);
             query = query.Where(a => a.StartTime >= dayStart && a.StartTime < dayEnd);
         }
@@ -286,7 +287,10 @@ public sealed class AppointmentService : IAppointmentService
             a.RoomId,
             a.RoomId == null ? null : _db.Rooms.Where(r => r.Id == a.RoomId).Select(r => r.Name).FirstOrDefault(),
             a.CreatedAt,
-            a.UpdatedAt));
+            a.UpdatedAt,
+            a.InvoicedAt,
+            a.VisitId,
+            _db.QueueTickets.Where(t => t.AppointmentId == a.Id).Select(t => (int?)t.Number).FirstOrDefault()));
 
     private async Task<AppointmentDto?> ProjectByIdAsync(Guid id, CancellationToken ct) =>
         await Project(_db.Appointments.AsNoTracking().Where(a => a.Id == id)).FirstOrDefaultAsync(ct);

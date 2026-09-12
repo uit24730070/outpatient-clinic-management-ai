@@ -1,5 +1,6 @@
 using ClinicManagement.Application.Billing.Dtos;
 using ClinicManagement.Application.Common.Interfaces;
+using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
@@ -122,30 +123,94 @@ public sealed class InvoiceService : IInvoiceService
         return (await ProjectByIdAsync(invoice.Id, ct))!;
     }
 
+    /// <summary>
+    /// Tạo hoá đơn dịch vụ lẻ; có thể gộp thêm phí cận lâm sàng từ một phiếu chỉ định chưa lập hoá đơn
+    /// (<see cref="CreateInvoiceRequest.LabOrderId"/>) để lễ tân thu một lần cho cả công khám lẫn CLS
+    /// mà vẫn giữ đúng móc thu tiền → mở cổng nhập kết quả (ADR 0021, PAY-01), thay vì phải lập 2 hoá đơn.
+    /// Cũng có thể gộp <b>nhiều dịch vụ khám</b> (<see cref="CreateInvoiceRequest.AppointmentIds"/>) trong
+    /// cùng một hoá đơn khi lập ở cấp Lượt tiếp đón — mỗi dịch vụ khám chỉ lập được một lần
+    /// (<c>Appointment.InvoicedAt</c>, chống lập trùng như <c>LabOrder.InvoicedAt</c>).
+    /// </summary>
     public async Task<Result<InvoiceDto>> CreateAsync(CreateInvoiceRequest request, CancellationToken ct = default)
     {
         var lines = request.Items ?? Array.Empty<CreateInvoiceItemRequest>();
-        if (lines.Count == 0)
-            return Error.Validation("Billing.NoItems", "Hoá đơn phải có ít nhất một dòng.");
 
         if (!await _db.Patients.AnyAsync(p => p.Id == request.PatientId, ct))
             return Error.NotFound("Patient.NotFound", $"Không tìm thấy bệnh nhân với Id {request.PatientId}.");
 
-        // Lượt tiếp đón (tuỳ chọn): kiểm tồn tại khi có, để null với vãng lai/chỉ-CLS.
-        if (request.AppointmentId is not null &&
-            !await _db.Appointments.AnyAsync(a => a.Id == request.AppointmentId, ct))
-            return Error.NotFound("Appointment.NotFound",
-                $"Không tìm thấy lượt khám với Id {request.AppointmentId}.");
+        // Các dịch vụ khám được thu trong hoá đơn này (tuỳ chọn, có thể nhiều — gộp cấp Lượt): kiểm tồn
+        // tại + chưa lập hoá đơn nào khác (chống lập trùng, để trống với vãng lai/chỉ-CLS).
+        var appointmentIds = (request.AppointmentIds ?? Array.Empty<Guid>()).Distinct().ToList();
+        var appointments = new List<Appointment>();
+        if (appointmentIds.Count > 0)
+        {
+            appointments = await _db.Appointments.Where(a => appointmentIds.Contains(a.Id)).ToListAsync(ct);
+            var missing = appointmentIds.Where(id => appointments.All(a => a.Id != id)).ToList();
+            if (missing.Count > 0)
+                return Error.NotFound("Appointment.NotFound",
+                    $"Không tìm thấy lịch khám với Id: {string.Join(", ", missing)}.");
+
+            var alreadyInvoiced = appointments.FirstOrDefault(a => a.InvoicedAt is not null);
+            if (alreadyInvoiced is not null)
+                return Result.Failure<InvoiceDto>(Error.Conflict(
+                    "Billing.AppointmentAlreadyInvoiced",
+                    $"Dịch vụ khám với Id {alreadyInvoiced.Id} đã lập hoá đơn."));
+        }
 
         var build = await BuildServiceItemsAsync(lines, ct);
         if (build.IsFailure)
             return Result.Failure<InvoiceDto>(build.Error);
 
+        var items = build.Value;
+        LabOrder? order = null;
+        if (request.LabOrderId is { } labOrderId)
+        {
+            order = await _db.LabOrders.FirstOrDefaultAsync(o => o.Id == labOrderId, ct);
+            if (order is null)
+                return Error.NotFound("Paraclinical.NotFound", $"Không tìm thấy phiếu chỉ định với Id {labOrderId}.");
+
+            if (order.Status == LabOrderStatus.Cancelled)
+                return Result.Failure<InvoiceDto>(Error.Conflict(
+                    "Billing.LabOrderCancelled", "Không lập được hoá đơn từ phiếu chỉ định đã huỷ."));
+
+            if (order.Items.Count == 0)
+                return Result.Failure<InvoiceDto>(Error.Validation(
+                    "Billing.NoItems", "Phiếu chỉ định không có dịch vụ để lập hoá đơn."));
+
+            // Cờ chống lập trùng — cùng cơ chế với CreateFromLabOrderAsync (409 nếu đã lập).
+            var mark = order.MarkInvoiced(DateTimeOffset.UtcNow);
+            if (mark.IsFailure)
+                return Result.Failure<InvoiceDto>(mark.Error);
+
+            items = items
+                .Concat(order.Items.Select(i =>
+                    new InvoiceItem(InvoiceItemType.Paraclinical, i.ServiceName, i.UnitPrice, 1, i.ServicePriceId)))
+                .ToList();
+        }
+
+        if (items.Count == 0)
+            return Error.Validation("Billing.NoItems", "Hoá đơn phải có ít nhất một dòng.");
+
         var code = await GenerateCodeAsync(ct);
-        var visitId = await ResolveVisitIdAsync(request.AppointmentId, ct);
-        var invoice = new Invoice(code, request.PatientId, encounterId: null, NormalizeOptional(request.Note), build.Value,
-            request.AppointmentId, visitId);
+        // Neo Invoice.AppointmentId vào dịch vụ khám đầu tiên (khoá gom cũ, giữ tương thích lọc/hiển thị).
+        var anchorAppointmentId = appointmentIds.Count > 0 ? appointmentIds[0] : (Guid?)null;
+        // Lượt: ưu tiên lượt gắn trực tiếp phiếu chỉ định (walk-in gắn lượt), rồi lượt của các dịch vụ khám
+        // được gộp, fallback suy từ lịch khám neo (tương thích hoá đơn lập trước khi có cột VisitId).
+        var visitId = order?.VisitId
+            ?? appointments.Select(a => a.VisitId).FirstOrDefault(v => v is not null)
+            ?? await ResolveVisitIdAsync(anchorAppointmentId, ct);
+        var invoice = new Invoice(code, request.PatientId, order?.EncounterId, NormalizeOptional(request.Note), items,
+            anchorAppointmentId, visitId, labOrderId: order?.Id);
         _db.Invoices.Add(invoice);
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var appointment in appointments)
+        {
+            var mark = appointment.MarkInvoiced(now);
+            if (mark.IsFailure)
+                return Result.Failure<InvoiceDto>(mark.Error);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         return (await ProjectByIdAsync(invoice.Id, ct))!;

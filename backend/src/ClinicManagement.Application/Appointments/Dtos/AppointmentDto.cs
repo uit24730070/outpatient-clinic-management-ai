@@ -20,4 +20,10 @@ public sealed record AppointmentDto(
     Guid? RoomId,
     string? RoomName,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    // Thời điểm đã lập hoá đơn cho dịch vụ khám này — null nếu chưa lập.
+    DateTimeOffset? InvoicedAt,
+    // Lượt tiếp đón gom lịch này (ADR 0017) — null với lịch lẻ.
+    Guid? VisitId,
+    // Số thứ tự hàng đợi cấp cho lịch này (ADR 0019) — null nếu chưa có vé.
+    int? QueueNumber);

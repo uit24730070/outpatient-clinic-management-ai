@@ -153,8 +153,13 @@ export interface CreateInvoiceInput {
   patientId: string
   note: string | null
   items: InvoiceItemInput[]
-  /** Lượt tiếp đón (tuỳ chọn): gắn khi lập từ màn tiếp đón; null với vãng lai/chỉ-CLS. */
-  appointmentId?: string | null
+  /**
+   * Các dịch vụ khám được thu trong hoá đơn này (tuỳ chọn, có thể nhiều — gộp cấp Lượt tiếp đón);
+   * để trống/undefined với vãng lai/chỉ-CLS. Mỗi dịch vụ khám chỉ lập được một lần.
+   */
+  appointmentIds?: string[]
+  /** Gộp thêm phí CLS từ một phiếu chỉ định chưa lập hoá đơn (tuỳ chọn, ADR 0021 PAY-01). */
+  labOrderId?: string | null
 }
 
 export interface UpdateInvoiceInput {

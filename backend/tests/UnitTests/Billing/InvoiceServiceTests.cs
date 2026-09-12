@@ -5,6 +5,7 @@ using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
+using ClinicManagement.Domain.Visits;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 using UnitTests.Common;
@@ -407,12 +408,71 @@ public sealed class InvoiceServiceTests
         var result = await service.CreateAsync(new CreateInvoiceRequest(
             patient.Id, "Thu lúc tiếp đón",
             new[] { new CreateInvoiceItemRequest(kham.Id, 1), new CreateInvoiceItemRequest(xquang.Id, 1) },
-            appointment.Id));
+            new[] { appointment.Id }));
 
         Assert.True(result.IsSuccess);
         Assert.Equal(appointment.Id, result.Value.AppointmentId);
         Assert.Null(result.Value.EncounterId); // không cần phiếu khám
         Assert.Equal(350000m, result.Value.TotalAmount);
+
+        var reloaded = await db.Appointments.FindAsync(appointment.Id);
+        Assert.NotNull(reloaded!.InvoicedAt); // chống lập trùng cùng cơ chế LabOrder.InvoicedAt
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAlreadyInvoicedAppointment_ShouldReturnConflict()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(patient);
+        var appointment = new Appointment(
+            patient.Id, Guid.NewGuid(),
+            DateTimeOffset.UtcNow.AddHours(1), DateTimeOffset.UtcNow.AddHours(2), null);
+        db.Appointments.Add(appointment);
+        var kham = new ServicePrice("DV-000001", "Khám tổng quát", 150000m, null);
+        db.ServicePrices.Add(kham);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var first = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, new[] { new CreateInvoiceItemRequest(kham.Id, 1) }, new[] { appointment.Id }));
+        Assert.True(first.IsSuccess);
+
+        var second = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, new[] { new CreateInvoiceItemRequest(kham.Id, 1) }, new[] { appointment.Id }));
+        Assert.True(second.IsFailure);
+        Assert.Equal(ErrorType.Conflict, second.Error.Type);
+        Assert.Equal("Billing.AppointmentAlreadyInvoiced", second.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateAsync_AtReception_WithTwoAppointments_ShouldCombineIntoOneInvoice()
+    {
+        // UX-05: lập hoá đơn ở cấp Lượt tiếp đón — gộp nhiều dịch vụ khám cùng lúc vào một hoá đơn.
+        var db = TestDbContext.CreateInMemory();
+        var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(patient);
+        var visit = new Visit("LK-000001", patient.Id, null);
+        db.Visits.Add(visit);
+        var svc = new ServicePrice("DV-000001", "Khám tổng quát", 150000m, null);
+        db.ServicePrices.Add(svc);
+        var a1 = new Appointment(patient.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(30), null, svc.Id, svc.Name, svc.UnitPrice, visit.Id);
+        var a2 = new Appointment(patient.Id, Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(1), DateTimeOffset.UtcNow.AddHours(1).AddMinutes(30), null, svc.Id, svc.Name, svc.UnitPrice, visit.Id);
+        db.Appointments.AddRange(a1, a2);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null,
+            new[] { new CreateInvoiceItemRequest(svc.Id, 2) },
+            new[] { a1.Id, a2.Id }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(visit.Id, result.Value.VisitId);
+        Assert.Equal(300000m, result.Value.TotalAmount);
+
+        Assert.NotNull((await db.Appointments.FindAsync(a1.Id))!.InvoicedAt);
+        Assert.NotNull((await db.Appointments.FindAsync(a2.Id))!.InvoicedAt);
     }
 
     [Fact]
@@ -480,7 +540,7 @@ public sealed class InvoiceServiceTests
 
         var service = CreateService(db);
         var result = await service.CreateAsync(new CreateInvoiceRequest(
-            patient.Id, null, new[] { new CreateInvoiceItemRequest(svc.Id, 1) }, Guid.NewGuid()));
+            patient.Id, null, new[] { new CreateInvoiceItemRequest(svc.Id, 1) }, new[] { Guid.NewGuid() }));
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.NotFound, result.Error.Type);
@@ -588,6 +648,80 @@ public sealed class InvoiceServiceTests
         Assert.True(result.IsSuccess);
         Assert.Null(result.Value.EncounterId);
         Assert.Equal(InvoiceItemType.Paraclinical, Assert.Single(result.Value.Items).ItemType);
+    }
+
+    // ── UX-03: gộp phí khám + CLS vào một hoá đơn (CreateAsync với LabOrderId) ──
+
+    [Fact]
+    public async Task CreateAsync_WithLabOrderId_ShouldCombineConsultationAndParaclinicalLines()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(patient);
+        var reExam = new ServicePrice("DV-000001", "Tái khám", 100000m, null, ServiceCategory.Consultation);
+        db.ServicePrices.Add(reExam);
+        var encounter = new Encounter(Guid.NewGuid(), patient.Id, Guid.NewGuid(), null, "Theo dõi", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var order = await SeedLabOrderAsync(db, patient.Id, encounter.Id);
+
+        var service = CreateService(db);
+        var result = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, new[] { new CreateInvoiceItemRequest(reExam.Id, 1) }, LabOrderId: order.Id));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3, result.Value.Items.Count); // 1 công khám + 2 dòng CLS của phiếu chỉ định
+        Assert.Equal(300000m, result.Value.TotalAmount); // 100.000 + 80.000 + 120.000
+        Assert.Equal(encounter.Id, result.Value.EncounterId); // gắn theo phiếu khám nguồn của LabOrder
+
+        var reloadedOrder = await db.LabOrders.FindAsync(order.Id);
+        Assert.NotNull(reloadedOrder!.InvoicedAt); // chống lập trùng cùng cơ chế lập riêng
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithLabOrderId_ShouldMarkLabOrderPaid_WhenInvoicePaid()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(patient);
+        var reExam = new ServicePrice("DV-000001", "Tái khám", 100000m, null, ServiceCategory.Consultation);
+        db.ServicePrices.Add(reExam);
+        var encounter = new Encounter(Guid.NewGuid(), patient.Id, Guid.NewGuid(), null, "Theo dõi", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var order = await SeedLabOrderAsync(db, patient.Id, encounter.Id);
+
+        var service = CreateService(db);
+        var invoice = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, new[] { new CreateInvoiceItemRequest(reExam.Id, 1) }, LabOrderId: order.Id));
+        await service.PayAsync(invoice.Value.Id, new PayInvoiceRequest(PaymentMethod.Cash));
+
+        // Thu hoá đơn gộp cũng phải mở cổng nhập kết quả CLS (PAY-01) — không riêng đường lập-tách.
+        var reloaded = await db.LabOrders.FindAsync(order.Id);
+        Assert.NotNull(reloaded!.PaidAt);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAlreadyInvoicedLabOrderId_ShouldReturnConflict()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
+        db.Patients.Add(patient);
+        var encounter = new Encounter(Guid.NewGuid(), patient.Id, Guid.NewGuid(), null, "Theo dõi", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var order = await SeedLabOrderAsync(db, patient.Id, encounter.Id);
+
+        var service = CreateService(db);
+        var first = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, Array.Empty<CreateInvoiceItemRequest>(), LabOrderId: order.Id));
+        Assert.True(first.IsSuccess);
+
+        var second = await service.CreateAsync(new CreateInvoiceRequest(
+            patient.Id, null, Array.Empty<CreateInvoiceItemRequest>(), LabOrderId: order.Id));
+        Assert.True(second.IsFailure);
+        Assert.Equal(ErrorType.Conflict, second.Error.Type);
+        Assert.Equal("Billing.ParaclinicalAlreadyInvoiced", second.Error.Code);
     }
 
     [Fact]

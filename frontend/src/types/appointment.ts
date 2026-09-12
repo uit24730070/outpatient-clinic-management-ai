@@ -52,16 +52,10 @@ export interface Appointment {
   roomName: string | null
   createdAt: string
   updatedAt: string | null
-}
-
-export interface AppointmentFormValues {
-  patientId: string
-  doctorId: string
-  startTime: string
-  endTime: string
-  reason: string | null
-  /** Dịch vụ khám (bảng giá loại Consultation); null nếu không gắn. */
-  servicePriceId: string | null
-  /** Phòng khám gán cho lịch; null nếu không gắn. */
-  roomId: string | null
+  /** Thời điểm đã lập hoá đơn cho dịch vụ khám này — null nếu chưa lập. */
+  invoicedAt: string | null
+  /** Lượt tiếp đón gom lịch này (ADR 0017); null với lịch lẻ. */
+  visitId: string | null
+  /** Số thứ tự hàng đợi cấp cho lịch này (ADR 0019); null nếu chưa có vé. */
+  queueNumber: number | null
 }

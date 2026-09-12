@@ -4,6 +4,7 @@ using ClinicManagement.Application.Visits.Dtos;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Paraclinical;
+using ClinicManagement.Domain.Queue;
 using ClinicManagement.Domain.Visits;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ namespace ClinicManagement.Application.Visits;
 public sealed class VisitService : IVisitService
 {
     private const int MaxPageSize = 100;
+    private static readonly TimeSpan ClinicOffset = TimeSpan.FromHours(7);
     private readonly IAppDbContext _db;
 
     public VisitService(IAppDbContext db) => _db = db;
@@ -50,6 +52,8 @@ public sealed class VisitService : IVisitService
         // Kiểm & dựng từng dịch vụ khám. Chống trùng giờ xét cả lịch trong CSDL lẫn các lịch vừa thêm
         // trong cùng lượt (cùng bác sĩ) để không tạo hai dịch vụ chồng giờ cho một bác sĩ.
         var pending = new List<Appointment>();
+        var ticketDate = TodayLocal();
+        var nextTicketNumber = await NextQueueNumberAsync(ticketDate, ct);
         foreach (var line in lines)
         {
             var appt = await BuildAppointmentAsync(request.PatientId, visit.Id, line, pending, ct);
@@ -58,6 +62,11 @@ public sealed class VisitService : IVisitService
 
             pending.Add(appt.Value);
             _db.Appointments.Add(appt.Value);
+
+            // Cấp số hàng đợi ngay lúc tiếp đón, gán sẵn phòng khám của bác sĩ (suy từ lịch làm việc)
+            // để lễ tân không phải điều phối thủ công (khép "phần nợ" ADR 0019).
+            _db.QueueTickets.Add(new QueueTicket(
+                ticketDate, nextTicketNumber++, request.PatientId, appt.Value.Id, appt.Value.RoomId, line.DoctorId));
         }
 
         // Gộp chỉ định CLS ngay lúc tiếp đón: một phiếu walk-in gắn lượt (ADR 0017).
@@ -123,6 +132,12 @@ public sealed class VisitService : IVisitService
             return Result.Failure<VisitDto>(appt.Error);
 
         _db.Appointments.Add(appt.Value);
+
+        var ticketDate = TodayLocal();
+        var ticketNumber = await NextQueueNumberAsync(ticketDate, ct);
+        _db.QueueTickets.Add(new QueueTicket(
+            ticketDate, ticketNumber, visit.PatientId, appt.Value.Id, appt.Value.RoomId, request.DoctorId));
+
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(visit.Id, ct))!;
     }
@@ -140,7 +155,10 @@ public sealed class VisitService : IVisitService
             query = query.Where(v => v.Status == status);
         if (date is { } d)
         {
-            var dayStart = new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            // Ngày `date` là ngày theo giờ phòng khám (FE gửi lên từ ngày local của trình duyệt) —
+            // phải quy đổi mốc 00:00 giờ phòng khám về UTC (offset=0) để so đúng với cột CreatedAt
+            // ("timestamp with time zone") và để Npgsql chấp nhận bind tham số (ADR fix reports).
+            var dayStart = new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue), ClinicOffset).ToUniversalTime();
             var dayEnd = dayStart.AddDays(1);
             query = query.Where(v => v.CreatedAt >= dayStart && v.CreatedAt < dayEnd);
         }
@@ -218,6 +236,8 @@ public sealed class VisitService : IVisitService
         if (overlapDb || overlapPending)
             return Error.Conflict("Appointment.Overlap", "Bác sĩ đã có lịch khác trùng khung giờ này.");
 
+        var roomId = await ResolveRoomIdAsync(line.DoctorId, line.StartTime, ct);
+
         return new Appointment(
             patientId,
             line.DoctorId,
@@ -227,8 +247,32 @@ public sealed class VisitService : IVisitService
             service.Value?.Id,
             service.Value?.Name,
             service.Value?.UnitPrice,
-            visitId);
+            visitId,
+            roomId);
     }
+
+    /// <summary>Suy phòng khám của bác sĩ tại thời điểm hẹn từ khung làm việc (ADR 0018); null nếu không khớp khung nào.</summary>
+    private async Task<Guid?> ResolveRoomIdAsync(Guid doctorId, DateTimeOffset startTime, CancellationToken ct)
+    {
+        var local = startTime.ToOffset(ClinicOffset);
+        var day = local.DayOfWeek;
+        var time = TimeOnly.FromDateTime(local.DateTime);
+
+        return await _db.DoctorWorkSchedules.AsNoTracking()
+            .Where(s => s.DoctorId == doctorId && s.DayOfWeek == day && s.StartTime <= time && s.EndTime > time)
+            .Select(s => s.RoomId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>Số vé kế tiếp trong ngày = số vé đã cấp hôm đó + 1 (đếm cả vé đã xoá mềm, tránh trùng — như <see cref="ClinicManagement.Application.Queue.QueueService"/>).</summary>
+    private async Task<int> NextQueueNumberAsync(DateOnly date, CancellationToken ct)
+    {
+        var count = await _db.QueueTickets.IgnoreQueryFilters().CountAsync(t => t.TicketDate == date, ct);
+        return count + 1;
+    }
+
+    private static DateOnly TodayLocal() =>
+        DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(ClinicOffset).DateTime);
 
     /// <summary>Tra dịch vụ khám: phải tồn tại và thuộc loại Consultation. Null khi không gắn dịch vụ.</summary>
     private async Task<Result<ServicePrice?>> ResolveServiceAsync(Guid? servicePriceId, CancellationToken ct)
@@ -279,7 +323,10 @@ public sealed class VisitService : IVisitService
                 a.RoomId,
                 a.RoomId == null ? null : _db.Rooms.Where(r => r.Id == a.RoomId).Select(r => r.Name).FirstOrDefault(),
                 a.CreatedAt,
-                a.UpdatedAt))
+                a.UpdatedAt,
+                a.InvoicedAt,
+                a.VisitId,
+                _db.QueueTickets.Where(t => t.AppointmentId == a.Id).Select(t => (int?)t.Number).FirstOrDefault()))
             .ToListAsync(ct);
 
         // Viện phí gom cả lượt: hoá đơn gắn trực tiếp lượt (Invoice.VisitId, ADR 0017) hoặc gắn lịch

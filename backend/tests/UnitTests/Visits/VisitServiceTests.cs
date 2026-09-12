@@ -3,8 +3,10 @@ using ClinicManagement.Application.Visits.Dtos;
 using ClinicManagement.Domain.Billing;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Patients;
+using ClinicManagement.Domain.Resources;
 using ClinicManagement.Domain.Visits;
 using ClinicManagement.Shared.Results;
+using System.Linq;
 using UnitTests.Common;
 
 namespace UnitTests.Visits;
@@ -244,6 +246,62 @@ public sealed class VisitServiceTests
         Assert.Equal(300000m, detail.TotalBilled);
         Assert.Equal(150000m, detail.TotalPaid);
         Assert.Equal(150000m, detail.TotalOutstanding);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldAssignRoomAndQueueTicket_FromDoctorSchedule()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorA, out _, out var consultId);
+        var room = new Room("PK-000001", "Phòng khám 1", null);
+        db.Rooms.Add(room);
+        var localDay = Base.ToOffset(TimeSpan.FromHours(7)).DayOfWeek;
+        db.DoctorWorkSchedules.Add(
+            new DoctorWorkSchedule(doctorA, localDay, new TimeOnly(8, 0), new TimeOnly(20, 0), room.Id));
+        db.SaveChanges();
+
+        var result = await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId) }));
+
+        Assert.True(result.IsSuccess);
+        var appt = result.Value.Appointments[0];
+        Assert.Equal(room.Id, appt.RoomId);
+        Assert.Equal(1, appt.QueueNumber);
+
+        var ticket = db.QueueTickets.Single(t => t.AppointmentId == appt.Id);
+        Assert.Equal(1, ticket.Number);
+        Assert.Equal(room.Id, ticket.RoomId);
+        Assert.Equal(doctorA, ticket.DoctorId);
+        Assert.Equal(patientId, ticket.PatientId);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldAssignSequentialQueueNumbers_ForMultipleServices()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorA, out var doctorB, out var consultId);
+
+        var result = await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId), Line(doctorB, consultId) }));
+
+        Assert.True(result.IsSuccess);
+        var numbers = db.QueueTickets.Select(t => t.Number).OrderBy(n => n).ToList();
+        Assert.Equal(new[] { 1, 2 }, numbers);
+    }
+
+    [Fact]
+    public async Task AddServiceAsync_ShouldAlsoAssignQueueTicket()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorA, out var doctorB, out var consultId);
+        var visit = (await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId) }))).Value;
+
+        var result = await service.AddServiceAsync(visit.Id, new AddVisitServiceRequest(
+            doctorB, Base.AddHours(1), Base.AddHours(1).AddMinutes(30), "Khám thêm", consultId));
+
+        Assert.True(result.IsSuccess);
+        var newAppt = result.Value.Appointments[1];
+        var ticket = db.QueueTickets.Single(t => t.AppointmentId == newAppt.Id);
+        Assert.Equal(2, ticket.Number);
+        Assert.Equal(doctorB, ticket.DoctorId);
     }
 
     [Fact]
