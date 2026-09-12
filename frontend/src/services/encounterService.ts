@@ -61,3 +61,9 @@ export async function dispenseEncounter(id: string): Promise<Encounter> {
   const res = await apiClient.post<ApiResponse<Encounter>>(`/api/encounters/${id}/dispense`)
   return unwrap(res.data)
 }
+
+// Hoàn kho đơn đã cấp phát (Dược sĩ) — nhập lại tồn đúng lô + ghi sổ cái bù (ADR 0022, REF-02).
+export async function returnStock(id: string): Promise<Encounter> {
+  const res = await apiClient.post<ApiResponse<Encounter>>(`/api/encounters/${id}/return-stock`)
+  return unwrap(res.data)
+}

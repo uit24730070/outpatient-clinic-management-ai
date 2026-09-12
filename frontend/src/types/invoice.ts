@@ -43,6 +43,7 @@ export const InvoiceStatus = {
   Draft: 0,
   Paid: 1,
   Cancelled: 2,
+  Refunded: 3,
 } as const
 
 export type InvoiceStatusValue = (typeof InvoiceStatus)[keyof typeof InvoiceStatus]
@@ -51,6 +52,7 @@ export const invoiceStatusLabels: Record<number, string> = {
   0: 'Nháp',
   1: 'Đã thu',
   2: 'Đã huỷ',
+  3: 'Đã hoàn tiền',
 }
 
 // Loại dòng hoá đơn (số, khớp InvoiceItemType backend — Paraclinical chèn trước Other, ADR 0015).
@@ -117,6 +119,10 @@ export interface Invoice {
   items: InvoiceItem[]
   createdAt: string
   updatedAt: string | null
+  /** Thời điểm hoàn tiền (null nếu chưa hoàn). */
+  refundedAt: string | null
+  /** Lý do hoàn tiền (null nếu chưa hoàn). */
+  refundReason: string | null
 }
 
 /** Gom hoá đơn theo một lịch khám + tổng (khớp AppointmentInvoicesDto backend). */

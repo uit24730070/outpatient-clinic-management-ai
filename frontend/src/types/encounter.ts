@@ -25,6 +25,7 @@ export const DispenseStatus = {
   Reserved: 1,
   Paid: 2,
   Dispensed: 3,
+  Returned: 4,
 } as const
 
 export type DispenseStatusValue = (typeof DispenseStatus)[keyof typeof DispenseStatus]
@@ -34,6 +35,7 @@ export const dispenseStatusLabels: Record<number, string> = {
   1: 'Giữ tồn (chờ thu tiền)',
   2: 'Đã thu tiền (chờ cấp phát)',
   3: 'Đã cấp phát',
+  4: 'Đã hoàn kho',
 }
 
 export interface PrescriptionItem {

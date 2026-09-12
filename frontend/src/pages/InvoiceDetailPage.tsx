@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, Printer, Wallet, Loader2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Printer, Wallet, Loader2, RotateCcw } from 'lucide-react'
 import {
   cancelInvoice,
   deleteInvoice,
   getInvoice,
   payInvoice,
+  refundInvoice,
 } from '../services/invoiceService'
 import { toastError, toastSuccess } from '../lib/toast'
 import type { Invoice, PaymentMethodValue } from '../types/invoice'
@@ -45,6 +46,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', {
@@ -65,6 +67,10 @@ export default function InvoiceDetailPage() {
   const [payOpen, setPayOpen] = useState(false)
   const [method, setMethod] = useState<PaymentMethodValue>(PaymentMethod.Cash)
   const [paying, setPaying] = useState(false)
+
+  const [refundOpen, setRefundOpen] = useState(false)
+  const [refundReason, setRefundReason] = useState('')
+  const [refunding, setRefunding] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -118,10 +124,27 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  const onRefund = async () => {
+    if (!id) return
+    setRefunding(true)
+    try {
+      const updated = await refundInvoice(id, refundReason)
+      setInvoice(updated)
+      setRefundOpen(false)
+      setRefundReason('')
+      toastSuccess('Đã hoàn tiền hoá đơn.')
+    } catch (err) {
+      toastError(err)
+    } finally {
+      setRefunding(false)
+    }
+  }
+
   if (loading) return <p className="text-muted-foreground">Đang tải…</p>
   if (!invoice) return <p className="text-muted-foreground">Không tìm thấy hoá đơn.</p>
 
   const isDraft = invoice.status === InvoiceStatus.Draft
+  const isPaid = invoice.status === InvoiceStatus.Paid
 
   return (
     <section className="mx-auto max-w-3xl">
@@ -211,6 +234,51 @@ export default function InvoiceDetailPage() {
                 />
               </>
             )}
+            {isPaid && (
+              <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="text-destructive hover:text-destructive">
+                    <RotateCcw className="size-4" />
+                    Hoàn tiền
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Hoàn tiền hoá đơn {invoice.code}</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-3 py-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Số tiền hoàn</span>
+                      <span className="text-lg font-semibold tabular-nums">
+                        {formatVnd(invoice.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Lý do hoàn tiền</Label>
+                      <Textarea
+                        placeholder="Nhập lý do hoàn tiền…"
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setRefundOpen(false)} disabled={refunding}>
+                      Đóng
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => void onRefund()}
+                      disabled={refunding || !refundReason.trim()}
+                    >
+                      {refunding && <Loader2 className="size-4 animate-spin" />}
+                      Xác nhận hoàn tiền
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
             <Button asChild variant="ghost">
               <Link to="/invoices">
                 <ArrowLeft className="size-4" />
@@ -258,6 +326,18 @@ export default function InvoiceDetailPage() {
                 <div>
                   <span className="text-muted-foreground">Thời điểm thu: </span>
                   <span className="font-medium">{formatDate(invoice.paidAt)}</span>
+                </div>
+              </>
+            )}
+            {invoice.refundedAt && (
+              <>
+                <div>
+                  <span className="text-muted-foreground">Hoàn tiền lúc: </span>
+                  <span className="font-medium">{formatDate(invoice.refundedAt)}</span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-muted-foreground">Lý do hoàn: </span>
+                  <span className="font-medium">{invoice.refundReason}</span>
                 </div>
               </>
             )}

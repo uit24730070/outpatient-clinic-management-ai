@@ -104,6 +104,7 @@ const dispenseTone: Record<number, Tone> = {
   [DispenseStatus.Reserved]: 'amber',
   [DispenseStatus.Paid]: 'blue',
   [DispenseStatus.Dispensed]: 'green',
+  [DispenseStatus.Returned]: 'red',
 }
 
 /** Badge trạng thái cấp phát thuốc của phiếu khám (ADR 0021, PAY-02). */
@@ -132,6 +133,7 @@ const invoiceTone: Record<number, Tone> = {
   [InvoiceStatus.Draft]: 'amber',
   [InvoiceStatus.Paid]: 'green',
   [InvoiceStatus.Cancelled]: 'gray',
+  [InvoiceStatus.Refunded]: 'red',
 }
 
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatusValue }) {

@@ -92,6 +92,12 @@ export async function cancelInvoice(id: string): Promise<Invoice> {
   return unwrap(res.data)
 }
 
+/** Hoàn tiền hoá đơn đã thu (Paid → Refunded). */
+export async function refundInvoice(id: string, reason: string): Promise<Invoice> {
+  const res = await apiClient.post<ApiResponse<Invoice>>(`/api/invoices/${id}/refund`, { reason })
+  return unwrap(res.data)
+}
+
 export async function deleteInvoice(id: string): Promise<void> {
   await apiClient.delete(`/api/invoices/${id}`)
 }
