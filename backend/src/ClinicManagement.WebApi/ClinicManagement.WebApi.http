@@ -669,3 +669,47 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "patientId": "{{patientId}}", "doctorId": "{{doctorId}}", "startTime": "2026-09-16T02:00:00Z", "endTime": "2026-09-16T02:30:00Z", "reason": "Khám", "roomId": "{{roomId}}" }
+
+########################################
+# Sinh hiệu & Hàng đợi (Điều dưỡng, ADR 0019)
+########################################
+
+### Đăng nhập Điều dưỡng
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "dieuduong", "password": "Nurse@123" }
+
+### Nhập/cập nhật sinh hiệu cho lượt khám (RecordVitals: Admin/Điều dưỡng)
+# @name upsertVitals — thay {{appointmentId}} bằng Id lịch khám đã check-in
+POST {{host}}/api/appointments/{{appointmentId}}/vitals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "heightCm": 170, "weightKg": 68, "temperatureC": 37, "pulse": 78, "bloodPressureSystolic": 120, "bloodPressureDiastolic": 80, "spO2": 98, "respiratoryRate": 18, "notes": "ổn định" }
+
+### Xem sinh hiệu (bác sĩ đọc trong bệnh án)
+GET {{host}}/api/appointments/{{appointmentId}}/vitals
+Authorization: Bearer {{token}}
+
+### Lấy số hàng đợi (ManageQueue; vãng lai: appointmentId null)
+POST {{host}}/api/queue
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "patientId": "{{patientId}}", "appointmentId": null, "roomId": null, "doctorId": null }
+
+### Danh sách hàng đợi hôm nay (mặc định; lọc theo trạng thái/phòng/bác sĩ)
+GET {{host}}/api/queue
+Authorization: Bearer {{token}}
+
+### Điều phối vé (gán phòng & bác sĩ)
+POST {{host}}/api/queue/{{queueTicketId}}/assign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "roomId": "{{roomId}}", "doctorId": "{{doctorId}}" }
+
+### Gọi số / bắt đầu / hoàn tất / bỏ qua (call|start|done|skip)
+POST {{host}}/api/queue/{{queueTicketId}}/call
+Authorization: Bearer {{token}}
