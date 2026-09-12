@@ -628,4 +628,94 @@ public sealed class InvoiceServiceTests
         var reloaded = await db.LabOrders.FindAsync(order.Id);
         Assert.NotNull(reloaded!.PaidAt);
     }
+
+    // ── REF-01: Hoàn tiền hoá đơn ────────────────────────────────────────────
+
+    [Fact]
+    public async Task RefundAsync_WhenPaid_ShouldTransitionToRefunded()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var med = SeedMedication(db, "TH-000001", 10000m);
+        var encounter = SeedCompletedEncounter(db, Guid.NewGuid(), new[]
+        {
+            new PrescriptionItem("Thuốc A", "1 viên", 3, null, med.Id)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(encounter.Id);
+        await service.PayAsync(created.Value.Id, new PayInvoiceRequest(PaymentMethod.Cash));
+
+        var result = await service.RefundAsync(created.Value.Id, new RefundInvoiceRequest("Bệnh nhân không lấy thuốc"));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(InvoiceStatus.Refunded, result.Value.Status);
+        Assert.NotNull(result.Value.RefundedAt);
+        Assert.Equal("Bệnh nhân không lấy thuốc", result.Value.RefundReason);
+    }
+
+    [Fact]
+    public async Task RefundAsync_WhenDraft_ShouldReturnConflict()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var med = SeedMedication(db, "TH-000001", 5000m);
+        var encounter = SeedCompletedEncounter(db, Guid.NewGuid(), new[]
+        {
+            new PrescriptionItem("Thuốc A", "1 viên", 2, null, med.Id)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(encounter.Id);
+
+        var result = await service.RefundAsync(created.Value.Id, new RefundInvoiceRequest("Lý do hoàn"));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Billing.InvalidTransition", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task RefundAsync_WhenAlreadyRefunded_ShouldReturnConflict()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var med = SeedMedication(db, "TH-000001", 5000m);
+        var encounter = SeedCompletedEncounter(db, Guid.NewGuid(), new[]
+        {
+            new PrescriptionItem("Thuốc A", "1 viên", 2, null, med.Id)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(encounter.Id);
+        await service.PayAsync(created.Value.Id, new PayInvoiceRequest(PaymentMethod.Cash));
+        await service.RefundAsync(created.Value.Id, new RefundInvoiceRequest("Lần 1"));
+
+        var second = await service.RefundAsync(created.Value.Id, new RefundInvoiceRequest("Lần 2"));
+
+        Assert.True(second.IsFailure);
+        Assert.Equal(ErrorType.Conflict, second.Error.Type);
+    }
+
+    [Fact]
+    public async Task RefundAsync_EmptyReason_ShouldReturnValidation()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var med = SeedMedication(db, "TH-000001", 5000m);
+        var encounter = SeedCompletedEncounter(db, Guid.NewGuid(), new[]
+        {
+            new PrescriptionItem("Thuốc A", "1 viên", 1, null, med.Id)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(encounter.Id);
+        await service.PayAsync(created.Value.Id, new PayInvoiceRequest(PaymentMethod.Cash));
+
+        var result = await service.RefundAsync(created.Value.Id, new RefundInvoiceRequest("   "));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.Equal("Billing.RefundReasonRequired", result.Error.Code);
+    }
 }

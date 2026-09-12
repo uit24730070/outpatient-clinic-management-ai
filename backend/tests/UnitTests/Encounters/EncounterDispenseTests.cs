@@ -211,4 +211,73 @@ public sealed class EncounterDispenseTests
         Assert.Equal(ErrorType.Validation, dispensed.Error.Type);
         Assert.Equal("Pharmacy.NothingToDispense", dispensed.Error.Code);
     }
+
+    // ── REF-02: Hoàn kho đơn đã cấp phát ────────────────────────────────────
+
+    [Fact]
+    public async Task ReturnStock_ShouldRestoreBatchQuantity_AndMarkReturned()
+    {
+        var service = Setup(nameof(ReturnStock_ShouldRestoreBatchQuantity_AndMarkReturned),
+            out var db, out var appt, out var medId);
+        var batchId = AddBatch(db, medId, "LOT-A", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 4));
+        await service.CompleteAsync(created.Value.Id);
+        await MarkPaidAsync(db, created.Value.Id);
+        await service.DispenseAsync(created.Value.Id);
+
+        // Trước hoàn: tồn = 6 (đã cấp 4)
+        var before = await db.MedicationBatches.FindAsync(batchId);
+        Assert.Equal(6, before!.QuantityOnHand);
+
+        var result = await service.ReturnStockAsync(created.Value.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DispenseStatus.Returned, result.Value.DispenseStatus);
+
+        // Sau hoàn: tồn = 10 (khôi phục đúng lô)
+        await db.Entry(before).ReloadAsync();
+        Assert.Equal(10, before.QuantityOnHand);
+
+        // Sổ cái: có giao dịch Return dương
+        var returnTx = await db.StockTransactions
+            .FirstOrDefaultAsync(t => t.Type == StockTransactionType.Return && t.MedicationBatchId == batchId);
+        Assert.NotNull(returnTx);
+        Assert.Equal(4, returnTx!.QuantityDelta);
+    }
+
+    [Fact]
+    public async Task ReturnStock_ShouldBeIdempotentGuard_ReturnConflictOnSecondCall()
+    {
+        var service = Setup(nameof(ReturnStock_ShouldBeIdempotentGuard_ReturnConflictOnSecondCall),
+            out var db, out var appt, out var medId);
+        AddBatch(db, medId, "LOT-B", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 2));
+        await service.CompleteAsync(created.Value.Id);
+        await MarkPaidAsync(db, created.Value.Id);
+        await service.DispenseAsync(created.Value.Id);
+        await service.ReturnStockAsync(created.Value.Id);
+
+        // Gọi lần 2 → 409
+        var second = await service.ReturnStockAsync(created.Value.Id);
+
+        Assert.True(second.IsFailure);
+        Assert.Equal(ErrorType.Conflict, second.Error.Type);
+        Assert.Equal("Pharmacy.InvalidDispenseTransition", second.Error.Code);
+    }
+
+    [Fact]
+    public async Task ReturnStock_WhenNotDispensed_ShouldReturnConflict()
+    {
+        var service = Setup(nameof(ReturnStock_WhenNotDispensed_ShouldReturnConflict),
+            out var db, out var appt, out var medId);
+        AddBatch(db, medId, "LOT-C", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 3));
+        await service.CompleteAsync(created.Value.Id);
+        // Chưa thu tiền, chưa cấp phát — gọi ReturnStock ngay → 409
+
+        var result = await service.ReturnStockAsync(created.Value.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+    }
 }

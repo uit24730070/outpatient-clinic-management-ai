@@ -433,4 +433,85 @@ public sealed class LabOrderServiceTests
         var completed = await service.GetListAsync(1, 20, null, null, LabOrderStatus.Completed);
         Assert.Equal(0, completed.Value.TotalCount);
     }
+
+    // ── REF-03: Huỷ phiếu CLS đã thu + hoàn tiền HĐ CLS ────────────────────
+
+    [Fact]
+    public async Task CancelAsync_PaidOrderWithNoResults_ShouldCancelAndRefundInvoice()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Điện giải đồ", 120000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        // Mô phỏng lập hoá đơn + thu tiền CLS
+        var invoice = new Invoice("HD-000001", encounter.PatientId, null, null,
+            new[] { new InvoiceItem(InvoiceItemType.Paraclinical, "Điện giải đồ", 120000m, 1, xn.Id) },
+            labOrderId: created.Value.Id);
+        invoice.Pay(PaymentMethod.Cash, DateTimeOffset.UtcNow);
+        db.Invoices.Add(invoice);
+        await MarkPaidAsync(db, created.Value.Id);
+
+        var result = await service.CancelAsync(created.Value.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(LabOrderStatus.Cancelled, result.Value.Status);
+
+        // Hoá đơn CLS phải được hoàn tiền
+        var reloadedInvoice = await db.Invoices.FindAsync(invoice.Id);
+        Assert.Equal(InvoiceStatus.Refunded, reloadedInvoice!.Status);
+        Assert.NotNull(reloadedInvoice.RefundedAt);
+    }
+
+    [Fact]
+    public async Task CancelAsync_PaidOrderWithPartialResults_ShouldReturnConflict()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        // Cần 2 dịch vụ để nhập kết quả 1 item → InProgress (không phải Completed)
+        var xn1 = SeedParaclinical(db, "DV-CLS002", "X-quang ngực", 200000m);
+        var xn2 = SeedParaclinical(db, "DV-CLS009", "Siêu âm bụng", 150000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[]
+            {
+                new CreateLabOrderItemRequest(xn1.Id),
+                new CreateLabOrderItemRequest(xn2.Id)
+            }));
+        await MarkPaidAsync(db, created.Value.Id);
+
+        // Nhập kết quả một mục trong hai → chuyển sang InProgress
+        await service.SetItemResultAsync(created.Value.Id, created.Value.Items[0].Id,
+            new SetLabResultRequest("Bình thường", null));
+
+        var result = await service.CancelAsync(created.Value.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Paraclinical.HasPartialResults", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CancelAsync_UnpaidOrder_ShouldCancelWithoutRefund()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        var xn = SeedParaclinical(db, "DV-CLS003", "Siêu âm bụng", 150000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        var result = await service.CancelAsync(created.Value.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(LabOrderStatus.Cancelled, result.Value.Status);
+    }
 }
