@@ -279,6 +279,11 @@ Authorization: Bearer {{token}}
 GET {{host}}/api/encounters?page=1&pageSize=50&dispenseStatus=2
 Authorization: Bearer {{token}}
 
+### Hoàn kho đơn thuốc đã cấp phát (Dispensed → Returned — ADR 0022, REF-02)
+# Dược sĩ/Admin (Roles.ManagePharmacy). Ghi bút toán bù StockTransaction.Return — sổ cái bất biến.
+POST {{host}}/api/encounters/{{encounterId}}/return-stock
+Authorization: Bearer {{token}}
+
 ######################## Trợ lý AI ########################
 # Cần vai trò Bác sĩ hoặc Admin. Dev bật Ai:UseFake = true → trả tóm tắt mô phỏng, không gọi mạng.
 # Thay patientId bằng Id thật (lấy từ danh sách Bệnh nhân).
@@ -531,6 +536,13 @@ Content-Type: application/json
 ### Huỷ hoá đơn (chỉ khi Draft)
 POST {{host}}/api/invoices/{{invoiceId}}/cancel
 Authorization: Bearer {{token}}
+
+### Hoàn tiền hoá đơn đã thu (Paid → Refunded — ADR 0022, REF-01)
+POST {{host}}/api/invoices/{{invoiceId}}/refund
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "reason": "Bệnh nhân không lấy thuốc" }
 
 ### ───────────────────────────── Cận lâm sàng (Sprint 15, Epic 11) ─────────────────────────────
 
