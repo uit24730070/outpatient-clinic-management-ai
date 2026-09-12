@@ -58,3 +58,9 @@ logs/
 # ---------------------------------------------------------------------------
 *.docx
 *.doc
+# Added by code-review-graph
+.code-review-graph/
+
+# Code Review Graph Cache
+.code-review-graph/
+*.crg.json
