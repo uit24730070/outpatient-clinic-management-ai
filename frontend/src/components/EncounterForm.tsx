@@ -27,6 +27,7 @@ import type { Medication } from '../types/medication'
 import { PageHeader } from './PageHeader'
 import { ConfirmDialog } from './ConfirmDialog'
 import { LabOrderPanel } from './LabOrderPanel'
+import { VitalsCard } from './VitalsCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -255,6 +256,10 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
           }
         />
       )}
+
+      <div className="mb-4">
+        <VitalsCard appointmentId={appointmentId} />
+      </div>
 
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Card>

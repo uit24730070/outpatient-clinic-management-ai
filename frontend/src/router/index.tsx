@@ -39,6 +39,8 @@ import VisitFormPage from '../pages/VisitFormPage'
 import VisitDetailPage from '../pages/VisitDetailPage'
 import RoomsListPage from '../pages/RoomsListPage'
 import RoomFormPage from '../pages/RoomFormPage'
+import QueuePage from '../pages/QueuePage'
+import VitalsPage from '../pages/VitalsPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -50,10 +52,13 @@ const ALL_ROLES = [
   UserRole.Doctor,
   UserRole.Pharmacist,
   UserRole.Technician,
+  UserRole.Nurse,
 ]
 const ADMIN_ONLY = [UserRole.Admin]
 const MANAGE_PHARMACY = [UserRole.Admin, UserRole.Pharmacist]
 const MANAGE_BILLING = [UserRole.Admin, UserRole.Receptionist]
+const MANAGE_QUEUE = [UserRole.Admin, UserRole.Receptionist, UserRole.Nurse]
+const RECORD_VITALS = [UserRole.Admin, UserRole.Nurse]
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -146,6 +151,17 @@ export const router = createBrowserRouter([
               { path: 'rooms/new', element: <RoomFormPage /> },
               { path: 'rooms/:id/edit', element: <RoomFormPage /> },
             ],
+          },
+
+          // Hàng đợi khám (ADR 0019) — điều phối bởi Lễ tân/Điều dưỡng/Admin (ManageQueue).
+          {
+            element: <RequireRole roles={MANAGE_QUEUE} />,
+            children: [{ path: 'queue', element: <QueuePage /> }],
+          },
+          // Sinh hiệu (ADR 0019) — Điều dưỡng/Admin (RecordVitals).
+          {
+            element: <RequireRole roles={RECORD_VITALS} />,
+            children: [{ path: 'vitals', element: <VitalsPage /> }],
           },
 
           // Trợ lý hội thoại — mọi vai trò đã đăng nhập (phạm vi dữ liệu do backend kiểm soát).

@@ -37,6 +37,16 @@ export function canRecordLabResult(role: UserRoleValue | undefined): boolean {
   return role === UserRole.Admin || role === UserRole.Doctor || role === UserRole.Technician
 }
 
+/** Có quyền nhập/cập nhật sinh hiệu: Admin hoặc Điều dưỡng — khớp Roles.RecordVitals (ADR 0019). */
+export function canRecordVitals(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.Admin || role === UserRole.Nurse
+}
+
+/** Có quyền điều phối hàng đợi khám: Admin, Lễ tân hoặc Điều dưỡng — khớp Roles.ManageQueue (ADR 0019). */
+export function canManageQueue(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.Admin || role === UserRole.Receptionist || role === UserRole.Nurse
+}
+
 /** Một mục điều hướng, gắn danh sách vai trò được phép thấy. */
 export interface NavItem {
   label: string
@@ -51,6 +61,10 @@ export const navItems: NavItem[] = [
   // Lượt tiếp đón (ADR 0017) — điểm vào quy trình tiếp đón: một lượt nhiều dịch vụ khám.
   { label: 'Lượt tiếp đón', to: '/visits', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
+  // Hàng đợi khám (ADR 0019) — điều phối bởi Lễ tân/Điều dưỡng (và Admin).
+  { label: 'Hàng đợi', to: '/queue', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Nurse] },
+  // Sinh hiệu (ADR 0019) — điều dưỡng nhập sau tiếp đón.
+  { label: 'Sinh hiệu', to: '/vitals', roles: [UserRole.Admin, UserRole.Nurse] },
   { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
   // Danh mục master Bác sĩ/Chuyên khoa — chỉ Admin (đọc vẫn dùng được ở form đặt lịch).
   { label: 'Bác sĩ', to: '/doctors', roles: [UserRole.Admin] },
@@ -68,7 +82,7 @@ export const navItems: NavItem[] = [
   // Viện phí — thu ngân bởi Lễ tân (và Admin), ADR 0014.
   { label: 'Hoá đơn', to: '/invoices', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Bảng giá dịch vụ', to: '/service-prices', roles: [UserRole.Admin, UserRole.Receptionist] },
-  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist, UserRole.Technician] },
+  { label: 'Trợ lý', to: '/assistant', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor, UserRole.Pharmacist, UserRole.Technician, UserRole.Nurse] },
 ]
 
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.
@@ -79,6 +93,7 @@ export const roleLandingPath: Record<UserRoleValue, string> = {
   [UserRole.Doctor]: '/my-clinic',
   [UserRole.Pharmacist]: '/pharmacy/alerts',
   [UserRole.Technician]: '/lab/technician',
+  [UserRole.Nurse]: '/queue',
 }
 
 /** Trang mặc định cho vai trò hiện tại (fallback /appointments nếu thiếu). */

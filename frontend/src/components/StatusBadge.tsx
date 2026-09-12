@@ -27,6 +27,11 @@ import {
   visitStatusLabels,
   type VisitStatusValue,
 } from '../types/visit'
+import {
+  QueueTicketStatus,
+  queueStatusLabels,
+  type QueueTicketStatusValue,
+} from '../types/queue'
 
 // Bảng tông màu — giữ đúng ngữ nghĩa màu cũ (ADR 0012), dùng lại khắp app.
 const tone = {
@@ -97,6 +102,7 @@ const roleTone: Record<string, Tone> = {
   [UserRole.Doctor]: 'green',
   [UserRole.Pharmacist]: 'amber',
   [UserRole.Technician]: 'indigo',
+  [UserRole.Nurse]: 'cyan',
 }
 
 export function RoleBadge({ role }: { role: UserRoleValue }) {
@@ -142,6 +148,22 @@ export function VisitStatusBadge({ status }: { status: VisitStatusValue }) {
   return (
     <TonedBadge tone={visitTone[status] ?? 'gray'}>
       {visitStatusLabels[status] ?? status}
+    </TonedBadge>
+  )
+}
+
+const queueTone: Record<number, Tone> = {
+  [QueueTicketStatus.Waiting]: 'indigo',
+  [QueueTicketStatus.Called]: 'amber',
+  [QueueTicketStatus.InProgress]: 'cyan',
+  [QueueTicketStatus.Done]: 'green',
+  [QueueTicketStatus.Skipped]: 'gray',
+}
+
+export function QueueTicketStatusBadge({ status }: { status: QueueTicketStatusValue }) {
+  return (
+    <TonedBadge tone={queueTone[status] ?? 'gray'}>
+      {queueStatusLabels[status] ?? status}
     </TonedBadge>
   )
 }
