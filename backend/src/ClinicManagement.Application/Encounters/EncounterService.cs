@@ -81,6 +81,9 @@ public sealed class EncounterService : IEncounterService
         if (filter.Status is { } status)
             query = query.Where(e => e.Status == status);
 
+        if (filter.DispenseStatus is { } dispenseStatus)
+            query = query.Where(e => e.DispenseStatus == dispenseStatus);
+
         var total = await query.CountAsync(ct);
         // Lịch sử khám: mới nhất lên đầu.
         var items = await Project(query.OrderByDescending(e => e.CreatedAt))
@@ -155,9 +158,36 @@ public sealed class EncounterService : IEncounterService
         if (closeAppointment.IsFailure)
             return Result.Failure<EncounterDto>(closeAppointment.Error);
 
-        // Cấp phát thuốc theo đơn (FEFO) — gộp vào luồng chốt phiếu (ADR 0011).
-        // Thiếu tồn → rollback toàn bộ (chưa SaveChanges nên không có gì được ghi).
-        var dispense = await DispenseAsync(encounter, ct);
+        // Giữ tồn (Reserved) thay vì cấp phát ngay (ADR 0021, PAY-02): kiểm tồn khả dụng đủ nhưng
+        // chưa trừ tồn vật lý — chờ thu tiền rồi Dược sĩ mới cấp phát thực.
+        var reserve = await ReserveAsync(encounter, ct);
+        if (reserve.IsFailure)
+            return Result.Failure<EncounterDto>(reserve.Error);
+
+        await _db.SaveChangesAsync(ct);
+
+        await IndexEmbeddingAsync(encounter.Id, ct);
+        return (await ProjectByIdAsync(encounter.Id, ct))!;
+    }
+
+    public async Task<Result<EncounterDto>> DispenseAsync(Guid id, CancellationToken ct = default)
+    {
+        var encounter = await _db.Encounters.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (encounter is null)
+            return Error.NotFound("Encounter.NotFound", $"Không tìm thấy phiếu khám với Id {id}.");
+
+        if (encounter.DispenseStatus == DispenseStatus.None)
+            return Error.Validation("Pharmacy.NothingToDispense",
+                "Phiếu khám không có thuốc gắn danh mục để cấp phát.");
+
+        // Chuyển trạng thái Domain trước (Paid → Dispensed); chưa thu (Reserved) → Pharmacy.NotPaid.
+        var occurredAt = DateTimeOffset.UtcNow;
+        var mark = encounter.MarkDispensed(occurredAt);
+        if (mark.IsFailure)
+            return Result.Failure<EncounterDto>(mark.Error);
+
+        // Xuất kho thực theo FEFO (trừ tồn + ghi sổ cái). Thiếu tồn → rollback (chưa SaveChanges).
+        var dispense = await DispenseStockAsync(encounter, occurredAt, ct);
         if (dispense.IsFailure)
             return Result.Failure<EncounterDto>(dispense.Error);
 
@@ -172,21 +202,56 @@ public sealed class EncounterService : IEncounterService
                 "Tồn kho vừa thay đổi bởi thao tác khác, vui lòng thử lại.");
         }
 
-        await IndexEmbeddingAsync(encounter.Id, ct);
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
 
     /// <summary>
-    /// Cấp phát các dòng đơn có <c>MedicationId</c>: trừ tồn các lô còn hạn theo FEFO (hạn tăng dần),
-    /// ghi <see cref="StockTransaction"/> <see cref="StockTransactionType.Dispense"/> (âm). Bỏ qua lô đã
-    /// hết hạn. Thiếu tồn còn hạn → <c>Pharmacy.InsufficientStock</c> (không cấp phát một phần). Chưa ghi
-    /// DB ở đây — <see cref="CompleteAsync"/> gọi <c>SaveChanges</c> một lần (cùng transaction).
+    /// Giữ tồn khi chốt phiếu (ADR 0021, PAY-02): nếu có dòng thuốc gắn danh mục, kiểm <b>tồn khả dụng</b>
+    /// (tồn lô còn hạn − số lượng đang Reserved/Paid chưa cấp phát) đủ cho từng thuốc rồi đặt trạng thái
+    /// Reserved. Thiếu → <c>Pharmacy.InsufficientStock</c>. Không đụng <see cref="MedicationBatch"/>.
     /// </summary>
-    private async Task<Result> DispenseAsync(Encounter encounter, CancellationToken ct)
+    private async Task<Result> ReserveAsync(Encounter encounter, CancellationToken ct)
     {
-        if (encounter.IsDispensed)
+        var needed = encounter.PrescriptionItems
+            .Where(i => i.MedicationId is not null)
+            .GroupBy(i => i.MedicationId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+        if (needed.Count == 0)
             return Result.Success();
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        foreach (var (medicationId, quantity) in needed)
+        {
+            // Tồn còn hạn của thuốc (chưa trừ đơn giữ chỗ).
+            var onHand = await _db.MedicationBatches
+                .Where(b => b.MedicationId == medicationId && b.ExpiryDate >= today)
+                .SumAsync(b => (int?)b.QuantityOnHand, ct) ?? 0;
+
+            // Số lượng đang giữ chỗ (Reserved/Paid, chưa Dispensed) của thuốc — trừ khỏi tồn khả dụng.
+            var reserved = await _db.Encounters
+                .Where(e => e.DispenseStatus == DispenseStatus.Reserved || e.DispenseStatus == DispenseStatus.Paid)
+                .SelectMany(e => e.PrescriptionItems)
+                .Where(i => i.MedicationId == medicationId)
+                .SumAsync(i => (int?)i.Quantity, ct) ?? 0;
+
+            var available = onHand - reserved;
+            if (available < quantity)
+                return Result.Failure(Error.Conflict("Pharmacy.InsufficientStock",
+                    $"Không đủ tồn khả dụng để giữ thuốc (Id {medicationId}): khả dụng {available}, cần {quantity}."));
+        }
+
+        return encounter.MarkReserved(DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Xuất kho thực các dòng đơn có <c>MedicationId</c>: trừ tồn các lô còn hạn theo FEFO (hạn tăng dần),
+    /// ghi <see cref="StockTransaction"/> <see cref="StockTransactionType.Dispense"/> (âm). Bỏ qua lô đã
+    /// hết hạn. Thiếu tồn còn hạn → <c>Pharmacy.InsufficientStock</c> (không cấp phát một phần). Chưa ghi
+    /// DB ở đây — <see cref="DispenseAsync"/> gọi <c>SaveChanges</c> một lần (cùng transaction).
+    /// </summary>
+    private async Task<Result> DispenseStockAsync(Encounter encounter, DateTimeOffset occurredAt, CancellationToken ct)
+    {
         // Gom số lượng cần cấp phát theo từng thuốc (chỉ dòng gắn danh mục).
         var needed = encounter.PrescriptionItems
             .Where(i => i.MedicationId is not null)
@@ -195,7 +260,6 @@ public sealed class EncounterService : IEncounterService
         if (needed.Count == 0)
             return Result.Success();
 
-        var occurredAt = DateTimeOffset.UtcNow;
         var today = DateOnly.FromDateTime(occurredAt.UtcDateTime);
 
         foreach (var (medicationId, quantity) in needed)
@@ -233,7 +297,6 @@ public sealed class EncounterService : IEncounterService
                     $"Không đủ tồn còn hạn để cấp phát thuốc (Id {medicationId}): còn thiếu {remaining}."));
         }
 
-        encounter.MarkDispensed(occurredAt);
         return Result.Success();
     }
 
@@ -257,6 +320,9 @@ public sealed class EncounterService : IEncounterService
             e.PrescriptionItems
                 .Select(i => new PrescriptionItemDto(i.MedicationId, i.DrugName, i.Dosage, i.Quantity, i.Instruction))
                 .ToList(),
+            e.DispenseStatus,
+            e.ReservedAt,
+            e.MedicationPaidAt,
             e.DispensedAt,
             e.CreatedAt,
             e.UpdatedAt));

@@ -55,6 +55,19 @@ public class Encounter : Entity
     public EncounterStatus Status { get; private set; }
 
     /// <summary>
+    /// Trạng thái cấp phát thuốc (ADR 0021, PAY-02). Mặc định <see cref="DispenseStatus.None"/>;
+    /// chốt phiếu có thuốc → <see cref="DispenseStatus.Reserved"/> → thu tiền → <see cref="DispenseStatus.Paid"/>
+    /// → cấp phát thực → <see cref="DispenseStatus.Dispensed"/>.
+    /// </summary>
+    public DispenseStatus DispenseStatus { get; private set; } = DispenseStatus.None;
+
+    /// <summary>Thời điểm chốt phiếu giữ tồn (đặt trạng thái Reserved) — null nếu chưa/không cần cấp phát.</summary>
+    public DateTimeOffset? ReservedAt { get; private set; }
+
+    /// <summary>Thời điểm đã thu tiền hoá đơn thuốc (Reserved → Paid) — null nếu chưa thu.</summary>
+    public DateTimeOffset? MedicationPaidAt { get; private set; }
+
+    /// <summary>
     /// Thời điểm đã cấp phát thuốc theo đơn (trừ tồn FEFO) — null nếu chưa cấp phát.
     /// Đánh dấu để chống cấp phát trùng một đơn (ADR 0011).
     /// </summary>
@@ -105,8 +118,54 @@ public class Encounter : Entity
         return Result.Success();
     }
 
-    /// <summary>Đánh dấu đã cấp phát thuốc (chỉ đặt một lần; các lần sau bỏ qua) — ADR 0011.</summary>
-    public void MarkDispensed(DateTimeOffset when) => DispensedAt ??= when;
+    /// <summary>
+    /// Giữ tồn khi chốt phiếu có thuốc (None → Reserved), đặt <see cref="ReservedAt"/>. Gọi từ service sau khi
+    /// đã kiểm tồn khả dụng đủ (ADR 0021, PAY-02). Chỉ hợp lệ khi đang <see cref="DispenseStatus.None"/>.
+    /// </summary>
+    public Result MarkReserved(DateTimeOffset when)
+    {
+        if (DispenseStatus != DispenseStatus.None)
+            return Result.Failure(Error.Conflict("Pharmacy.InvalidDispenseTransition",
+                $"Không thể giữ tồn khi trạng thái cấp phát là {DispenseStatus}."));
+
+        DispenseStatus = DispenseStatus.Reserved;
+        ReservedAt = when;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Đánh dấu đã thu tiền hoá đơn thuốc (Reserved → Paid). Idempotent theo hướng an toàn: chỉ chuyển khi đang
+    /// <see cref="DispenseStatus.Reserved"/>; trạng thái khác (None/Paid/Dispensed) bỏ qua yên lặng để việc thu
+    /// hoá đơn không phụ thuộc thứ tự/không lỗi khi phiếu không có thuốc (ADR 0021, PAY-02).
+    /// </summary>
+    public void MarkMedicationPaid(DateTimeOffset when)
+    {
+        if (DispenseStatus != DispenseStatus.Reserved)
+            return;
+
+        DispenseStatus = DispenseStatus.Paid;
+        MedicationPaidAt = when;
+    }
+
+    /// <summary>
+    /// Cấp phát thực (Paid → Dispensed): đặt <see cref="DispensedAt"/>. Chỉ khi đã thu tiền
+    /// (<see cref="DispenseStatus.Paid"/>). Chưa thu (Reserved) → <c>Pharmacy.NotPaid</c>; None/Dispensed → 409.
+    /// Service chạy trừ tồn FEFO + ghi sổ cái sau khi method này thành công (ADR 0021, PAY-02).
+    /// </summary>
+    public Result MarkDispensed(DateTimeOffset when)
+    {
+        if (DispenseStatus == DispenseStatus.Reserved)
+            return Result.Failure(Error.Conflict("Pharmacy.NotPaid",
+                "Chưa thanh toán tiền thuốc; không thể cấp phát."));
+
+        if (DispenseStatus != DispenseStatus.Paid)
+            return Result.Failure(Error.Conflict("Pharmacy.InvalidDispenseTransition",
+                $"Không thể cấp phát khi trạng thái cấp phát là {DispenseStatus}."));
+
+        DispenseStatus = DispenseStatus.Dispensed;
+        DispensedAt = when;
+        return Result.Success();
+    }
 
     /// <summary>
     /// Đánh dấu đã lập hoá đơn thuốc từ phiếu này. Chỉ đặt một lần — đã đặt → lỗi để service map 409

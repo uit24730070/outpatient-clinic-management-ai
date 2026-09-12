@@ -10,7 +10,8 @@ public sealed record EncounterFilter(
     int PageSize = 20,
     Guid? PatientId = null,
     Guid? DoctorId = null,
-    EncounterStatus? Status = null);
+    EncounterStatus? Status = null,
+    DispenseStatus? DispenseStatus = null);
 
 public interface IEncounterService
 {
@@ -23,6 +24,15 @@ public interface IEncounterService
 
     Task<Result<EncounterDto>> UpdateAsync(Guid id, UpdateEncounterRequest request, CancellationToken ct = default);
 
-    /// <summary>Chốt phiếu (Draft → Completed) và khép lịch khám (InProgress → Completed) — ADR 0006.</summary>
+    /// <summary>
+    /// Chốt phiếu (Draft → Completed) và khép lịch khám (InProgress → Completed) — ADR 0006. Nếu có thuốc gắn
+    /// danh mục: giữ tồn (Reserved) sau khi kiểm tồn khả dụng đủ — chưa trừ tồn vật lý (ADR 0021, PAY-02).
+    /// </summary>
     Task<Result<EncounterDto>> CompleteAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cấp phát thực đơn thuốc đã thu tiền (Paid → Dispensed): trừ tồn FEFO + ghi sổ cái. Dược sĩ thực hiện.
+    /// Chưa thu → <c>Pharmacy.NotPaid</c>; không có thuốc → <c>Pharmacy.NothingToDispense</c> (ADR 0021, PAY-02).
+    /// </summary>
+    Task<Result<EncounterDto>> DispenseAsync(Guid id, CancellationToken ct = default);
 }

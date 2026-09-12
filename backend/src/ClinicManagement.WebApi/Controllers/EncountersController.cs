@@ -32,10 +32,11 @@ public sealed class EncountersController : ApiControllerBase
         [FromQuery] Guid? patientId = null,
         [FromQuery] Guid? doctorId = null,
         [FromQuery] EncounterStatus? status = null,
+        [FromQuery] DispenseStatus? dispenseStatus = null,
         CancellationToken ct = default)
     {
         var result = await _encounters.GetListAsync(
-            new EncounterFilter(page, pageSize, patientId, doctorId, status), ct);
+            new EncounterFilter(page, pageSize, patientId, doctorId, status, dispenseStatus), ct);
         return ToResponse(result);
     }
 
@@ -66,11 +67,20 @@ public sealed class EncountersController : ApiControllerBase
 
     /// <summary>
     /// Chốt phiếu: Draft → Completed, đồng thời khép lịch khám (InProgress → Completed) và
-    /// <b>cấp phát thuốc theo đơn</b> (trừ tồn FEFO, ghi sổ cái Dispense) — ADR 0011.
-    /// Vì gộp cấp phát vào bước này, cho phép cả ba vai trò thực hiện (Admin/Lễ tân/Bác sĩ).
+    /// <b>giữ tồn thuốc</b> (Reserved — kiểm tồn khả dụng, chưa trừ kho thực) — ADR 0021 (PAY-02).
+    /// Cấp phát thực chuyển sang <see cref="Dispense"/> sau khi thu tiền; chốt phiếu là việc bác sĩ.
     /// </summary>
-    [Authorize(Roles = Roles.DispenseEncounter)]
+    [Authorize(Roles = Roles.RecordEncounter)]
     [HttpPost("{id:guid}/complete")]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
         => ToResponse(await _encounters.CompleteAsync(id, ct));
+
+    /// <summary>
+    /// Cấp phát thực đơn thuốc đã thu tiền (Paid → Dispensed): trừ tồn FEFO + ghi sổ cái Dispense — ADR 0021.
+    /// Do Dược sĩ (và Admin) thực hiện tại quầy phát thuốc. Chưa thu → 409 <c>Pharmacy.NotPaid</c>.
+    /// </summary>
+    [Authorize(Roles = Roles.ManagePharmacy)]
+    [HttpPost("{id:guid}/dispense")]
+    public async Task<IActionResult> Dispense(Guid id, CancellationToken ct)
+        => ToResponse(await _encounters.DispenseAsync(id, ct));
 }

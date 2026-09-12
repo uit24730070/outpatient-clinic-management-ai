@@ -25,6 +25,13 @@ public sealed class EncounterConfiguration : IEntityTypeConfiguration<Encounter>
             .HasMaxLength(20)
             .IsRequired();
 
+        // Trạng thái cấp phát thuốc (ADR 0021, PAY-02) — lưu dạng chuỗi, mặc định None.
+        builder.Property(e => e.DispenseStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+        builder.HasIndex(e => e.DispenseStatus);
+
         // Quan hệ 1–1 với lịch khám: mỗi lịch chỉ có một phiếu.
         builder.HasIndex(e => e.AppointmentId).IsUnique();
         // Lịch sử khám theo bệnh nhân.
