@@ -1,3 +1,4 @@
+using ClinicManagement.Application.Billing;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Paraclinical.Dtos;
 using ClinicManagement.Domain.Billing;
@@ -12,8 +13,15 @@ public sealed class LabOrderService : ILabOrderService
 {
     private const int MaxPageSize = 100;
     private readonly IAppDbContext _db;
+    // Best-effort: tự lập hoá đơn CLS ngay khi bác sĩ chỉ định (null trong unit test → bỏ qua, dùng
+    // lại nút "Lập HĐ CLS" thủ công ở LabOrderPanel/VisitDetailPage làm phương án dự phòng).
+    private readonly IInvoiceService? _invoices;
 
-    public LabOrderService(IAppDbContext db) => _db = db;
+    public LabOrderService(IAppDbContext db, IInvoiceService? invoices = null)
+    {
+        _db = db;
+        _invoices = invoices;
+    }
 
     public async Task<Result<LabOrderDto>> CreateFromEncounterAsync(
         CreateLabOrderRequest request, CancellationToken ct = default)
@@ -44,7 +52,19 @@ public sealed class LabOrderService : ILabOrderService
         _db.LabOrders.Add(order);
         await _db.SaveChangesAsync(ct);
 
+        await AutoInvoiceAsync(order.Id, ct);
         return (await ProjectByIdAsync(order.Id, ct))!;
+    }
+
+    /// <summary>
+    /// Tự lập hoá đơn CLS ngay khi chỉ định — thay cho việc chờ Lễ tân/Admin bấm "Lập HĐ CLS" thủ công.
+    /// Best-effort: bỏ qua nếu <see cref="_invoices"/> là null (unit test) hoặc lập thất bại (không chặn
+    /// việc tạo phiếu chỉ định — vẫn còn nút thủ công làm phương án dự phòng).
+    /// </summary>
+    private async Task AutoInvoiceAsync(Guid labOrderId, CancellationToken ct)
+    {
+        if (_invoices is null) return;
+        await _invoices.CreateFromLabOrderAsync(labOrderId, ct);
     }
 
     public async Task<Result<LabOrderDto>> CreateWalkInAsync(
