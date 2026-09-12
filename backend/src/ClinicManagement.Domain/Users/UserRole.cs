@@ -16,5 +16,8 @@ public enum UserRole
     Pharmacist = 3,
 
     /// <summary>Kỹ thuật viên — thực hiện dịch vụ cận lâm sàng và nhập kết quả (ADR 0016).</summary>
-    Technician = 4
+    Technician = 4,
+
+    /// <summary>Điều dưỡng — nhập sinh hiệu sau tiếp đón và điều phối hàng đợi khám (ADR 0019).</summary>
+    Nurse = 5
 }

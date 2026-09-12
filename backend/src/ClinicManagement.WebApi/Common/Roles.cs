@@ -11,6 +11,7 @@ public static class Roles
     public const string Doctor = "Doctor";
     public const string Pharmacist = "Pharmacist";
     public const string Technician = "Technician";
+    public const string Nurse = "Nurse";
 
     /// <summary>Nhóm được phép ghi (tạo/sửa/xoá) nghiệp vụ vận hành (Bệnh nhân, Lịch khám): Admin và Lễ tân.</summary>
     public const string ManageStaff = Admin + "," + Receptionist;
@@ -47,4 +48,16 @@ public static class Roles
     /// đụng bệnh án/đơn thuốc. Chỉ định (encounter) vẫn là Bác sĩ; chỉ định walk-in là Lễ tân.
     /// </summary>
     public const string RecordLabResult = Admin + "," + Doctor + "," + Technician;
+
+    /// <summary>
+    /// Nhóm được phép nhập/cập nhật sinh hiệu (vitals) sau tiếp đón: Admin và Điều dưỡng (ADR 0019).
+    /// Bác sĩ chỉ <b>đọc</b> sinh hiệu trong bệnh án (không ghi qua vai trò này).
+    /// </summary>
+    public const string RecordVitals = Admin + "," + Nurse;
+
+    /// <summary>
+    /// Nhóm được phép điều phối hàng đợi khám (lấy số, gọi số, chuyển trạng thái vé): Admin, Lễ tân và
+    /// Điều dưỡng (ADR 0019). Lễ tân lấy số khi tiếp đón; Điều dưỡng gọi/điều phối phòng.
+    /// </summary>
+    public const string ManageQueue = Admin + "," + Receptionist + "," + Nurse;
 }

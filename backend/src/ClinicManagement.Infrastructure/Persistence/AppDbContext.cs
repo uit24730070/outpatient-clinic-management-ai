@@ -3,12 +3,14 @@ using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Domain.Ai;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
+using ClinicManagement.Domain.Clinical;
 using ClinicManagement.Domain.Common;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
+using ClinicManagement.Domain.Queue;
 using ClinicManagement.Domain.Resources;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
@@ -38,6 +40,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<ServicePrice> ServicePrices => Set<ServicePrice>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<LabOrder> LabOrders => Set<LabOrder>();
+    public DbSet<Vitals> Vitals => Set<Vitals>();
+    public DbSet<QueueTicket> QueueTickets => Set<QueueTicket>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

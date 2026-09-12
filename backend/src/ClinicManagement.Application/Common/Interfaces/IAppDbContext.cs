@@ -1,10 +1,12 @@
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Billing;
+using ClinicManagement.Domain.Clinical;
 using ClinicManagement.Domain.Doctors;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Paraclinical;
 using ClinicManagement.Domain.Patients;
 using ClinicManagement.Domain.Pharmacy;
+using ClinicManagement.Domain.Queue;
 using ClinicManagement.Domain.Resources;
 using ClinicManagement.Domain.Specialties;
 using ClinicManagement.Domain.Users;
@@ -34,6 +36,8 @@ public interface IAppDbContext
     DbSet<ServicePrice> ServicePrices { get; }
     DbSet<Invoice> Invoices { get; }
     DbSet<LabOrder> LabOrders { get; }
+    DbSet<Domain.Clinical.Vitals> Vitals { get; }
+    DbSet<QueueTicket> QueueTickets { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
