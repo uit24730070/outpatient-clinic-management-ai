@@ -21,6 +21,7 @@ import type { Room } from '../types/room'
 import type { Patient } from '../types/patient'
 import { PageHeader } from '../components/PageHeader'
 import { QueueTicketStatusBadge } from '../components/StatusBadge'
+import { Combobox } from '../components/Combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -226,22 +227,16 @@ export default function QueuePage() {
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
-          <Select
+          <Combobox
+            className="w-[200px]"
             value={doctorFilter || ALL}
             onValueChange={(v) => setDoctorFilter(v === ALL ? '' : v)}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Bác sĩ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Tất cả bác sĩ</SelectItem>
-              {doctors.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.fullName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={[
+              { value: ALL, label: 'Tất cả bác sĩ' },
+              ...doctors.map((d) => ({ value: d.id, label: d.fullName })),
+            ]}
+            searchPlaceholder="Tìm bác sĩ…"
+          />
           <Select value={status === '' ? ALL : status} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="Trạng thái" />
@@ -391,19 +386,15 @@ export default function QueuePage() {
               </div>
               <div className="grid gap-1.5">
                 <Label>Bác sĩ (tuỳ chọn)</Label>
-                <Select value={newDoctorId || NONE} onValueChange={(v) => setNewDoctorId(v === NONE ? '' : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chưa gán" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Chưa gán</SelectItem>
-                    {doctors.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  value={newDoctorId || NONE}
+                  onValueChange={(v) => setNewDoctorId(v === NONE ? '' : v)}
+                  options={[
+                    { value: NONE, label: 'Chưa gán' },
+                    ...doctors.map((d) => ({ value: d.id, label: d.fullName })),
+                  ]}
+                  searchPlaceholder="Tìm bác sĩ…"
+                />
               </div>
             </div>
           </div>
@@ -443,19 +434,15 @@ export default function QueuePage() {
             </div>
             <div className="grid gap-1.5">
               <Label>Bác sĩ</Label>
-              <Select value={assignDoctorId || NONE} onValueChange={(v) => setAssignDoctorId(v === NONE ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Chưa gán" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Chưa gán</SelectItem>
-                  {doctors.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                value={assignDoctorId || NONE}
+                onValueChange={(v) => setAssignDoctorId(v === NONE ? '' : v)}
+                options={[
+                  { value: NONE, label: 'Chưa gán' },
+                  ...doctors.map((d) => ({ value: d.id, label: d.fullName })),
+                ]}
+                searchPlaceholder="Tìm bác sĩ…"
+              />
             </div>
           </div>
           <DialogFooter>
