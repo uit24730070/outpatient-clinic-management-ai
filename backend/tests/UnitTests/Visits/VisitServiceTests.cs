@@ -224,6 +224,52 @@ public sealed class VisitServiceTests
     }
 
     [Fact]
+    public async Task ReopenAsync_ShouldReturnToOpen_WhenClosed()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorA, out var doctorB, out var consultId);
+        var visit = (await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId) }))).Value;
+        await service.CloseAsync(visit.Id);
+
+        var reopened = await service.ReopenAsync(visit.Id);
+
+        Assert.True(reopened.IsSuccess);
+        Assert.Equal(VisitStatus.Open, reopened.Value.Status);
+
+        // Mở lại rồi thì thêm dịch vụ khám lại được như bình thường.
+        var added = await service.AddServiceAsync(visit.Id, new AddVisitServiceRequest(
+            doctorB, Base.AddHours(1), Base.AddHours(1).AddMinutes(30), null, consultId));
+        Assert.True(added.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ReopenAsync_ShouldFail_WhenStillOpen()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorA, out _, out var consultId);
+        var visit = (await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId) }))).Value;
+
+        var result = await service.ReopenAsync(visit.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Visit.InvalidTransition", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task ReopenAsync_ShouldFail_WhenCancelled()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorA, out _, out var consultId);
+        var visit = (await service.CreateAsync(new CreateVisitRequest(
+            patientId, null, new[] { Line(doctorA, consultId) }))).Value;
+        await service.CancelAsync(visit.Id);
+
+        var result = await service.ReopenAsync(visit.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Visit.InvalidTransition", result.Error.Code);
+    }
+
+    [Fact]
     public async Task GetByIdAsync_ShouldAggregateBillingAcrossVisit()
     {
         var service = CreateService(out var db, out var patientId, out var doctorA, out var doctorB, out var consultId);

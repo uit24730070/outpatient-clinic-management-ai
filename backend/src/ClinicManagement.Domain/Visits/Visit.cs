@@ -61,6 +61,20 @@ public class Visit : Entity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Closed → Open (mở lại). Van an toàn cho việc tự động đóng lượt khi bác sĩ chốt phiếu khám cuối
+    /// cùng — nếu Lễ tân cần thêm dịch vụ khám/CLS vào đúng lượt đó (vd bác sĩ quên chỉ định), mở lại
+    /// thay vì phải tạo lượt mới. Không áp dụng cho <see cref="VisitStatus.Cancelled"/> (huỷ là chốt hẳn).
+    /// </summary>
+    public Result Reopen()
+    {
+        if (Status != VisitStatus.Closed)
+            return InvalidTransition(nameof(Reopen));
+
+        Status = VisitStatus.Open;
+        return Result.Success();
+    }
+
     private Result InvalidTransition(string action) => Result.Failure(Error.Conflict(
         "Visit.InvalidTransition",
         $"Không thể thực hiện '{action}' khi trạng thái lượt là {Status}."));

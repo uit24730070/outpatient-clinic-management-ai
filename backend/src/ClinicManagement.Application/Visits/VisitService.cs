@@ -196,6 +196,9 @@ public sealed class VisitService : IVisitService
     public Task<Result<VisitDto>> CancelAsync(Guid id, CancellationToken ct = default)
         => TransitionAsync(id, v => v.Cancel(), ct);
 
+    public Task<Result<VisitDto>> ReopenAsync(Guid id, CancellationToken ct = default)
+        => TransitionAsync(id, v => v.Reopen(), ct);
+
     private async Task<Result<VisitDto>> TransitionAsync(
         Guid id, Func<Visit, Result> transition, CancellationToken ct)
     {

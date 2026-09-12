@@ -45,3 +45,8 @@ export async function cancelVisit(id: string): Promise<Visit> {
   const res = await apiClient.post<ApiResponse<Visit>>(`/api/visits/${id}/cancel`)
   return unwrap(res.data)
 }
+
+export async function reopenVisit(id: string): Promise<Visit> {
+  const res = await apiClient.post<ApiResponse<Visit>>(`/api/visits/${id}/reopen`)
+  return unwrap(res.data)
+}

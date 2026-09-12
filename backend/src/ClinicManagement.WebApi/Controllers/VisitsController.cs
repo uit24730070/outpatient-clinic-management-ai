@@ -54,4 +54,10 @@ public sealed class VisitsController : ApiControllerBase
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
         => ToResponse(await _visits.CancelAsync(id, ct));
+
+    /// <summary>Mở lại lượt đã đóng: Closed → Open (vd Lễ tân cần thêm dịch vụ khám/CLS).</summary>
+    [Authorize(Roles = Roles.ManageStaff)]
+    [HttpPost("{id:guid}/reopen")]
+    public async Task<IActionResult> Reopen(Guid id, CancellationToken ct)
+        => ToResponse(await _visits.ReopenAsync(id, ct));
 }

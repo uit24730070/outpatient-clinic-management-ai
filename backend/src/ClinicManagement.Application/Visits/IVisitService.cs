@@ -13,4 +13,5 @@ public interface IVisitService
     Task<Result<VisitDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Result<VisitDto>> CloseAsync(Guid id, CancellationToken ct = default);
     Task<Result<VisitDto>> CancelAsync(Guid id, CancellationToken ct = default);
+    Task<Result<VisitDto>> ReopenAsync(Guid id, CancellationToken ct = default);
 }

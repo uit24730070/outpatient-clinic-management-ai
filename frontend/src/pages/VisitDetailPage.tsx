@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Plus, Receipt, Stethoscope } from 'lucide-react'
-import { addVisitService, cancelVisit, closeVisit, getVisit } from '../services/visitService'
+import { addVisitService, cancelVisit, closeVisit, getVisit, reopenVisit } from '../services/visitService'
 import {
   createInvoiceFromEncounter,
   createInvoiceFromLabOrder,
@@ -268,6 +268,16 @@ export default function VisitDetailPage() {
     }
   }
 
+  const onReopen = async () => {
+    try {
+      await reopenVisit(id)
+      toastSuccess('Đã mở lại lượt.')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
   if (loading && !visit) return <p className="text-muted-foreground">Đang tải…</p>
   if (!visit) return <p className="text-muted-foreground">Không tìm thấy lượt tiếp đón.</p>
 
@@ -326,6 +336,15 @@ export default function VisitDetailPage() {
                   onConfirm={() => void onCancel()}
                 />
               </>
+            )}
+            {canManage && visit.status === VisitStatus.Closed && (
+              <ConfirmDialog
+                trigger={<Button size="sm" variant="outline">Mở lại lượt</Button>}
+                title="Mở lại lượt tiếp đón?"
+                description="Dùng khi cần thêm dịch vụ khám/CLS vào đúng lượt này thay vì tạo lượt mới."
+                confirmText="Mở lại"
+                onConfirm={() => void onReopen()}
+              />
             )}
           </div>
         }
