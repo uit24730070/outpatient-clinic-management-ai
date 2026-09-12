@@ -19,6 +19,23 @@ export const encounterStatusClass: Record<number, string> = {
   1: 'badge--completed',
 }
 
+// Trạng thái cấp phát thuốc (ADR 0021, PAY-02). Giá trị số khớp DispenseStatus backend.
+export const DispenseStatus = {
+  None: 0,
+  Reserved: 1,
+  Paid: 2,
+  Dispensed: 3,
+} as const
+
+export type DispenseStatusValue = (typeof DispenseStatus)[keyof typeof DispenseStatus]
+
+export const dispenseStatusLabels: Record<number, string> = {
+  0: 'Không có thuốc',
+  1: 'Giữ tồn (chờ thu tiền)',
+  2: 'Đã thu tiền (chờ cấp phát)',
+  3: 'Đã cấp phát',
+}
+
 export interface PrescriptionItem {
   /** Thuốc trong danh mục (null = thuốc ngoài danh mục, không trừ tồn). */
   medicationId: string | null
@@ -79,6 +96,12 @@ export interface Encounter {
   notes: string | null
   status: EncounterStatusValue
   prescriptionItems: PrescriptionItem[]
+  /** Trạng thái cấp phát thuốc (ADR 0021, PAY-02). */
+  dispenseStatus: DispenseStatusValue
+  /** Thời điểm chốt phiếu giữ tồn (Reserved) — null nếu chưa/không cần. */
+  reservedAt: string | null
+  /** Thời điểm đã thu tiền hoá đơn thuốc (Paid) — null nếu chưa thu. */
+  medicationPaidAt: string | null
   /** Thời điểm đã cấp phát thuốc (trừ tồn FEFO) — null nếu chưa cấp phát. */
   dispensedAt: string | null
   createdAt: string

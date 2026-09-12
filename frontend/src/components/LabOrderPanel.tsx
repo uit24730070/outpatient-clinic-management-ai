@@ -196,6 +196,8 @@ export function LabOrderCard({
   onChanged: () => Promise<void>
 }) {
   const active = order.status !== LabOrderStatus.Completed && order.status !== LabOrderStatus.Cancelled
+  // Gating thanh toán trước khi thực hiện (ADR 0021, PAY-01): chưa thu phí CLS → không cho nhập kết quả.
+  const paid = order.paidAt != null
   const [billing, setBilling] = useState(false)
 
   const cancel = async () => {
@@ -229,6 +231,9 @@ export function LabOrderCard({
           <LabOrderStatusBadge status={order.status} />
           {order.invoicedAt && (
             <span className="text-xs text-muted-foreground">· đã lập HĐ</span>
+          )}
+          {!paid && order.status !== LabOrderStatus.Cancelled && (
+            <span className="text-xs font-medium text-amber-600">· chưa thanh toán</span>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -267,7 +272,8 @@ export function LabOrderCard({
             key={it.id}
             orderId={order.id}
             item={it}
-            editable={canRecord && active}
+            editable={canRecord && active && paid}
+            blockedUnpaid={canRecord && active && !paid}
             onChanged={onChanged}
           />
         ))}
@@ -280,11 +286,14 @@ function LabItemRow({
   orderId,
   item,
   editable,
+  blockedUnpaid,
   onChanged,
 }: {
   orderId: string
   item: LabOrder['items'][number]
   editable: boolean
+  /** Được phép nhập nhưng bị chặn vì chưa thu phí CLS (ADR 0021, PAY-01). */
+  blockedUnpaid?: boolean
   onChanged: () => Promise<void>
 }) {
   const [resultText, setResultText] = useState(item.resultText ?? '')
@@ -333,6 +342,10 @@ function LabItemRow({
             Lưu
           </Button>
         </div>
+      ) : blockedUnpaid ? (
+        <p className="mt-1 text-sm text-amber-600">
+          Cần thu phí cận lâm sàng (lập hoá đơn + thanh toán) trước khi nhập kết quả.
+        </p>
       ) : (
         <div className="mt-1 text-sm">
           {item.resultText ? (

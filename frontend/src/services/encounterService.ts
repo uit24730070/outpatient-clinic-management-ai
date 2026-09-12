@@ -1,6 +1,11 @@
 import { apiClient, toApiException, unwrap } from './apiClient'
 import type { ApiResponse, PagedResult } from '../types/common'
-import type { Encounter, EncounterFormValues, EncounterStatusValue } from '../types/encounter'
+import type {
+  DispenseStatusValue,
+  Encounter,
+  EncounterFormValues,
+  EncounterStatusValue,
+} from '../types/encounter'
 
 export interface ListEncountersParams {
   page: number
@@ -8,6 +13,7 @@ export interface ListEncountersParams {
   patientId?: string
   doctorId?: string
   status?: EncounterStatusValue
+  dispenseStatus?: DispenseStatusValue
 }
 
 export async function listEncounters(params: ListEncountersParams): Promise<PagedResult<Encounter>> {
@@ -47,5 +53,11 @@ export async function updateEncounter(
 
 export async function completeEncounter(id: string): Promise<Encounter> {
   const res = await apiClient.post<ApiResponse<Encounter>>(`/api/encounters/${id}/complete`)
+  return unwrap(res.data)
+}
+
+// Cấp phát thực đơn thuốc đã thu tiền (Dược sĩ) — trừ tồn FEFO (ADR 0021, PAY-02).
+export async function dispenseEncounter(id: string): Promise<Encounter> {
+  const res = await apiClient.post<ApiResponse<Encounter>>(`/api/encounters/${id}/dispense`)
   return unwrap(res.data)
 }

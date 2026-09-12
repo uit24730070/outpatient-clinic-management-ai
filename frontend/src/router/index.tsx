@@ -26,6 +26,7 @@ import MedicationBatchesPage from '../pages/MedicationBatchesPage'
 import StockReceiptsListPage from '../pages/StockReceiptsListPage'
 import StockReceiptFormPage from '../pages/StockReceiptFormPage'
 import PharmacyAlertsPage from '../pages/PharmacyAlertsPage'
+import PharmacyDispensePage from '../pages/PharmacyDispensePage'
 import ServicePricesListPage from '../pages/ServicePricesListPage'
 import ServicePriceFormPage from '../pages/ServicePriceFormPage'
 import InvoicesListPage from '../pages/InvoicesListPage'
@@ -198,6 +199,8 @@ export const router = createBrowserRouter([
               { path: 'stock-receipts', element: <StockReceiptsListPage /> },
               { path: 'stock-receipts/new', element: <StockReceiptFormPage /> },
               { path: 'pharmacy/alerts', element: <PharmacyAlertsPage /> },
+              // Cấp phát thuốc sau thu tiền (ADR 0021, PAY-02).
+              { path: 'pharmacy/dispense', element: <PharmacyDispensePage /> },
             ],
           },
 

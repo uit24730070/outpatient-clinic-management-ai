@@ -54,6 +54,8 @@ export interface LabOrder {
   note: string | null
   totalAmount: number
   invoicedAt: string | null
+  /** Thời điểm đã thu phí CLS (Paid) — null nếu chưa thu. Chưa thu thì chặn nhập kết quả (ADR 0021, PAY-01). */
+  paidAt: string | null
   items: LabOrderItem[]
   createdAt: string
   updatedAt: string | null

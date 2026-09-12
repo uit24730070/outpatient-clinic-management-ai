@@ -16,6 +16,7 @@ import { canManageBilling } from '../config/access'
 import { applyServerErrors } from '../lib/form'
 import { toastError, toastSuccess } from '../lib/toast'
 import {
+  DispenseStatus,
   EncounterStatus,
   buildDosageText,
   parseDosageText,
@@ -25,6 +26,7 @@ import {
 } from '../types/encounter'
 import type { Medication } from '../types/medication'
 import { PageHeader } from './PageHeader'
+import { DispenseStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
 import { LabOrderPanel } from './LabOrderPanel'
 import { VitalsCard } from './VitalsCard'
@@ -251,7 +253,12 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
               Bệnh nhân: <strong className="text-foreground">{patientName}</strong> · Bác sĩ:{' '}
               <strong className="text-foreground">{doctorName}</strong>
               {isCompleted && ' · Đã chốt'}
-              {encounter?.dispensedAt && ' · Đã cấp phát thuốc'}
+              {encounter && encounter.dispenseStatus !== DispenseStatus.None && (
+                <>
+                  {' · '}
+                  <DispenseStatusBadge status={encounter.dispenseStatus} />
+                </>
+              )}
             </>
           }
         />

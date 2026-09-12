@@ -7,6 +7,9 @@ import {
   type AppointmentStatusValue,
 } from '../types/appointment'
 import {
+  DispenseStatus,
+  dispenseStatusLabels,
+  type DispenseStatusValue,
   EncounterStatus,
   encounterStatusLabels,
   type EncounterStatusValue,
@@ -92,6 +95,22 @@ export function EncounterStatusBadge({ status }: { status: EncounterStatusValue 
   return (
     <TonedBadge tone={encounterTone[status] ?? 'gray'}>
       {encounterStatusLabels[status] ?? status}
+    </TonedBadge>
+  )
+}
+
+const dispenseTone: Record<number, Tone> = {
+  [DispenseStatus.None]: 'gray',
+  [DispenseStatus.Reserved]: 'amber',
+  [DispenseStatus.Paid]: 'blue',
+  [DispenseStatus.Dispensed]: 'green',
+}
+
+/** Badge trạng thái cấp phát thuốc của phiếu khám (ADR 0021, PAY-02). */
+export function DispenseStatusBadge({ status }: { status: DispenseStatusValue }) {
+  return (
+    <TonedBadge tone={dispenseTone[status] ?? 'gray'}>
+      {dispenseStatusLabels[status] ?? status}
     </TonedBadge>
   )
 }

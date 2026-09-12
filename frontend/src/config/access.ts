@@ -77,6 +77,8 @@ export const navItems: NavItem[] = [
   // Kho thuốc — quản lý trực tiếp bởi Dược sĩ (và Admin), ADR 0013.
   { label: 'Danh mục thuốc', to: '/medications', roles: [UserRole.Admin, UserRole.Pharmacist] },
   { label: 'Nhập kho', to: '/stock-receipts', roles: [UserRole.Admin, UserRole.Pharmacist] },
+  // Cấp phát thuốc sau thu tiền — Dược sĩ/Admin (ADR 0021, PAY-02).
+  { label: 'Cấp phát thuốc', to: '/pharmacy/dispense', roles: [UserRole.Admin, UserRole.Pharmacist] },
   { label: 'Cảnh báo kho', to: '/pharmacy/alerts', roles: [UserRole.Admin, UserRole.Pharmacist] },
   // Cận lâm sàng — đăng ký walk-in (lễ tân) + thực hiện/nhập kết quả (kỹ thuật viên), ADR 0016.
   { label: 'Đăng ký CLS', to: '/lab/walk-in', roles: [UserRole.Admin, UserRole.Receptionist] },
@@ -93,7 +95,7 @@ export const roleLandingPath: Record<UserRoleValue, string> = {
   [UserRole.Admin]: '/dashboard',
   [UserRole.Receptionist]: '/dashboard',
   [UserRole.Doctor]: '/my-clinic',
-  [UserRole.Pharmacist]: '/pharmacy/alerts',
+  [UserRole.Pharmacist]: '/pharmacy/dispense',
   [UserRole.Technician]: '/lab/technician',
   [UserRole.Nurse]: '/queue',
 }
