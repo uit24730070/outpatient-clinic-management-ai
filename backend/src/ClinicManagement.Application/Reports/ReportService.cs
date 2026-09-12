@@ -233,7 +233,10 @@ public sealed class ReportService : IReportService
     private static DateOnly LocalDate(DateTimeOffset instant) =>
         DateOnly.FromDateTime(instant.ToOffset(ClinicOffset).DateTime);
 
-    /// <summary>Thời điểm 00:00 (giờ phòng khám) của một ngày, dưới dạng DateTimeOffset để so với cột UTC.</summary>
+    /// <summary>
+    /// Thời điểm 00:00 (giờ phòng khám) của một ngày, quy đổi về UTC (offset=0) để so với cột
+    /// "timestamp with time zone" — Npgsql chỉ chấp nhận DateTimeOffset offset=0 khi bind tham số.
+    /// </summary>
     private static DateTimeOffset DayStart(DateOnly date) =>
-        new(date.ToDateTime(TimeOnly.MinValue), ClinicOffset);
+        new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), ClinicOffset).ToUniversalTime();
 }
