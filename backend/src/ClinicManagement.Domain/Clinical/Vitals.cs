@@ -3,27 +3,61 @@ using ClinicManagement.Domain.Common;
 namespace ClinicManagement.Domain.Clinical;
 
 /// <summary>
-/// Sinh hiệu (vitals) đo cho một <b>lượt khám</b> (<see cref="AppointmentId"/>, quan hệ 1–1, unique).
-/// Điều dưỡng nhập <b>sau check-in</b> — trước khi bác sĩ tạo phiếu khám — nên gắn vào lịch khám,
-/// không gắn phiếu khám (Encounter chưa tồn tại lúc đo). Bác sĩ <b>đọc</b> theo <see cref="AppointmentId"/>
-/// của phiếu khám (Encounter 1–1 Appointment). Snapshot <see cref="PatientId"/> để tra nhanh (ADR 0019).
-/// Một bộ sinh hiệu cho mỗi lượt — cập nhật (upsert) qua <see cref="Update"/>.
+/// Một lần đo sinh hiệu (vitals) — bản ghi <b>bất biến</b> (không sửa sau khi tạo), giữ lại lịch sử: mỗi
+/// lần điều dưỡng đo là một dòng mới, kể cả khi đo lại nhiều lần cho cùng một lần đến (bệnh nhân yêu cầu
+/// đo lại, chỉ số bất thường cần đo kiểm tra…) — không ghi đè lần đo trước.
+/// Gắn với lịch khám (<see cref="AppointmentId"/>) tại thời điểm đo; khi lịch đó thuộc một
+/// <b>Lượt tiếp đón</b> (<see cref="VisitId"/>, ADR 0017) thì mọi lần đo trong lượt (đo từ dịch vụ khám
+/// nào cũng vậy — nhiều chuyên khoa cùng một lần đến chỉ cần đo chung) được <b>gom theo VisitId</b>, xem
+/// được lịch sử/lần gần nhất từ bất kỳ dịch vụ khám nào trong lượt. Lịch lẻ (không thuộc lượt nào —
+/// tương thích trước Sprint 17) gom theo <see cref="AppointmentId"/>.
+/// Điều dưỡng nhập <b>sau check-in</b> — trước khi bác sĩ tạo phiếu khám — nên gắn vào lịch khám, không
+/// gắn phiếu khám (Encounter chưa tồn tại lúc đo). Snapshot <see cref="PatientId"/> để tra nhanh (ADR 0019).
 /// </summary>
 public class Vitals : Entity
 {
     // EF Core cần constructor không tham số.
     private Vitals() { }
 
-    public Vitals(Guid appointmentId, Guid patientId, Guid measuredBy)
+    public Vitals(
+        Guid appointmentId,
+        Guid patientId,
+        Guid measuredBy,
+        Guid? visitId,
+        decimal? heightCm,
+        decimal? weightKg,
+        decimal? temperatureC,
+        int? pulse,
+        int? bloodPressureSystolic,
+        int? bloodPressureDiastolic,
+        int? spO2,
+        int? respiratoryRate,
+        string? notes)
     {
         AppointmentId = appointmentId;
         PatientId = patientId;
         MeasuredBy = measuredBy;
+        VisitId = visitId;
+        HeightCm = heightCm;
+        WeightKg = weightKg;
+        TemperatureC = temperatureC;
+        Pulse = pulse;
+        BloodPressureSystolic = bloodPressureSystolic;
+        BloodPressureDiastolic = bloodPressureDiastolic;
+        SpO2 = spO2;
+        RespiratoryRate = respiratoryRate;
+        Notes = notes;
         MeasuredAt = DateTimeOffset.UtcNow;
     }
 
-    /// <summary>Lượt khám được đo sinh hiệu (1–1, unique).</summary>
+    /// <summary>Lịch khám đo lần này (tại thời điểm đo).</summary>
     public Guid AppointmentId { get; private set; }
+
+    /// <summary>
+    /// Lượt tiếp đón (nếu lịch khám thuộc một lượt) — khoá gom lịch sử đo dùng chung cho mọi dịch vụ
+    /// khám trong lượt; null với lịch lẻ (gom theo <see cref="AppointmentId"/>).
+    /// </summary>
+    public Guid? VisitId { get; private set; }
 
     /// <summary>Bệnh nhân (snapshot từ lịch khám).</summary>
     public Guid PatientId { get; private set; }
@@ -55,7 +89,7 @@ public class Vitals : Entity
     /// <summary>Ghi chú thêm của điều dưỡng (tuỳ chọn).</summary>
     public string? Notes { get; private set; }
 
-    /// <summary>Thời điểm đo (cập nhật mỗi lần ghi).</summary>
+    /// <summary>Thời điểm đo — cố định tại lúc tạo (bản ghi bất biến, không có lần "cập nhật").</summary>
     public DateTimeOffset MeasuredAt { get; private set; }
 
     /// <summary>Người đo (Id tài khoản điều dưỡng/Admin đã nhập).</summary>
@@ -73,31 +107,5 @@ public class Vitals : Entity
             var meters = HeightCm.Value / 100m;
             return Math.Round(WeightKg.Value / (meters * meters), 1, MidpointRounding.AwayFromZero);
         }
-    }
-
-    /// <summary>Cập nhật (upsert) toàn bộ các chỉ số sinh hiệu + người/thời điểm đo.</summary>
-    public void Update(
-        decimal? heightCm,
-        decimal? weightKg,
-        decimal? temperatureC,
-        int? pulse,
-        int? bloodPressureSystolic,
-        int? bloodPressureDiastolic,
-        int? spO2,
-        int? respiratoryRate,
-        string? notes,
-        Guid measuredBy)
-    {
-        HeightCm = heightCm;
-        WeightKg = weightKg;
-        TemperatureC = temperatureC;
-        Pulse = pulse;
-        BloodPressureSystolic = bloodPressureSystolic;
-        BloodPressureDiastolic = bloodPressureDiastolic;
-        SpO2 = spO2;
-        RespiratoryRate = respiratoryRate;
-        Notes = notes;
-        MeasuredBy = measuredBy;
-        MeasuredAt = DateTimeOffset.UtcNow;
     }
 }

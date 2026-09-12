@@ -2,7 +2,7 @@ import { apiClient, unwrap } from './apiClient'
 import type { ApiResponse } from '../types/common'
 import type { Vitals, VitalsFormValues } from '../types/vitals'
 
-/** Lấy sinh hiệu của lượt khám; null nếu chưa đo (backend trả data=null). */
+/** Lần đo sinh hiệu gần nhất của lượt khám; null nếu chưa đo (backend trả data=null). */
 export async function getVitals(appointmentId: string): Promise<Vitals | null> {
   const res = await apiClient.get<ApiResponse<Vitals | null>>(
     `/api/appointments/${appointmentId}/vitals`,
@@ -10,8 +10,16 @@ export async function getVitals(appointmentId: string): Promise<Vitals | null> {
   return res.data.data ?? null
 }
 
-/** Nhập/cập nhật (upsert) sinh hiệu cho lượt khám. */
-export async function upsertVitals(
+/** Toàn bộ lịch sử đo sinh hiệu của lượt khám (mới nhất trước). */
+export async function getVitalsHistory(appointmentId: string): Promise<Vitals[]> {
+  const res = await apiClient.get<ApiResponse<Vitals[]>>(
+    `/api/appointments/${appointmentId}/vitals/history`,
+  )
+  return unwrap(res.data)
+}
+
+/** Ghi một lần đo sinh hiệu mới cho lượt khám (luôn tạo bản ghi mới — không ghi đè, giữ lịch sử). */
+export async function recordVitals(
   appointmentId: string,
   values: VitalsFormValues,
 ): Promise<Vitals> {

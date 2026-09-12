@@ -5,10 +5,13 @@ namespace ClinicManagement.Application.Vitals;
 
 public interface IVitalsService
 {
-    /// <summary>Nhập/cập nhật (upsert) sinh hiệu cho một lượt khám. Một bộ sinh hiệu mỗi lượt.</summary>
-    Task<Result<VitalsDto>> UpsertAsync(
-        Guid appointmentId, UpsertVitalsRequest request, Guid measuredBy, CancellationToken ct = default);
+    /// <summary>Ghi một lần đo sinh hiệu mới cho lịch khám (luôn tạo bản ghi mới, giữ lịch sử).</summary>
+    Task<Result<VitalsDto>> RecordAsync(
+        Guid appointmentId, RecordVitalsRequest request, Guid measuredBy, CancellationToken ct = default);
 
-    /// <summary>Lấy sinh hiệu của một lượt khám; <c>data=null</c> nếu chưa đo.</summary>
-    Task<Result<VitalsDto?>> GetByAppointmentAsync(Guid appointmentId, CancellationToken ct = default);
+    /// <summary>Lần đo gần nhất của lịch khám (hoặc của cả lượt nếu lịch thuộc một lượt); <c>data=null</c> nếu chưa đo.</summary>
+    Task<Result<VitalsDto?>> GetLatestByAppointmentAsync(Guid appointmentId, CancellationToken ct = default);
+
+    /// <summary>Toàn bộ lịch sử đo của lịch khám (hoặc của cả lượt), mới nhất trước.</summary>
+    Task<Result<IReadOnlyList<VitalsDto>>> GetHistoryByAppointmentAsync(Guid appointmentId, CancellationToken ct = default);
 }

@@ -7,9 +7,9 @@ namespace ClinicManagement.Application.Vitals.Validators;
 /// Kiểm tra biên hợp lý các chỉ số sinh hiệu (chỉ khi có giá trị — mọi trường tuỳ chọn). Biên rộng,
 /// mục đích chặn nhập sai rõ ràng (âm/quá lớn), không thay chẩn đoán lâm sàng.
 /// </summary>
-public sealed class UpsertVitalsRequestValidator : AbstractValidator<UpsertVitalsRequest>
+public sealed class RecordVitalsRequestValidator : AbstractValidator<RecordVitalsRequest>
 {
-    public UpsertVitalsRequestValidator()
+    public RecordVitalsRequestValidator()
     {
         RuleFor(x => x.HeightCm)
             .InclusiveBetween(20m, 300m).WithMessage("Chiều cao (cm) không hợp lệ.")

@@ -1,5 +1,6 @@
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Clinical;
+using ClinicManagement.Domain.Visits;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,8 +14,15 @@ public sealed class VitalsConfiguration : IEntityTypeConfiguration<Vitals>
 
         builder.HasKey(v => v.Id);
 
-        // Một bộ sinh hiệu cho mỗi lượt khám (1–1).
-        builder.HasIndex(v => v.AppointmentId).IsUnique();
+        // Nhiều lần đo cho cùng một lượt/lịch (lịch sử, không upsert) — index thường để tra nhanh
+        // "lần gần nhất"/"lịch sử" theo lượt hoặc theo lịch lẻ, không ràng buộc duy nhất.
+        builder.HasIndex(v => v.VisitId);
+        builder.HasIndex(v => v.AppointmentId);
+
+        builder.HasOne<Visit>()
+            .WithMany()
+            .HasForeignKey(v => v.VisitId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // BMI là thuộc tính tính toán — không lưu cột.
         builder.Ignore(v => v.Bmi);

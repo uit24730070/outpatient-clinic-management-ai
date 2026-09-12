@@ -7,8 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace ClinicManagement.WebApi.Controllers;
 
 /// <summary>
-/// Sinh hiệu gắn lượt khám (ADR 0019). Ghi = Điều dưỡng/Admin (<see cref="Roles.RecordVitals"/>);
-/// đọc mở cho mọi vai trò lâm sàng (bác sĩ xem trong bệnh án).
+/// Sinh hiệu gắn lượt khám (ADR 0019) — mỗi lần đo là một bản ghi lịch sử (không upsert, có thể đo lại
+/// nhiều lần). Ghi = Điều dưỡng/Admin (<see cref="Roles.RecordVitals"/>); đọc mở cho mọi vai trò lâm sàng
+/// (bác sĩ xem trong bệnh án).
 /// </summary>
 [Authorize]
 [Route("api/appointments/{appointmentId:guid}/vitals")]
@@ -18,21 +19,29 @@ public sealed class VitalsController : ApiControllerBase
 
     public VitalsController(IVitalsService vitals) => _vitals = vitals;
 
-    /// <summary>Nhập/cập nhật (upsert) sinh hiệu cho lượt khám.</summary>
+    /// <summary>Ghi một lần đo sinh hiệu mới cho lịch khám (luôn tạo bản ghi mới).</summary>
     [Authorize(Roles = Roles.RecordVitals)]
     [HttpPost]
-    public async Task<IActionResult> Upsert(
-        Guid appointmentId, [FromBody] UpsertVitalsRequest request, CancellationToken ct)
+    public async Task<IActionResult> Record(
+        Guid appointmentId, [FromBody] RecordVitalsRequest request, CancellationToken ct)
     {
-        var result = await _vitals.UpsertAsync(appointmentId, request, CurrentUserId, ct);
+        var result = await _vitals.RecordAsync(appointmentId, request, CurrentUserId, ct);
+        return ToResponse(result, StatusCodes.Status201Created);
+    }
+
+    /// <summary>Lần đo sinh hiệu gần nhất của lịch khám; data=null nếu chưa đo.</summary>
+    [HttpGet]
+    public async Task<IActionResult> GetLatest(Guid appointmentId, CancellationToken ct)
+    {
+        var result = await _vitals.GetLatestByAppointmentAsync(appointmentId, ct);
         return ToResponse(result);
     }
 
-    /// <summary>Lấy sinh hiệu của lượt khám; data=null nếu chưa đo.</summary>
-    [HttpGet]
-    public async Task<IActionResult> Get(Guid appointmentId, CancellationToken ct)
+    /// <summary>Toàn bộ lịch sử đo sinh hiệu của lịch khám (mới nhất trước).</summary>
+    [HttpGet("history")]
+    public async Task<IActionResult> GetHistory(Guid appointmentId, CancellationToken ct)
     {
-        var result = await _vitals.GetByAppointmentAsync(appointmentId, ct);
+        var result = await _vitals.GetHistoryByAppointmentAsync(appointmentId, ct);
         return ToResponse(result);
     }
 }
