@@ -43,6 +43,7 @@ import RoomFormPage from '../pages/RoomFormPage'
 import QueuePage from '../pages/QueuePage'
 import VitalsPage from '../pages/VitalsPage'
 import DashboardPage from '../pages/DashboardPage'
+import FrontDeskPage from '../pages/FrontDeskPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -87,6 +88,12 @@ export const router = createBrowserRouter([
           {
             element: <RequireRole roles={[UserRole.Doctor]} />,
             children: [{ path: 'my-clinic', element: <MyClinicPage /> }],
+          },
+
+          // Workspace Lễ tân thí điểm (Epic 17, UX-03) — Admin/Lễ tân.
+          {
+            element: <RequireRole roles={MANAGE_STAFF} />,
+            children: [{ path: 'front-desk', element: <FrontDeskPage /> }],
           },
 
           // Lượt tiếp đón (ADR 0017): đọc cho mọi vai trò; tạo/thao tác chỉ Admin/Lễ tân.

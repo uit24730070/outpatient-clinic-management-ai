@@ -60,6 +60,8 @@ export const navItems: NavItem[] = [
   // Tổng quan / Dashboard (Epic 7, ADR 0020) — báo cáo vận hành cho quản lý.
   { label: 'Tổng quan', to: '/dashboard', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Phòng khám của tôi', to: '/my-clinic', roles: [UserRole.Doctor] },
+  // Workspace Lễ tân thí điểm (Epic 17, UX-03) — gộp lượt mở + hàng đợi + thu tiền nhanh 1 màn.
+  { label: 'Lễ tân — Một màn', to: '/front-desk', roles: [UserRole.Admin, UserRole.Receptionist] },
   // Lượt tiếp đón (ADR 0017) — điểm vào quy trình tiếp đón: một lượt nhiều dịch vụ khám.
   { label: 'Lượt tiếp đón', to: '/visits', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor] },
