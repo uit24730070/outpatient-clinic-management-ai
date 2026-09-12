@@ -589,4 +589,43 @@ public sealed class InvoiceServiceTests
         Assert.Null(result.Value.EncounterId);
         Assert.Equal(InvoiceItemType.Paraclinical, Assert.Single(result.Value.Items).ItemType);
     }
+
+    [Fact]
+    public async Task PayAsync_MedicationInvoice_ShouldMarkEncounterPaid()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var med = SeedMedication(db, "TH-000001", 5000m);
+        // Phiếu khám đã chốt và giữ tồn (Reserved) — điều kiện để mở cổng thu tiền → Paid (PAY-02).
+        var encounter = new Encounter(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null, "Viêm họng", null);
+        encounter.ReplaceItems(new[] { new PrescriptionItem("Thuốc A", "500mg", 10, null, med.Id) });
+        encounter.Complete();
+        encounter.MarkReserved(DateTimeOffset.UtcNow);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var invoice = await service.CreateFromEncounterAsync(encounter.Id);
+        await service.PayAsync(invoice.Value.Id, new PayInvoiceRequest(PaymentMethod.Cash));
+
+        var reloaded = await db.Encounters.FindAsync(encounter.Id);
+        Assert.Equal(DispenseStatus.Paid, reloaded!.DispenseStatus);
+        Assert.NotNull(reloaded.MedicationPaidAt);
+    }
+
+    [Fact]
+    public async Task PayAsync_ParaclinicalInvoice_ShouldMarkLabOrderPaid()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = new Encounter(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null, "Theo dõi", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var order = await SeedLabOrderAsync(db, encounter.PatientId, encounter.Id);
+
+        var service = CreateService(db);
+        var invoice = await service.CreateFromLabOrderAsync(order.Id);
+        await service.PayAsync(invoice.Value.Id, new PayInvoiceRequest(PaymentMethod.Cash));
+
+        var reloaded = await db.LabOrders.FindAsync(order.Id);
+        Assert.NotNull(reloaded!.PaidAt);
+    }
 }

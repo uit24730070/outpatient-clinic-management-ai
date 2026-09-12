@@ -53,6 +53,7 @@ public sealed class AssistantToolTests
         public Task<Result<EncounterDto>> GetByAppointmentAsync(Guid appointmentId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<EncounterDto>> UpdateAsync(Guid id, UpdateEncounterRequest r, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<EncounterDto>> CompleteAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<Result<EncounterDto>> DispenseAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
     }
 
     private static readonly Guid DoctorProfileId = Guid.NewGuid();

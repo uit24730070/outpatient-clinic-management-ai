@@ -39,6 +39,14 @@ public sealed class LabOrderServiceTests
         return p;
     }
 
+    /// <summary>Đánh dấu phiếu chỉ định đã thu phí CLS (mô phỏng thu hoá đơn) để mở cổng nhập kết quả (PAY-01).</summary>
+    private static async Task MarkPaidAsync(TestDbContext db, Guid orderId)
+    {
+        var order = await db.LabOrders.FindAsync(orderId);
+        order!.MarkPaid(DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task CreateWalkIn_WithVisit_ShouldAttachVisitId()
     {
@@ -275,6 +283,7 @@ public sealed class LabOrderServiceTests
             encounter.Id, null,
             new[] { new CreateLabOrderItemRequest(xn.Id), new CreateLabOrderItemRequest(xq.Id) }));
         var items = created.Value.Items;
+        await MarkPaidAsync(db, created.Value.Id);
 
         // Nhập kết quả mục đầu → InProgress.
         var first = await service.SetItemResultAsync(created.Value.Id, items[0].Id,
@@ -303,6 +312,7 @@ public sealed class LabOrderServiceTests
         var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
             encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
         var itemId = created.Value.Items[0].Id;
+        await MarkPaidAsync(db, created.Value.Id);
         await service.SetItemResultAsync(created.Value.Id, itemId, new SetLabResultRequest("OK", null)); // → Completed
 
         var again = await service.SetItemResultAsync(created.Value.Id, itemId, new SetLabResultRequest("Sửa", null));
@@ -323,6 +333,7 @@ public sealed class LabOrderServiceTests
         var service = CreateService(db);
         var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
             encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+        await MarkPaidAsync(db, created.Value.Id);
 
         var result = await service.SetItemResultAsync(created.Value.Id, Guid.NewGuid(),
             new SetLabResultRequest("OK", null));
@@ -343,6 +354,7 @@ public sealed class LabOrderServiceTests
         var service = CreateService(db);
         var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
             encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+        await MarkPaidAsync(db, created.Value.Id);
 
         var cancel = await service.CancelAsync(created.Value.Id);
         Assert.True(cancel.IsSuccess);
@@ -352,6 +364,49 @@ public sealed class LabOrderServiceTests
             new SetLabResultRequest("OK", null));
         Assert.True(afterCancel.IsFailure);
         Assert.Equal(ErrorType.Conflict, afterCancel.Error.Type);
+        Assert.Equal("Paraclinical.InvalidTransition", afterCancel.Error.Code);
+    }
+
+    [Fact]
+    public async Task SetItemResult_WhenNotPaid_ShouldReturnConflict()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        var xn = SeedParaclinical(db, "DV-000004", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        // Chưa thu phí CLS → chặn nhập kết quả (gating PAY-01).
+        var result = await service.SetItemResultAsync(created.Value.Id, created.Value.Items[0].Id,
+            new SetLabResultRequest("OK", null));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Paraclinical.NotPaid", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task SetItemResult_AfterPaid_ShouldSucceed()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        var xn = SeedParaclinical(db, "DV-000004", "Công thức máu", 80000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+        await MarkPaidAsync(db, created.Value.Id);
+
+        var result = await service.SetItemResultAsync(created.Value.Id, created.Value.Items[0].Id,
+            new SetLabResultRequest("OK", null));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(LabOrderStatus.Completed, result.Value.Status);
+        Assert.NotNull(result.Value.PaidAt);
     }
 
     [Fact]
