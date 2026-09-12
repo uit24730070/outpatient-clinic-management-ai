@@ -41,6 +41,7 @@ import RoomsListPage from '../pages/RoomsListPage'
 import RoomFormPage from '../pages/RoomFormPage'
 import QueuePage from '../pages/QueuePage'
 import VitalsPage from '../pages/VitalsPage'
+import DashboardPage from '../pages/DashboardPage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -74,6 +75,12 @@ export const router = createBrowserRouter([
           // "/" điều hướng theo vai trò; trang 403 dùng chung.
           { index: true, element: <RoleLanding /> },
           { path: 'forbidden', element: <ForbiddenPage /> },
+
+          // Tổng quan / Dashboard (Epic 7, ADR 0020) — báo cáo vận hành cho Admin/Lễ tân.
+          {
+            element: <RequireRole roles={MANAGE_STAFF} />,
+            children: [{ path: 'dashboard', element: <DashboardPage /> }],
+          },
 
           // Phòng khám của tôi — chỉ Bác sĩ.
           {

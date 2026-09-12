@@ -57,6 +57,8 @@ export interface NavItem {
 // Menu khai báo — MainLayout render theo cấu hình này, không liệt kê cứng.
 // Bác sĩ có menu gọn theo phận sự (không thấy quản lý Bác sĩ/Chuyên khoa).
 export const navItems: NavItem[] = [
+  // Tổng quan / Dashboard (Epic 7, ADR 0020) — báo cáo vận hành cho quản lý.
+  { label: 'Tổng quan', to: '/dashboard', roles: [UserRole.Admin, UserRole.Receptionist] },
   { label: 'Phòng khám của tôi', to: '/my-clinic', roles: [UserRole.Doctor] },
   // Lượt tiếp đón (ADR 0017) — điểm vào quy trình tiếp đón: một lượt nhiều dịch vụ khám.
   { label: 'Lượt tiếp đón', to: '/visits', roles: [UserRole.Admin, UserRole.Receptionist] },
@@ -88,8 +90,8 @@ export const navItems: NavItem[] = [
 // Trang mặc định (landing) theo luồng công việc mỗi vai trò.
 // Lễ tân/Admin → lịch khám; Bác sĩ → phòng khám của tôi.
 export const roleLandingPath: Record<UserRoleValue, string> = {
-  [UserRole.Admin]: '/appointments',
-  [UserRole.Receptionist]: '/appointments',
+  [UserRole.Admin]: '/dashboard',
+  [UserRole.Receptionist]: '/dashboard',
   [UserRole.Doctor]: '/my-clinic',
   [UserRole.Pharmacist]: '/pharmacy/alerts',
   [UserRole.Technician]: '/lab/technician',
