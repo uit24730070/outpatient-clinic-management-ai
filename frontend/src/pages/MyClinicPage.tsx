@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw, Stethoscope, TriangleAlert } from 'lucide-react'
-import { listAppointments } from '../services/appointmentService'
+import { Link } from 'react-router-dom'
+import { History, Play, RefreshCw, Stethoscope, TriangleAlert } from 'lucide-react'
+import { listAppointments, transitionAppointment } from '../services/appointmentService'
+import { listQueue } from '../services/queueService'
 import { useAuth } from '../store/auth'
 import { toastError } from '../lib/toast'
 import { AppointmentStatus, type Appointment } from '../types/appointment'
+import type { QueueTicket } from '../types/queue'
 import { PageHeader } from '../components/PageHeader'
-import { AppointmentStatusBadge } from '../components/StatusBadge'
+import { AppointmentStatusBadge, QueueTicketStatusBadge } from '../components/StatusBadge'
 import { EncounterForm } from '../components/EncounterForm'
 import { useWorkspaceTabs } from '../components/workspace/useWorkspaceTabs'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
@@ -23,6 +26,17 @@ import {
 // Các trạng thái thuộc "phòng khám của tôi": đã tiếp đón hoặc đang khám.
 const CLINIC_STATUSES: number[] = [AppointmentStatus.CheckedIn, AppointmentStatus.InProgress]
 
+function todayLocal(): string {
+  return dateKeyLocal(new Date())
+}
+
+/** Ngày (yyyy-MM-dd) theo giờ địa phương của một thời điểm — dùng để so trùng ngày với `todayLocal()`. */
+function dateKeyLocal(d: Date | string): string {
+  const date = typeof d === 'string' ? new Date(d) : d
+  const offset = date.getTimezoneOffset()
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 10)
+}
+
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', {
     day: '2-digit',
@@ -32,14 +46,33 @@ function formatTime(iso: string): string {
   })
 }
 
+/** Tên bệnh nhân kèm lối tắt xem lịch sử khám — dùng chung cho cả hai bảng bên dưới. */
+function PatientCell({ patientId, patientName }: { patientId: string; patientName: string | null }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span>{patientName ?? '—'}</span>
+      <Button asChild size="icon" variant="ghost" className="size-6 text-muted-foreground">
+        <Link to={`/patients/${patientId}/encounters`} title="Lịch sử khám">
+          <History className="size-3.5" />
+        </Link>
+      </Button>
+    </div>
+  )
+}
+
 /**
- * Phòng khám của tôi (Bác sĩ) — màn khám đa tab (CLS-06): danh sách bệnh nhân đang chờ/đang khám
- * của chính bác sĩ (lọc doctorId, ADR 0009), mở song song nhiều phiếu khám dạng tab. Nháp lưu
- * server-side nên đóng/mở lại tab (kể cả F5) vẫn nạp đúng — không cần global state.
+ * Bác sĩ — Một màn (Epic 17, UX-05): danh sách bệnh nhân đang chờ/đang khám của chính bác sĩ
+ * (lọc doctorId, ADR 0009). Bác sĩ tự "Bắt đầu khám" (CheckedIn → InProgress, action `start` sẵn có
+ * ở Lịch khám) ngay tại đây — không cần chờ Lễ tân/Điều dưỡng thao tác ở màn khác trước. Vé hàng đợi
+ * (ADR 0019) hôm nay được nối vào chỉ để hiển thị số thứ tự/trạng thái, không dùng để chặn thao tác.
+ * Có thêm mục lịch hôm nay còn lại để nắm ca làm, và lối tắt xem lịch sử khám mỗi bệnh nhân. Mở
+ * nhiều phiếu khám song song dạng tab; nháp lưu server-side nên đóng/mở lại tab (kể cả F5) vẫn nạp đúng.
  */
 export default function MyClinicPage() {
   const { doctorId } = useAuth()
   const [items, setItems] = useState<Appointment[]>([])
+  const [upcoming, setUpcoming] = useState<Appointment[]>([])
+  const [ticketsByAppointment, setTicketsByAppointment] = useState<Record<string, QueueTicket>>({})
   const [loading, setLoading] = useState(false)
   const { tabs, active, setActive, openTab, closeTab } = useWorkspaceTabs<Appointment>()
 
@@ -47,12 +80,24 @@ export default function MyClinicPage() {
     if (!doctorId) return
     setLoading(true)
     try {
-      // Lấy lịch của bác sĩ rồi lọc trạng thái "đang trong phòng khám" phía client.
-      const result = await listAppointments({ page: 1, pageSize: 100, doctorId })
+      const [result, tickets] = await Promise.all([
+        listAppointments({ page: 1, pageSize: 100, doctorId }),
+        listQueue({ date: todayLocal(), doctorId }),
+      ])
       const clinic = result.items
         .filter((a) => CLINIC_STATUSES.includes(a.status))
         .sort((x, y) => x.startTime.localeCompare(y.startTime))
+      const today = todayLocal()
+      const rest = result.items
+        .filter((a) => a.status === AppointmentStatus.Scheduled && dateKeyLocal(a.startTime) === today)
+        .sort((x, y) => x.startTime.localeCompare(y.startTime))
       setItems(clinic)
+      setUpcoming(rest)
+      const byAppointment: Record<string, QueueTicket> = {}
+      for (const t of tickets) {
+        if (t.appointmentId) byAppointment[t.appointmentId] = t
+      }
+      setTicketsByAppointment(byAppointment)
     } catch (err) {
       toastError(err)
     } finally {
@@ -64,11 +109,24 @@ export default function MyClinicPage() {
     void load()
   }, [load])
 
+  // "Bắt đầu khám" tự phục vụ: bác sĩ chuyển thẳng CheckedIn → InProgress (như ở Lịch khám),
+  // không cần chờ Lễ tân/Điều dưỡng thao tác ở màn khác trước.
+  const onStartExam = async (a: Appointment) => {
+    try {
+      await transitionAppointment(a.id, 'start')
+      openTab(a.id, a.patientName ?? '—', a)
+      void load()
+    } catch (err) {
+      toastError(err)
+      void load()
+    }
+  }
+
   // Bác sĩ chưa được gắn hồ sơ Doctor → không lọc được "của tôi".
   if (!doctorId) {
     return (
       <section>
-        <PageHeader title="Phòng khám của tôi" />
+        <PageHeader title="Bác sĩ — Một màn" />
         <Card>
           <CardContent className="flex items-start gap-3 text-amber-800">
             <TriangleAlert className="mt-0.5 size-5 shrink-0" />
@@ -85,8 +143,8 @@ export default function MyClinicPage() {
   return (
     <section className="flex flex-col gap-4">
       <PageHeader
-        title="Phòng khám của tôi"
-        description="Bệnh nhân đang chờ và đang khám của bạn — mở nhiều phiếu song song"
+        title="Bác sĩ — Một màn"
+        description="Bệnh nhân đang chờ và đang khám của bạn — mở nhiều phiếu song song (UX-05)"
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
@@ -97,9 +155,13 @@ export default function MyClinicPage() {
 
       <Card>
         <CardContent className="p-0">
+          <div className="px-4 pt-4">
+            <h3 className="font-semibold">Đang chờ / đang khám</h3>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16">Số</TableHead>
                 <TableHead>Thời gian</TableHead>
                 <TableHead>Bệnh nhân</TableHead>
                 <TableHead>Lý do</TableHead>
@@ -110,43 +172,97 @@ export default function MyClinicPage() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     Đang tải…
                   </TableCell>
                 </TableRow>
               )}
               {!loading && items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     Hiện không có bệnh nhân nào đang chờ/đang khám.
                   </TableCell>
                 </TableRow>
               )}
               {!loading &&
-                items.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="whitespace-nowrap font-medium">
-                      {formatTime(a.startTime)}
-                    </TableCell>
-                    <TableCell>{a.patientName ?? '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">{a.reason ?? '—'}</TableCell>
-                    <TableCell>
-                      <AppointmentStatusBadge status={a.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {a.status === AppointmentStatus.InProgress ? (
-                        <Button size="sm" onClick={() => openTab(a.id, a.patientName ?? '—', a)}>
-                          <Stethoscope className="size-4" />
-                          {tabs.some((t) => t.key === a.id) ? 'Mở lại' : 'Khám'}
-                        </Button>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Chờ tiếp đón bắt đầu khám
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                items.map((a) => {
+                  const ticket = ticketsByAppointment[a.id]
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-lg font-semibold tabular-nums">
+                        {ticket?.number ?? '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">
+                        {formatTime(a.startTime)}
+                      </TableCell>
+                      <TableCell>
+                        <PatientCell patientId={a.patientId} patientName={a.patientName} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{a.reason ?? '—'}</TableCell>
+                      <TableCell>
+                        {ticket ? (
+                          <QueueTicketStatusBadge status={ticket.status} />
+                        ) : (
+                          <AppointmentStatusBadge status={a.status} />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {a.status === AppointmentStatus.InProgress ? (
+                          <Button size="sm" onClick={() => openTab(a.id, a.patientName ?? '—', a)}>
+                            <Stethoscope className="size-4" />
+                            {tabs.some((t) => t.key === a.id) ? 'Mở lại' : 'Khám'}
+                          </Button>
+                        ) : (
+                          <Button size="sm" onClick={() => void onStartExam(a)}>
+                            <Play className="size-4" />
+                            Bắt đầu khám
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="px-4 pt-4">
+            <h3 className="font-semibold">Lịch hôm nay còn lại ({upcoming.length})</h3>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thời gian</TableHead>
+                <TableHead>Bệnh nhân</TableHead>
+                <TableHead>Lý do</TableHead>
+                <TableHead>Trạng thái</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!loading && upcoming.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-16 text-center text-muted-foreground">
+                    Không còn lịch nào khác trong hôm nay.
+                  </TableCell>
+                </TableRow>
+              )}
+              {upcoming.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell className="whitespace-nowrap font-medium">
+                    {formatTime(a.startTime)}
+                  </TableCell>
+                  <TableCell>
+                    <PatientCell patientId={a.patientId} patientName={a.patientName} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{a.reason ?? '—'}</TableCell>
+                  <TableCell>
+                    <AppointmentStatusBadge status={a.status} />
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

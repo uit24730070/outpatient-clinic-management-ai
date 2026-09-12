@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Plus, Receipt, Stethoscope } from 'lucide-react'
 import { addVisitService, cancelVisit, closeVisit, getVisit } from '../services/visitService'
-import { createInvoiceFromLabOrder, getInvoicesByVisit, payVisitInvoices } from '../services/invoiceService'
+import {
+  createInvoiceFromEncounter,
+  createInvoiceFromLabOrder,
+  getInvoicesByVisit,
+  payVisitInvoices,
+} from '../services/invoiceService'
+import { createWalkInLabOrder } from '../services/labOrderService'
+import { getEncounterByAppointment } from '../services/encounterService'
 import { listDoctors } from '../services/doctorService'
 import { listServicePrices } from '../services/servicePriceService'
 import { transitionAppointment, type AppointmentAction } from '../services/appointmentService'
@@ -11,6 +18,7 @@ import { canManageBilling } from '../config/access'
 import { toastError, toastInfo, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import { AppointmentStatus, type Appointment } from '../types/appointment'
+import type { Encounter } from '../types/encounter'
 import {
   PaymentMethod,
   paymentMethodLabels,
@@ -29,6 +37,8 @@ import {
   VisitStatusBadge,
 } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Combobox } from '../components/Combobox'
+import { ServiceMultiPicker } from '../components/ServiceMultiPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -48,8 +58,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-
-const NONE = 'none'
 
 const actionsByStatus: Record<number, { action: AppointmentAction; label: string; danger?: boolean }[]> = {
   [AppointmentStatus.Scheduled]: [
@@ -79,16 +87,24 @@ export default function VisitDetailPage() {
 
   const [visit, setVisit] = useState<Visit | null>(null)
   const [invoices, setInvoices] = useState<VisitInvoices | null>(null)
+  // Phiếu khám theo từng dịch vụ khám đã hoàn tất — để biết có đơn thuốc chờ lập hoá đơn không.
+  const [encountersByAppointment, setEncountersByAppointment] = useState<Record<string, Encounter>>({})
   const [payMethod, setPayMethod] = useState<PaymentMethodValue>(PaymentMethod.Cash)
   const [loading, setLoading] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [services, setServices] = useState<ServicePrice[]>([])
+  const [clsServices, setClsServices] = useState<ServicePrice[]>([])
 
   // Thêm dịch vụ (một dòng gọn).
   const [adding, setAdding] = useState(false)
   const [newDoctorId, setNewDoctorId] = useState('')
   const [newServiceId, setNewServiceId] = useState('')
   const [newStart, setNewStart] = useState(toLocalInput(new Date()))
+
+  // Thêm phiếu CLS cho lượt đang mở (thay cho trang /lab/walk-in cũ).
+  const [addingCls, setAddingCls] = useState(false)
+  const [pickedCls, setPickedCls] = useState<string[]>([])
+  const [submittingCls, setSubmittingCls] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -107,15 +123,31 @@ export default function VisitDetailPage() {
   }, [load])
 
   useEffect(() => {
+    if (!canBilling || !visit) return
+    const completed = visit.appointments.filter((a) => a.status === AppointmentStatus.Completed)
+    if (completed.length === 0) return
+    void (async () => {
+      const pairs = await Promise.all(
+        completed.map(async (a) => [a.id, await getEncounterByAppointment(a.id)] as const),
+      )
+      setEncountersByAppointment(
+        Object.fromEntries(pairs.filter((p): p is [string, Encounter] => p[1] != null)),
+      )
+    })()
+  }, [canBilling, visit])
+
+  useEffect(() => {
     if (!canManage) return
     void (async () => {
       try {
-        const [d, s] = await Promise.all([
+        const [d, s, cls] = await Promise.all([
           listDoctors({ page: 1, pageSize: 100 }),
           listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Consultation }),
+          listServicePrices({ page: 1, pageSize: 100, category: ServiceCategory.Paraclinical }),
         ])
         setDoctors(d.items)
         setServices(s.items)
+        setClsServices(cls.items)
       } catch {
         // Danh mục chỉ phục vụ thao tác thêm dịch vụ.
       }
@@ -160,10 +192,45 @@ export default function VisitDetailPage() {
     }
   }
 
+  const toggleCls = (serviceId: string) =>
+    setPickedCls((cur) => (cur.includes(serviceId) ? cur.filter((x) => x !== serviceId) : [...cur, serviceId]))
+
+  const onAddCls = async () => {
+    if (!visit || pickedCls.length === 0) return
+    setSubmittingCls(true)
+    try {
+      await createWalkInLabOrder({
+        patientId: visit.patientId,
+        appointmentId: null,
+        visitId: id,
+        note: null,
+        items: pickedCls.map((servicePriceId) => ({ servicePriceId })),
+      })
+      toastSuccess('Đã đăng ký phiếu CLS cho lượt.')
+      setAddingCls(false)
+      setPickedCls([])
+      void load()
+    } catch (err) {
+      toastError(err)
+    } finally {
+      setSubmittingCls(false)
+    }
+  }
+
   const onBillLab = async (labOrderId: string) => {
     try {
       await createInvoiceFromLabOrder(labOrderId)
       toastSuccess('Đã lập hoá đơn phí cận lâm sàng.')
+      void load()
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  const onBillMedication = async (encounterId: string) => {
+    try {
+      await createInvoiceFromEncounter(encounterId)
+      toastSuccess('Đã lập hoá đơn thuốc.')
       void load()
     } catch (err) {
       toastError(err)
@@ -205,6 +272,16 @@ export default function VisitDetailPage() {
   if (!visit) return <p className="text-muted-foreground">Không tìm thấy lượt tiếp đón.</p>
 
   const isOpen = visit.status === VisitStatus.Open
+  // Còn gì để lập hoá đơn không (dịch vụ khám chưa lập + phiếu CLS chưa lập) — quyết định hiện nút
+  // "Lập hoá đơn" ở cấp Lượt (UX-05): gộp mọi thứ còn nợ vào một hoá đơn, thay vì lập từng dịch vụ.
+  const hasBillable =
+    visit.appointments.some(
+      (a) =>
+        a.status !== AppointmentStatus.Cancelled &&
+        a.status !== AppointmentStatus.NoShow &&
+        a.servicePriceId &&
+        a.invoicedAt == null,
+    ) || visit.labOrders.some((o) => o.invoicedAt == null)
 
   return (
     <section className="flex flex-col gap-4">
@@ -214,11 +291,17 @@ export default function VisitDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <VisitStatusBadge status={visit.status} />
-            {canManage && isOpen && (
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/lab/walk-in?patientId=${visit.patientId}&visitId=${visit.id}`}>
-                  Đăng ký CLS
+            {canBilling && hasBillable && (
+              <Button asChild size="sm">
+                <Link to={`/invoices/new?patientId=${visit.patientId}&visitId=${visit.id}`}>
+                  <Receipt className="size-4" />
+                  Lập hoá đơn
                 </Link>
+              </Button>
+            )}
+            {canManage && isOpen && (
+              <Button size="sm" variant="outline" onClick={() => setAddingCls((cur) => !cur)}>
+                Đăng ký CLS
               </Button>
             )}
             {canManage && isOpen && (
@@ -336,8 +419,9 @@ export default function VisitDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16">Số TT</TableHead>
                 <TableHead>Giờ</TableHead>
-                <TableHead>Bác sĩ</TableHead>
+                <TableHead>Bác sĩ / Phòng</TableHead>
                 <TableHead>Dịch vụ khám</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
@@ -346,17 +430,21 @@ export default function VisitDetailPage() {
             <TableBody>
               {visit.appointments.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-20 text-center text-muted-foreground">
                     Chưa có dịch vụ khám.
                   </TableCell>
                 </TableRow>
               )}
               {visit.appointments.map((a) => (
                 <TableRow key={a.id}>
+                  <TableCell className="text-lg font-semibold tabular-nums">{a.queueNumber ?? '—'}</TableCell>
                   <TableCell className="whitespace-nowrap font-medium">
                     {formatTime(a.startTime)}–{formatTime(a.endTime)}
                   </TableCell>
-                  <TableCell>{a.doctorName ?? '—'}</TableCell>
+                  <TableCell>
+                    {a.doctorName ?? '—'}
+                    {a.roomName && <span className="text-muted-foreground"> · {a.roomName}</span>}
+                  </TableCell>
                   <TableCell>
                     {a.serviceName ?? '—'}
                     {a.servicePrice != null && (
@@ -376,16 +464,22 @@ export default function VisitDetailPage() {
                           </Link>
                         </Button>
                       )}
+                      {canBilling && a.invoicedAt != null && (
+                        <span className="text-xs text-muted-foreground">Đã lập HĐ</span>
+                      )}
                       {canBilling &&
-                        a.status !== AppointmentStatus.Cancelled &&
-                        a.status !== AppointmentStatus.NoShow && (
-                          <Button asChild size="sm" variant="outline">
-                            <Link to={`/invoices/new?patientId=${a.patientId}&appointmentId=${a.id}`}>
-                              <Receipt className="size-4" />
-                              Lập HĐ
-                            </Link>
-                          </Button>
-                        )}
+                        (() => {
+                          const encounter = encountersByAppointment[a.id]
+                          if (!encounter || encounter.prescriptionItems.length === 0) return null
+                          if (encounter.medicationInvoicedAt != null) {
+                            return <span className="text-xs text-muted-foreground">Đã lập HĐ thuốc</span>
+                          }
+                          return (
+                            <Button size="sm" variant="outline" onClick={() => void onBillMedication(encounter.id)}>
+                              Lập HĐ thuốc
+                            </Button>
+                          )
+                        })()}
                       {canManage &&
                         actionsByStatus[a.status].map((x) =>
                           x.danger ? (
@@ -470,6 +564,30 @@ export default function VisitDetailPage() {
         </Card>
       )}
 
+      {/* Thêm phiếu CLS cho lượt đang mở (thay trang /lab/walk-in cũ) */}
+      {canManage && isOpen && addingCls && (
+        <Card>
+          <CardContent className="flex flex-col gap-3 p-4">
+            <Label>Đăng ký cận lâm sàng</Label>
+            <ServiceMultiPicker services={clsServices} picked={pickedCls} onToggle={toggleCls} />
+            <div className="flex gap-2">
+              <Button onClick={() => void onAddCls()} disabled={submittingCls || pickedCls.length === 0}>
+                Đăng ký ({pickedCls.length})
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setAddingCls(false)
+                  setPickedCls([])
+                }}
+              >
+                Huỷ
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Thêm dịch vụ khám (khi lượt còn mở) */}
       {canManage && isOpen && (
         <Card>
@@ -483,34 +601,29 @@ export default function VisitDetailPage() {
               <div className="grid gap-3 md:grid-cols-4 md:items-end">
                 <div className="grid gap-2">
                   <Label>Bác sĩ *</Label>
-                  <Select value={newDoctorId} onValueChange={setNewDoctorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="— Chọn —" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {doctors.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    value={newDoctorId}
+                    onValueChange={setNewDoctorId}
+                    options={doctors.map((d) => ({ value: d.id, label: d.fullName }))}
+                    placeholder="— Chọn —"
+                    searchPlaceholder="Tìm bác sĩ…"
+                    emptyText="Không tìm thấy bác sĩ."
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label>Dịch vụ</Label>
-                  <Select value={newServiceId || NONE} onValueChange={(v) => setNewServiceId(v === NONE ? '' : v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="— Không gắn —" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>— Không gắn —</SelectItem>
-                      {services.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} · {formatVnd(serviceMap.get(s.id)?.unitPrice ?? s.unitPrice)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    value={newServiceId}
+                    onValueChange={setNewServiceId}
+                    options={services.map((s) => ({
+                      value: s.id,
+                      label: s.name,
+                      description: formatVnd(serviceMap.get(s.id)?.unitPrice ?? s.unitPrice),
+                    }))}
+                    placeholder="— Không gắn —"
+                    searchPlaceholder="Tìm dịch vụ…"
+                    emptyText="Không tìm thấy dịch vụ."
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label>Giờ bắt đầu</Label>
