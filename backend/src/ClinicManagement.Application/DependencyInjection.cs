@@ -13,6 +13,7 @@ using ClinicManagement.Application.Paraclinical;
 using ClinicManagement.Application.Patients;
 using ClinicManagement.Application.Pharmacy;
 using ClinicManagement.Application.Queue;
+using ClinicManagement.Application.Reports;
 using ClinicManagement.Application.Rooms;
 using ClinicManagement.Application.Specialties;
 using ClinicManagement.Application.StockReceipts;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<ILabOrderService, LabOrderService>();
         services.AddScoped<IVitalsService, VitalsService>();
         services.AddScoped<IQueueService, QueueService>();
+        services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IPatientSummaryService, PatientSummaryService>();
