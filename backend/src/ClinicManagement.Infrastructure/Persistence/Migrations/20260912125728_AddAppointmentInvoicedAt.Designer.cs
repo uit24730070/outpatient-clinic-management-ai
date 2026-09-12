@@ -3,6 +3,7 @@ using System;
 using ClinicManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace ClinicManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260912125728_AddAppointmentInvoicedAt")]
+    partial class AddAppointmentInvoicedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -396,17 +399,13 @@ namespace ClinicManagement.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("VisitId")
-                        .HasColumnType("uuid");
-
                     b.Property<decimal?>("WeightKg")
                         .HasColumnType("numeric(5,2)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AppointmentId");
-
-                    b.HasIndex("VisitId");
+                    b.HasIndex("AppointmentId")
+                        .IsUnique();
 
                     b.ToTable("vitals", (string)null);
                 });
@@ -1352,11 +1351,6 @@ namespace ClinicManagement.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AppointmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("ClinicManagement.Domain.Visits.Visit", null)
-                        .WithMany()
-                        .HasForeignKey("VisitId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ClinicManagement.Domain.Doctors.Doctor", b =>
