@@ -1,9 +1,13 @@
 using ClinicManagement.Application.Ai;
+using ClinicManagement.Application.Billing;
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Encounters.Dtos;
+using ClinicManagement.Application.Queue;
+using ClinicManagement.Application.Visits;
 using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Encounters;
 using ClinicManagement.Domain.Pharmacy;
+using ClinicManagement.Domain.Queue;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,14 +16,38 @@ namespace ClinicManagement.Application.Encounters;
 public sealed class EncounterService : IEncounterService
 {
     private const int MaxPageSize = 100;
+
+    // Lịch đã kết thúc phần khám — không còn việc gì để làm ở phòng khám (ADR 0017 mở rộng: tự đóng lượt).
+    private static readonly AppointmentStatus[] TerminalAppointmentStatuses =
+    [
+        AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.NoShow,
+    ];
+
     private readonly IAppDbContext _db;
     // Best-effort: sinh/cập nhật embedding sau khi ghi phiếu (null trong unit test → bỏ qua).
     private readonly IEncounterEmbeddingIndexer? _embeddingIndexer;
+    // Best-effort: tự lập hoá đơn thuốc khi chốt phiếu (null trong unit test → bỏ qua, dùng lại
+    // nút "Lập HĐ thuốc" thủ công ở VisitDetailPage làm phương án dự phòng).
+    private readonly IInvoiceService? _invoices;
+    // Best-effort: tự đóng lượt tiếp đón khi dịch vụ khám cuối cùng của lượt hoàn tất (null trong
+    // unit test → bỏ qua, dùng lại nút "Đóng lượt"/"Mở lại lượt" thủ công làm phương án dự phòng).
+    private readonly IVisitService? _visits;
+    // Best-effort: tự xử lý vé hàng đợi khi chốt phiếu (null trong unit test → bỏ qua) — tránh số ảo
+    // treo mãi trên bảng hàng đợi khi bác sĩ tự "Bắt đầu khám" bỏ qua bước gọi số.
+    private readonly IQueueService? _queue;
 
-    public EncounterService(IAppDbContext db, IEncounterEmbeddingIndexer? embeddingIndexer = null)
+    public EncounterService(
+        IAppDbContext db,
+        IEncounterEmbeddingIndexer? embeddingIndexer = null,
+        IInvoiceService? invoices = null,
+        IVisitService? visits = null,
+        IQueueService? queue = null)
     {
         _db = db;
         _embeddingIndexer = embeddingIndexer;
+        _invoices = invoices;
+        _visits = visits;
+        _queue = queue;
     }
 
     public async Task<Result<EncounterDto>> CreateAsync(
@@ -167,6 +195,9 @@ public sealed class EncounterService : IEncounterService
         await _db.SaveChangesAsync(ct);
 
         await IndexEmbeddingAsync(encounter.Id, ct);
+        await AutoInvoiceMedicationAsync(encounter, ct);
+        await AutoResolveQueueTicketAsync(appointment.Id, ct);
+        await AutoCloseVisitAsync(appointment.VisitId, ct);
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
 
@@ -345,6 +376,66 @@ public sealed class EncounterService : IEncounterService
     /// <summary>Lập chỉ mục embedding cho phiếu (best-effort; bỏ qua khi chưa cấu hình indexer).</summary>
     private Task IndexEmbeddingAsync(Guid encounterId, CancellationToken ct) =>
         _embeddingIndexer?.IndexAsync(encounterId, ct) ?? Task.CompletedTask;
+
+    /// <summary>
+    /// Tự lập hoá đơn thuốc ngay khi chốt phiếu (nếu có dòng thuốc gắn danh mục) — thay cho việc bắt
+    /// Lễ tân phải nhớ bấm "Lập HĐ thuốc" thủ công ở VisitDetailPage (dễ bị bỏ sót). Best-effort: lỗi
+    /// (vd đã lập trước đó) không làm hỏng thao tác chốt phiếu; nút thủ công vẫn còn làm phương án
+    /// dự phòng nếu vì lý do nào đó bước này không chạy được.
+    /// </summary>
+    private async Task AutoInvoiceMedicationAsync(Encounter encounter, CancellationToken ct)
+    {
+        if (_invoices is null) return;
+        if (!encounter.PrescriptionItems.Any(p => p.MedicationId is not null)) return;
+
+        await _invoices.CreateFromEncounterAsync(encounter.Id, ct);
+    }
+
+    /// <summary>
+    /// Tự xử lý vé hàng đợi (nếu có) gắn với dịch vụ khám vừa chốt — tránh số ảo treo mãi trên bảng
+    /// hàng đợi khi bác sĩ tự "Bắt đầu khám" (bỏ qua bước gọi số của Lễ tân/Điều dưỡng). Vé đang
+    /// <see cref="QueueTicketStatus.InProgress"/> → <c>Done</c> (đã phục vụ xong); vé còn
+    /// <see cref="QueueTicketStatus.Waiting"/>/<see cref="QueueTicketStatus.Called"/> (chưa từng qua
+    /// quầy) → <c>Skip</c>. Vé đã Done/Skip hoặc không có vé thì bỏ qua.
+    /// </summary>
+    private async Task AutoResolveQueueTicketAsync(Guid appointmentId, CancellationToken ct)
+    {
+        if (_queue is null) return;
+
+        var ticket = await _db.QueueTickets
+            .Where(t => t.AppointmentId == appointmentId)
+            .OrderByDescending(t => t.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+        if (ticket is null) return;
+
+        switch (ticket.Status)
+        {
+            case QueueTicketStatus.InProgress:
+                await _queue.DoneAsync(ticket.Id, ct);
+                break;
+            case QueueTicketStatus.Waiting or QueueTicketStatus.Called:
+                await _queue.SkipAsync(ticket.Id, ct);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Tự đóng lượt tiếp đón khi dịch vụ khám vừa chốt là dịch vụ <b>cuối cùng</b> của lượt còn dang dở
+    /// (mọi Appointment khác cùng lượt đã Completed/Cancelled/NoShow) — coi như bác sĩ đã xong việc,
+    /// chuyển bệnh nhân xuống quầy thuốc/thu ngân. Không đụng tới việc thanh toán/cấp phát thuốc (độc
+    /// lập với VisitStatus). Best-effort: lượt lẻ (không gắn Visit) hoặc lỗi transition (vd đã đóng/huỷ
+    /// trước đó) đều bỏ qua; nút "Đóng lượt"/"Mở lại lượt" thủ công vẫn còn làm phương án dự phòng.
+    /// </summary>
+    private async Task AutoCloseVisitAsync(Guid? visitId, CancellationToken ct)
+    {
+        if (_visits is null || visitId is null) return;
+
+        var hasUnfinished = await _db.Appointments
+            .AnyAsync(a => a.VisitId == visitId && !TerminalAppointmentStatuses.Contains(a.Status), ct);
+        if (hasUnfinished) return;
+
+        await _visits.CloseAsync(visitId.Value, ct);
+    }
 
     /// <summary>Ánh xạ truy vấn Phiếu khám sang DTO kèm tên bệnh nhân/bác sĩ (subquery) và cụm đơn thuốc.</summary>
     private IQueryable<EncounterDto> Project(IQueryable<Encounter> query) =>
