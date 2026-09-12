@@ -29,6 +29,9 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         // Gom hoá đơn theo lượt tiếp đón trực tiếp (ADR 0017).
         builder.HasIndex(i => i.VisitId);
 
+        // Tra hoá đơn phí CLS theo phiếu chỉ định (ADR 0021, PAY-01) — không FK cứng như EncounterId.
+        builder.HasIndex(i => i.LabOrderId);
+
         // Enum trạng thái/phương thức thu lưu dạng chuỗi (đồng nhất Gender/UserRole/AppointmentStatus).
         builder.Property(i => i.Status)
             .HasConversion<string>()

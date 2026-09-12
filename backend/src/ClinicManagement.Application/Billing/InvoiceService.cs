@@ -114,7 +114,8 @@ public sealed class InvoiceService : IInvoiceService
         var code = await GenerateCodeAsync(ct);
         // Lượt: ưu tiên lượt gắn trực tiếp phiếu chỉ định (walk-in gắn lượt, ADR 0017), fallback suy từ lịch.
         var visitId = order.VisitId ?? await ResolveVisitIdAsync(appointmentId, ct);
-        var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId, visitId);
+        var invoice = new Invoice(code, order.PatientId, order.EncounterId, note: null, items, appointmentId, visitId,
+            labOrderId: order.Id);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);
 
@@ -215,12 +216,37 @@ public sealed class InvoiceService : IInvoiceService
 
         var now = DateTimeOffset.UtcNow;
         foreach (var inv in drafts)
+        {
             inv.Pay(request.PaymentMethod, now);
+            await MarkSourcesPaidAsync(inv, now, ct);
+        }
 
         if (drafts.Count > 0)
             await _db.SaveChangesAsync(ct);
 
         return await BuildVisitInvoicesAsync(visitId, ct);
+    }
+
+    /// <summary>
+    /// Móc "thu tiền → mở cổng thực hiện" (ADR 0021): khi một hoá đơn được thu, đánh dấu nguồn gắn nó đã thu —
+    /// phiếu chỉ định CLS (<see cref="Invoice.LabOrderId"/> → <c>LabOrder.MarkPaid</c>, mở cổng nhập kết quả) và
+    /// phiếu khám có dòng thuốc (<see cref="InvoiceItemType.Medication"/> → <c>Encounter.MarkMedicationPaid</c>,
+    /// mở cổng cấp phát). Idempotent ở Domain; gọi trước <c>SaveChanges</c> để cùng transaction.
+    /// </summary>
+    private async Task MarkSourcesPaidAsync(Invoice invoice, DateTimeOffset when, CancellationToken ct)
+    {
+        if (invoice.LabOrderId is { } labOrderId)
+        {
+            var order = await _db.LabOrders.FirstOrDefaultAsync(o => o.Id == labOrderId, ct);
+            order?.MarkPaid(when);
+        }
+
+        if (invoice.EncounterId is { } encounterId &&
+            invoice.Items.Any(i => i.ItemType == InvoiceItemType.Medication))
+        {
+            var encounter = await _db.Encounters.FirstOrDefaultAsync(e => e.Id == encounterId, ct);
+            encounter?.MarkMedicationPaid(when);
+        }
     }
 
     private async Task<VisitInvoicesDto> BuildVisitInvoicesAsync(Guid visitId, CancellationToken ct)
@@ -281,9 +307,13 @@ public sealed class InvoiceService : IInvoiceService
         if (invoice is null)
             return Error.NotFound("Invoice.NotFound", $"Không tìm thấy hoá đơn với Id {id}.");
 
-        var pay = invoice.Pay(request.PaymentMethod, DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var pay = invoice.Pay(request.PaymentMethod, now);
         if (pay.IsFailure)
             return Result.Failure<InvoiceDto>(pay.Error);
+
+        // Mở cổng thực hiện cho nguồn gắn hoá đơn (CLS/thuốc) — ADR 0021.
+        await MarkSourcesPaidAsync(invoice, now, ct);
 
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(invoice.Id, ct))!;

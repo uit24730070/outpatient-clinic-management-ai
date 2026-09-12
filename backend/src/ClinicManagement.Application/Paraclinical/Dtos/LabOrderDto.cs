@@ -17,6 +17,7 @@ public sealed record LabOrderDto(
     string? Note,
     decimal TotalAmount,
     DateTimeOffset? InvoicedAt,
+    DateTimeOffset? PaidAt,
     IReadOnlyList<LabOrderItemDto> Items,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

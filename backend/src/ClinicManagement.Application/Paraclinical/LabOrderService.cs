@@ -149,6 +149,11 @@ public sealed class LabOrderService : ILabOrderService
         if (order is null)
             return Error.NotFound("Paraclinical.NotFound", $"Không tìm thấy phiếu chỉ định với Id {id}.");
 
+        // Gating thanh toán trước khi thực hiện (ADR 0021, PAY-01): chưa thu phí CLS → không cho nhập kết quả.
+        if (order.PaidAt is null)
+            return Result.Failure<LabOrderDto>(Error.Conflict("Paraclinical.NotPaid",
+                "Phiếu chỉ định chưa được thanh toán phí cận lâm sàng; không thể nhập kết quả."));
+
         var result = order.SetItemResult(
             itemId, NormalizeOptional(request.ResultText), NormalizeOptional(request.Conclusion),
             DateTimeOffset.UtcNow);
@@ -189,6 +194,7 @@ public sealed class LabOrderService : ILabOrderService
             o.Note,
             o.TotalAmount,
             o.InvoicedAt,
+            o.PaidAt,
             o.Items.Select(i => new LabOrderItemDto(
                 i.Id, i.ServicePriceId, i.ServiceName, i.UnitPrice,
                 i.ResultText, i.Conclusion, i.Status, i.ResultedAt)).ToList(),

@@ -85,6 +85,15 @@ public class LabOrder : Entity
     /// </summary>
     public DateTimeOffset? InvoicedAt { get; private set; }
 
+    /// <summary>
+    /// Thời điểm đã thu tiền hoá đơn phí CLS gắn phiếu này — null nếu chưa thu (ADR 0021, PAY-01).
+    /// Cờ gating: chưa thu thì <b>không cho nhập kết quả</b>. Đặt khi thu hoá đơn có <c>Invoice.LabOrderId</c> khớp.
+    /// </summary>
+    public DateTimeOffset? PaidAt { get; private set; }
+
+    /// <summary>Đã thu tiền phí CLS hay chưa (gating nhập kết quả — ADR 0021).</summary>
+    public bool IsPaid => PaidAt is not null;
+
     /// <summary>Cụm mục chỉ định (chỉ đọc từ ngoài; thay cả cụm qua <see cref="ReplaceItems"/>).</summary>
     public IReadOnlyCollection<LabOrderItem> Items => _items.AsReadOnly();
 
@@ -151,6 +160,12 @@ public class LabOrder : Entity
         InvoicedAt = when;
         return Result.Success();
     }
+
+    /// <summary>
+    /// Đánh dấu đã thu tiền phí CLS (idempotent — chỉ đặt lần đầu). Gọi khi thu hoá đơn phí CLS
+    /// gắn phiếu này (<c>Invoice.LabOrderId</c> khớp). Mở cổng nhập kết quả (ADR 0021, PAY-01).
+    /// </summary>
+    public void MarkPaid(DateTimeOffset when) => PaidAt ??= when;
 
     private Result InvalidTransition(string action) => Result.Failure(Error.Conflict(
         "Paraclinical.InvalidTransition",

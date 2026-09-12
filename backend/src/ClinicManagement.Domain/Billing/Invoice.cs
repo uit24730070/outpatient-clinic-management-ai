@@ -20,13 +20,14 @@ public class Invoice : Entity
 
     public Invoice(
         string code, Guid patientId, Guid? encounterId, string? note, IEnumerable<InvoiceItem> items,
-        Guid? appointmentId = null, Guid? visitId = null)
+        Guid? appointmentId = null, Guid? visitId = null, Guid? labOrderId = null)
     {
         Code = code;
         PatientId = patientId;
         EncounterId = encounterId;
         AppointmentId = appointmentId;
         VisitId = visitId;
+        LabOrderId = labOrderId;
         Note = note;
         Status = InvoiceStatus.Draft;
         _items.AddRange(items);
@@ -56,6 +57,12 @@ public class Invoice : Entity
     /// gắn hoá đơn lúc lập. Null với hoá đơn không thuộc lượt nào.
     /// </summary>
     public Guid? VisitId { get; private set; }
+
+    /// <summary>
+    /// Phiếu chỉ định nguồn (khi lập hoá đơn phí CLS từ <c>LabOrder</c>, ADR 0021, PAY-01). Null với hoá đơn
+    /// khác. Không FK cứng (như <see cref="EncounterId"/>) — dùng để đánh dấu phiếu CLS đã thu khi thu hoá đơn.
+    /// </summary>
+    public Guid? LabOrderId { get; private set; }
 
     public InvoiceStatus Status { get; private set; }
 
