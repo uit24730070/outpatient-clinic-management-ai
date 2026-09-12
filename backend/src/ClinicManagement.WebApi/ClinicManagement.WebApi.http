@@ -263,9 +263,20 @@ Content-Type: application/json
   ]
 }
 
-### Chốt phiếu (Draft -> Completed; khép lịch khám + CẤP PHÁT thuốc FEFO)
-# Cho phép cả ba vai trò (Roles.DispenseEncounter). Thiếu tồn -> 409 Pharmacy.InsufficientStock (rollback).
+### Chốt phiếu (Draft -> Completed; khép lịch khám + GIỮ TỒN Reserved) — ADR 0021 PAY-02
+# Bác sĩ/Admin (Roles.RecordEncounter). Chỉ kiểm tồn khả dụng, KHÔNG trừ tồn vật lý.
+# Thiếu tồn khả dụng -> 409 Pharmacy.InsufficientStock (không chốt được).
 POST {{host}}/api/encounters/{{encounterId}}/complete
+Authorization: Bearer {{token}}
+
+### Cấp phát thực (Paid -> Dispensed; trừ tồn FEFO + ghi Dispense) — ADR 0021 PAY-02
+# Dược sĩ/Admin (Roles.ManagePharmacy). Chưa thu tiền -> 409 Pharmacy.NotPaid;
+# không có thuốc gắn danh mục -> 400 Pharmacy.NothingToDispense.
+POST {{host}}/api/encounters/{{encounterId}}/dispense
+Authorization: Bearer {{token}}
+
+### Hàng chờ cấp phát của Dược sĩ (phiếu đã thu tiền thuốc: dispenseStatus=2 Paid)
+GET {{host}}/api/encounters?page=1&pageSize=50&dispenseStatus=2
 Authorization: Bearer {{token}}
 
 ######################## Trợ lý AI ########################
@@ -570,6 +581,8 @@ GET {{host}}/api/lab-orders/{{labOrderId}}
 Authorization: Bearer {{token}}
 
 ### Nhập kết quả cho một mục (đủ mục có kết quả → phiếu Completed)
+# ADR 0021 PAY-01: chưa thu phí CLS -> 409 Paraclinical.NotPaid.
+# Mở cổng bằng cách lập HĐ CLS (§ from-lab-order) rồi thu (POST /api/invoices/{id}/pay).
 POST {{host}}/api/lab-orders/{{labOrderId}}/items/{{labOrderItemId}}/result
 Authorization: Bearer {{token}}
 Content-Type: application/json

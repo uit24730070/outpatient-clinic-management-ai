@@ -926,6 +926,47 @@
        ]
       }
      }
+    },
+    {
+     "name": "Dispense encounter (Pharmacist, ADR 0021)",
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/encounters/{{encounterId}}/dispense",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "encounters",
+        "{{encounterId}}",
+        "dispense"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Pending dispense queue (dispenseStatus=Paid)",
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/encounters?page=1&pageSize=50&dispenseStatus=2",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "encounters"
+       ],
+       "query": [
+        { "key": "page", "value": "1" },
+        { "key": "pageSize", "value": "50" },
+        { "key": "dispenseStatus", "value": "2" }
+       ]
+      }
+     }
     }
    ]
   },
