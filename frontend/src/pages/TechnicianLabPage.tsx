@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { FlaskConical } from 'lucide-react'
 import { listLabOrders } from '../services/labOrderService'
 import { toastError } from '../lib/toast'
+import { useAuth } from '../store/auth'
+import { canRecordEncounter } from '../config/access'
 import { LabOrderStatus, type LabOrder } from '../types/labOrder'
 import { LabOrderCard } from '../components/LabOrderPanel'
 import { PageHeader } from '../components/PageHeader'
@@ -12,6 +14,9 @@ import { Card, CardContent } from '@/components/ui/card'
  * ở trạng thái Đã chỉ định / Đang thực hiện (gồm cả walk-in lẫn phiếu do bác sĩ chỉ định) để nhập kết quả.
  */
 export default function TechnicianLabPage() {
+  const { user } = useAuth()
+  // Huỷ phiếu chỉ định khớp Roles.RecordEncounter (chỉ Admin/Bác sĩ) — Kỹ thuật viên chỉ nhập kết quả.
+  const canCancel = canRecordEncounter(user?.role)
   const [orders, setOrders] = useState<LabOrder[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -62,7 +67,7 @@ export default function TechnicianLabPage() {
                 {o.doctorName && <> · BS chỉ định: {o.doctorName}</>}
                 {!o.encounterId && <> · <span className="text-primary">Walk-in</span></>}
               </div>
-              <LabOrderCard order={o} canRecord onChanged={load} />
+              <LabOrderCard order={o} canRecord canCancel={canCancel} onChanged={load} />
             </div>
           ))}
         </div>

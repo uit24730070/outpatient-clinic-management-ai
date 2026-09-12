@@ -19,6 +19,7 @@ import {
 } from '../types/labOrder'
 import { LabOrderStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ServiceMultiPicker } from './ServiceMultiPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -116,31 +117,7 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
         {canOrder && (
           <div className="rounded-md border p-3">
             <p className="mb-2 text-sm font-medium">Chỉ định dịch vụ</p>
-            {services.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Chưa có dịch vụ cận lâm sàng trong bảng giá.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {services.map((s) => {
-                  const on = picked.includes(s.id)
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => togglePick(s.id)}
-                      className={
-                        on
-                          ? 'rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm text-primary'
-                          : 'rounded-full border px-3 py-1 text-sm text-muted-foreground hover:bg-muted'
-                      }
-                    >
-                      {s.name} · {formatVnd(s.unitPrice)}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+            <ServiceMultiPicker services={services} picked={picked} onToggle={togglePick} />
             {picked.length > 0 && (
               <div className="mt-3 flex items-center gap-2">
                 <Input
@@ -169,6 +146,9 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
                 key={o.id}
                 order={o}
                 canRecord={canRecord}
+                // Panel này chỉ nhúng ở màn khám (canRecord truyền vào = canRecordEncounter của bác sĩ),
+                // nên trùng luôn quyền huỷ phiếu (Roles.RecordEncounter) — khác TechnicianLabPage.
+                canCancel={canRecord}
                 canBill={canBill}
                 onChanged={load}
               />
@@ -187,11 +167,15 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
 export function LabOrderCard({
   order,
   canRecord,
+  canCancel,
   canBill,
   onChanged,
 }: {
   order: LabOrder
+  /** Cho phép nhập/sửa kết quả — khớp Roles.RecordLabResult (Admin/Bác sĩ/Kỹ thuật viên). */
   canRecord: boolean
+  /** Cho phép huỷ phiếu chỉ định — khớp Roles.RecordEncounter (chỉ Admin/Bác sĩ, không gồm Kỹ thuật viên). */
+  canCancel?: boolean
   canBill?: boolean
   onChanged: () => Promise<void>
 }) {
@@ -249,7 +233,7 @@ export function LabOrderCard({
               In
             </Link>
           </Button>
-          {canRecord && active && (
+          {canCancel && active && (
             <ConfirmDialog
               trigger={
                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">

@@ -280,21 +280,25 @@ export default function PatientEncountersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {canBilling && e.status === EncounterStatus.Completed && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={creatingInvoiceFor === e.id}
-                              onClick={() => void createInvoice(e.id)}
-                            >
-                              {creatingInvoiceFor === e.id ? (
-                                <Loader2 className="size-4 animate-spin" />
-                              ) : (
-                                <Receipt className="size-4" />
-                              )}
-                              Lập HĐ thuốc
-                            </Button>
-                          )}
+                          {canBilling &&
+                            e.status === EncounterStatus.Completed &&
+                            (e.medicationInvoicedAt == null ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={creatingInvoiceFor === e.id}
+                                onClick={() => void createInvoice(e.id)}
+                              >
+                                {creatingInvoiceFor === e.id ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                  <Receipt className="size-4" />
+                                )}
+                                Lập HĐ thuốc
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Đã lập HĐ</span>
+                            ))}
                           <Button
                             size="sm"
                             variant="ghost"

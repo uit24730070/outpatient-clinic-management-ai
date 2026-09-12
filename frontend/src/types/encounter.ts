@@ -106,6 +106,8 @@ export interface Encounter {
   medicationPaidAt: string | null
   /** Thời điểm đã cấp phát thuốc (trừ tồn FEFO) — null nếu chưa cấp phát. */
   dispensedAt: string | null
+  /** Thời điểm đã lập hoá đơn thuốc từ phiếu này — null nếu chưa lập. */
+  medicationInvoicedAt: string | null
   createdAt: string
   updatedAt: string | null
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Plus, Trash2, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, CheckCircle2, FlaskConical } from 'lucide-react'
 import {
   completeEncounter,
   createEncounter,
@@ -30,18 +30,12 @@ import { DispenseStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
 import { LabOrderPanel } from './LabOrderPanel'
 import { VitalsCard } from './VitalsCard'
+import { Combobox } from './Combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -354,23 +348,20 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
                   return (
                     <TableRow key={f.id}>
                       <TableCell className="align-top">
-                        <Select
+                        <Combobox
                           value={row?.medicationId ?? OUT}
                           disabled={isCompleted}
                           onValueChange={(v) => onSelectMedication(i, v)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={OUT}>— Ngoài danh mục —</SelectItem>
-                            {medications.map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {m.name} (tồn {m.stockOnHand})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          options={[
+                            { value: OUT, label: '— Ngoài danh mục —' },
+                            ...medications.map((m) => ({
+                              value: m.id,
+                              label: m.name,
+                              description: `Tồn ${m.stockOnHand} ${m.unit}`,
+                            })),
+                          ]}
+                          searchPlaceholder="Tìm thuốc…"
+                        />
                         {med && (
                           <p className={notEnough ? 'mt-1 text-xs text-destructive' : 'mt-1 text-xs text-muted-foreground'}>
                             Tồn khả dụng: {med.stockOnHand} {med.unit}
@@ -468,14 +459,21 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
           </CardContent>
         </Card>
 
-        {/* Cận lâm sàng: chỉ hiện khi phiếu đã tạo (cần encounterId). */}
-        {encounter && (
+        {/* Cận lâm sàng: cần encounterId nên chỉ thao tác được sau khi đã lưu phiếu — báo rõ thay vì ẩn hẳn. */}
+        {encounter ? (
           <LabOrderPanel
             encounterId={encounter.id}
             canOrder={canRecordEncounter && !isCompleted}
             canRecord={canRecordEncounter}
             canBill={canBill}
           />
+        ) : (
+          <Card>
+            <CardContent className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+              <FlaskConical className="size-4" />
+              Lưu phiếu khám (nút "Tạo phiếu") để chỉ định cận lâm sàng.
+            </CardContent>
+          </Card>
         )}
 
         <div className="flex justify-end gap-2">
