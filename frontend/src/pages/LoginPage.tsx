@@ -1,18 +1,30 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Hospital, Loader2 } from 'lucide-react'
+import {
+  Bot,
+  CalendarCheck,
+  Hospital,
+  Loader2,
+  Pill,
+  Stethoscope,
+  Wallet,
+} from 'lucide-react'
 import { useAuth } from '../store/auth'
 import { toApiException } from '../services/apiClient'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
+// Vài nét về nghiệp vụ hệ thống — cho khung đăng nhập "cảm giác phần mềm phòng khám" thay vì
+// một form admin trần trụi bất kỳ (Epic 18, VIS-05).
+const highlights = [
+  { icon: CalendarCheck, label: 'Tiếp đón & hàng đợi khám' },
+  { icon: Stethoscope, label: 'Bệnh án & kê đơn điện tử' },
+  { icon: Pill, label: 'Kho thuốc theo lô, hạn dùng' },
+  { icon: Wallet, label: 'Viện phí & thu ngân' },
+  { icon: Bot, label: 'Trợ lý AI tra cứu nghiệp vụ' },
+]
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -43,20 +55,50 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Hospital className="size-7" />
+      <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-2">
+        {/* Panel thương hiệu — chỉ hiện từ md trở lên, truyền tải "đây là phần mềm phòng khám". */}
+        <div className="hidden flex-col justify-between bg-primary p-8 text-primary-foreground md:flex">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-primary-foreground/15">
+              <Hospital className="size-6" />
+            </div>
+            <div className="leading-tight">
+              <div className="font-bold">Clinic AI</div>
+              <div className="text-sm text-primary-foreground/80">Quản lý phòng khám</div>
+            </div>
           </div>
-          <h1 className="text-xl font-bold">Clinic Management AI</h1>
+
+          <div className="flex flex-col gap-4">
+            <p className="text-lg font-semibold leading-snug">
+              Một hệ thống, trọn quy trình khám ngoại trú.
+            </p>
+            <ul className="flex flex-col gap-2.5">
+              {highlights.map(({ icon: Icon, label }) => (
+                <li key={label} className="flex items-center gap-2.5 text-sm text-primary-foreground/90">
+                  <Icon className="size-4 shrink-0" />
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="text-xs text-primary-foreground/60">Đồ án tốt nghiệp — Clinic Management AI</p>
         </div>
 
-        <Card>
-          <CardHeader>
+        {/* Form đăng nhập */}
+        <div className="flex flex-col justify-center p-6 sm:p-10">
+          <div className="mb-6 flex flex-col items-center gap-2 text-center md:hidden">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Hospital className="size-7" />
+            </div>
+            <h1 className="text-xl font-bold">Clinic AI</h1>
+          </div>
+
+          <CardHeader className="px-0 pt-0">
             <CardTitle>Đăng nhập</CardTitle>
-            <CardDescription>Hệ thống quản lý phòng khám</CardDescription>
+            <CardDescription>Nhập tài khoản được cấp để vào ca làm việc.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
               {error && (
                 <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -90,7 +132,7 @@ export default function LoginPage() {
               </Button>
             </form>
           </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   )
