@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { PackageCheck, Pill, Undo2 } from 'lucide-react'
+import { PackageCheck } from 'lucide-react'
 import { dispenseEncounter, listEncounters, returnStock } from '../services/encounterService'
 import { toastError, toastSuccess } from '../lib/toast'
 import { DispenseStatus, type Encounter } from '../types/encounter'
 import { PageHeader } from '../components/PageHeader'
-import { DispenseStatusBadge } from '../components/StatusBadge'
-import { ConfirmDialog } from '../components/ConfirmDialog'
-import { Button } from '@/components/ui/button'
+import { EncounterDispenseCard } from '../components/EncounterDispenseCard'
 import { Card, CardContent } from '@/components/ui/card'
 
 /**
@@ -65,70 +63,6 @@ export default function PharmacyDispensePage() {
     }
   }
 
-  const renderEncounterCard = (e: Encounter, action: 'dispense' | 'return') => {
-    const meds = e.prescriptionItems.filter((i) => i.medicationId != null)
-    return (
-      <div key={e.id} className="rounded-lg border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="text-sm text-muted-foreground">
-            Bệnh nhân:{' '}
-            <span className="font-medium text-foreground">{e.patientName ?? '—'}</span>
-            {e.doctorName && <> · BS: {e.doctorName}</>}
-          </div>
-          <DispenseStatusBadge status={e.dispenseStatus} />
-        </div>
-
-        <ul className="mb-3 flex flex-col gap-1 text-sm">
-          {meds.map((i, idx) => (
-            <li key={idx} className="flex items-center gap-2">
-              <Pill className="size-3.5 text-primary" />
-              <span className="font-medium">{i.drugName}</span>
-              <span className="text-muted-foreground">
-                · {i.dosage} · SL {i.quantity}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="flex justify-end">
-          {action === 'dispense' ? (
-            <ConfirmDialog
-              trigger={
-                <Button size="sm" disabled={busyId === e.id}>
-                  <PackageCheck className="size-4" />
-                  Cấp phát
-                </Button>
-              }
-              title="Cấp phát thuốc?"
-              description={`Xuất kho theo FEFO cho đơn của ${e.patientName ?? 'bệnh nhân'}? Thao tác trừ tồn thực.`}
-              confirmText="Cấp phát"
-              onConfirm={() => void dispense(e.id)}
-            />
-          ) : (
-            <ConfirmDialog
-              trigger={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-destructive hover:text-destructive"
-                  disabled={busyId === e.id}
-                >
-                  <Undo2 className="size-4" />
-                  Hoàn kho
-                </Button>
-              }
-              title="Hoàn kho đơn thuốc?"
-              description={`Nhập lại tồn đúng lô đã trừ cho đơn của ${e.patientName ?? 'bệnh nhân'}? Thao tác ghi bút toán bù — sổ cái giữ nguyên.`}
-              confirmText="Hoàn kho"
-              destructive
-              onConfirm={() => void doReturnStock(e.id)}
-            />
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
@@ -151,7 +85,16 @@ export default function PharmacyDispensePage() {
                 </CardContent>
               </Card>
             ) : (
-              pendingOrders.map((e) => renderEncounterCard(e, 'dispense'))
+              pendingOrders.map((e) => (
+                <EncounterDispenseCard
+                  key={e.id}
+                  encounter={e}
+                  action="dispense"
+                  busy={busyId === e.id}
+                  onDispense={(id) => void dispense(id)}
+                  onReturnStock={(id) => void doReturnStock(id)}
+                />
+              ))
             )}
           </div>
 
@@ -161,7 +104,16 @@ export default function PharmacyDispensePage() {
               <h2 className="text-base font-semibold text-muted-foreground">
                 Đã cấp phát (có thể hoàn kho)
               </h2>
-              {dispensedOrders.map((e) => renderEncounterCard(e, 'return'))}
+              {dispensedOrders.map((e) => (
+                <EncounterDispenseCard
+                  key={e.id}
+                  encounter={e}
+                  action="return"
+                  busy={busyId === e.id}
+                  onDispense={(id) => void dispense(id)}
+                  onReturnStock={(id) => void doReturnStock(id)}
+                />
+              ))}
             </div>
           )}
         </>

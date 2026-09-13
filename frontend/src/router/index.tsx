@@ -41,6 +41,7 @@ import VitalsPage from '../pages/VitalsPage'
 import DashboardPage from '../pages/DashboardPage'
 import FrontDeskPage from '../pages/FrontDeskPage'
 import NurseWorkspacePage from '../pages/NurseWorkspacePage'
+import PharmacyWorkspacePage from '../pages/PharmacyWorkspacePage'
 
 // Nhóm vai trò khớp RBAC backend (Roles.ManageStaff / Roles.RecordEncounter).
 const MANAGE_STAFF = [UserRole.Admin, UserRole.Receptionist]
@@ -199,6 +200,8 @@ export const router = createBrowserRouter([
               { path: 'pharmacy/alerts', element: <PharmacyAlertsPage /> },
               // Cấp phát thuốc sau thu tiền (ADR 0021, PAY-02).
               { path: 'pharmacy/dispense', element: <PharmacyDispensePage /> },
+              // Workspace Dược sĩ (Epic 17, UX-05) — gộp chờ cấp phát + cảnh báo kho trên 1 màn.
+              { path: 'pharmacy/workspace', element: <PharmacyWorkspacePage /> },
             ],
           },
 

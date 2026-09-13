@@ -79,6 +79,7 @@ export const navItems: NavItem[] = [
   { label: 'Bác sĩ — Một màn', to: '/my-clinic', roles: [UserRole.Doctor], group: NavGroup.Workspace },
   { label: 'Lễ tân — Một màn', to: '/front-desk', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Workspace },
   { label: 'Điều dưỡng — Một màn', to: '/nurse', roles: [UserRole.Admin, UserRole.Nurse], group: NavGroup.Workspace },
+  { label: 'Dược sĩ — Một màn', to: '/pharmacy/workspace', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Workspace },
 
   // Khám bệnh — tiếp đón, lịch, hàng đợi, sinh hiệu, hồ sơ bệnh nhân.
   // Lượt tiếp đón (danh sách + tạo mới) đã gộp vào "Lễ tân — Một màn" (/front-desk) ở trên.
@@ -117,9 +118,9 @@ export const roleLandingPath: Record<UserRoleValue, string> = {
   [UserRole.Admin]: '/dashboard',
   [UserRole.Receptionist]: '/dashboard',
   [UserRole.Doctor]: '/my-clinic',
-  [UserRole.Pharmacist]: '/pharmacy/dispense',
+  [UserRole.Pharmacist]: '/pharmacy/workspace',
   [UserRole.Technician]: '/lab/technician',
-  [UserRole.Nurse]: '/queue',
+  [UserRole.Nurse]: '/nurse',
 }
 
 /** Trang mặc định cho vai trò hiện tại (fallback /appointments nếu thiếu). */
