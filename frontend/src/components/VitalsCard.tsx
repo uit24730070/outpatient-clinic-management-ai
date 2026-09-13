@@ -1,16 +1,54 @@
 import { useEffect, useState } from 'react'
-import { Activity, ChevronDown, ChevronUp } from 'lucide-react'
+import { Activity, ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getVitalsHistory } from '../services/vitalsService'
 import type { Vitals } from '../types/vitals'
+import {
+  bloodPressureTone,
+  pulseTone,
+  respiratoryRateTone,
+  spO2Tone,
+  temperatureTone,
+  worstTone,
+  type VitalTone,
+} from '../lib/vitalsThresholds'
 
-/** Một ô chỉ số sinh hiệu (nhãn + giá trị + đơn vị). */
-function Metric({ label, value, unit }: { label: string; value: string | number | null; unit?: string }) {
+// Ngôn ngữ màu cảnh báo lâm sàng dùng chung với KpiCard — chỉ trực quan hoá, không phải cảnh báo
+// y khoa chính thức (ngưỡng cố định đơn giản, xem `lib/vitalsThresholds.ts`).
+const metricToneClasses: Record<VitalTone, string> = {
+  default: 'border bg-muted/30',
+  warning: 'border-amber-500/40 bg-amber-500/10',
+  danger: 'border-destructive/40 bg-destructive/10',
+}
+const metricValueToneClasses: Record<VitalTone, string> = {
+  default: '',
+  warning: 'text-amber-700 dark:text-amber-400',
+  danger: 'text-destructive',
+}
+
+/** Một ô chỉ số sinh hiệu (nhãn + giá trị + đơn vị), tô cảnh báo khi ngoài ngưỡng tham khảo. */
+function Metric({
+  label,
+  value,
+  unit,
+  tone = 'default',
+}: {
+  label: string
+  value: string | number | null
+  unit?: string
+  tone?: VitalTone
+}) {
   return (
-    <div className="rounded-md border bg-muted/30 px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-medium">
+    <div className={cn('rounded-md px-3 py-2', metricToneClasses[tone])}>
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        {label}
+        {tone !== 'default' && (
+          <TriangleAlert className={cn('size-3', tone === 'danger' ? 'text-destructive' : 'text-amber-600')} />
+        )}
+      </div>
+      <div className={cn('font-medium', metricValueToneClasses[tone])}>
         {value === null || value === '' ? '—' : value}
         {value !== null && value !== '' && unit ? <span className="text-xs text-muted-foreground"> {unit}</span> : null}
       </div>
@@ -93,26 +131,52 @@ export function VitalsCard({ appointmentId }: { appointmentId: string }) {
           <Metric label="Chiều cao" value={latest.heightCm} unit="cm" />
           <Metric label="Cân nặng" value={latest.weightKg} unit="kg" />
           <Metric label="BMI" value={latest.bmi} />
-          <Metric label="Nhiệt độ" value={latest.temperatureC} unit="°C" />
-          <Metric label="Mạch" value={latest.pulse} unit="l/p" />
-          <Metric label="Huyết áp" value={bloodPressure(latest)} unit="mmHg" />
-          <Metric label="SpO2" value={latest.spO2} unit="%" />
-          <Metric label="Nhịp thở" value={latest.respiratoryRate} unit="l/p" />
+          <Metric label="Nhiệt độ" value={latest.temperatureC} unit="°C" tone={temperatureTone(latest.temperatureC)} />
+          <Metric label="Mạch" value={latest.pulse} unit="l/p" tone={pulseTone(latest.pulse)} />
+          <Metric
+            label="Huyết áp"
+            value={bloodPressure(latest)}
+            unit="mmHg"
+            tone={bloodPressureTone(latest.bloodPressureSystolic, latest.bloodPressureDiastolic)}
+          />
+          <Metric label="SpO2" value={latest.spO2} unit="%" tone={spO2Tone(latest.spO2)} />
+          <Metric
+            label="Nhịp thở"
+            value={latest.respiratoryRate}
+            unit="l/p"
+            tone={respiratoryRateTone(latest.respiratoryRate)}
+          />
         </div>
         {latest.notes && <p className="text-sm text-muted-foreground">Ghi chú: {latest.notes}</p>}
 
         {expanded && older.length > 0 && (
           <div className="flex flex-col gap-2 border-t pt-3">
-            {older.map((v) => (
-              <div key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{formatDateTime(v.measuredAt)}</span>
-                {v.temperatureC != null && <span>{v.temperatureC}°C</span>}
-                {bloodPressure(v) != null && <span>HA {bloodPressure(v)}</span>}
-                {v.pulse != null && <span>Mạch {v.pulse}</span>}
-                {v.spO2 != null && <span>SpO2 {v.spO2}%</span>}
-                {v.measuredByName && <span>· {v.measuredByName}</span>}
-              </div>
-            ))}
+            {older.map((v) => {
+              const rowTone = worstTone([
+                temperatureTone(v.temperatureC),
+                pulseTone(v.pulse),
+                spO2Tone(v.spO2),
+                bloodPressureTone(v.bloodPressureSystolic, v.bloodPressureDiastolic),
+                respiratoryRateTone(v.respiratoryRate),
+              ])
+              return (
+                <div
+                  key={v.id}
+                  className={cn(
+                    'flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground',
+                    rowTone !== 'default' && metricValueToneClasses[rowTone],
+                  )}
+                >
+                  <span className="font-medium text-foreground">{formatDateTime(v.measuredAt)}</span>
+                  {v.temperatureC != null && <span>{v.temperatureC}°C</span>}
+                  {bloodPressure(v) != null && <span>HA {bloodPressure(v)}</span>}
+                  {v.pulse != null && <span>Mạch {v.pulse}</span>}
+                  {v.spO2 != null && <span>SpO2 {v.spO2}%</span>}
+                  {v.measuredByName && <span>· {v.measuredByName}</span>}
+                  {rowTone !== 'default' && <TriangleAlert className="size-3" />}
+                </div>
+              )
+            })}
           </div>
         )}
       </CardContent>

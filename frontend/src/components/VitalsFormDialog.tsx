@@ -1,8 +1,17 @@
 import { forwardRef, useEffect, useState, type InputHTMLAttributes } from 'react'
 import { useForm } from 'react-hook-form'
+import { TriangleAlert } from 'lucide-react'
 import { getVitalsHistory, recordVitals } from '../services/vitalsService'
 import { applyServerErrors } from '../lib/form'
 import { toastSuccess } from '../lib/toast'
+import {
+  bloodPressureTone,
+  pulseTone,
+  spO2Tone,
+  temperatureTone,
+  worstTone,
+} from '../lib/vitalsThresholds'
+import { cn } from '@/lib/utils'
 import type { Vitals, VitalsFormValues } from '../types/vitals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -126,20 +135,36 @@ export function VitalsFormDialog({ appointmentId, patientName, onOpenChange, onS
               Đã đo {history.length} lần trước đó
             </span>
             <div className="flex max-h-24 flex-col gap-1 overflow-y-auto">
-              {history.map((v) => (
-                <div key={v.id} className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
-                  <span className="font-medium text-foreground">{formatTime(v.measuredAt)}</span>
-                  {v.temperatureC != null && <span>{v.temperatureC}°C</span>}
-                  {(v.bloodPressureSystolic != null || v.bloodPressureDiastolic != null) && (
-                    <span>
-                      HA {v.bloodPressureSystolic ?? '—'}/{v.bloodPressureDiastolic ?? '—'}
-                    </span>
-                  )}
-                  {v.pulse != null && <span>Mạch {v.pulse}</span>}
-                  {v.spO2 != null && <span>SpO2 {v.spO2}%</span>}
-                  {v.measuredByName && <span>· {v.measuredByName}</span>}
-                </div>
-              ))}
+              {history.map((v) => {
+                const tone = worstTone([
+                  temperatureTone(v.temperatureC),
+                  pulseTone(v.pulse),
+                  spO2Tone(v.spO2),
+                  bloodPressureTone(v.bloodPressureSystolic, v.bloodPressureDiastolic),
+                ])
+                return (
+                  <div
+                    key={v.id}
+                    className={cn(
+                      'flex flex-wrap items-center gap-x-2 text-muted-foreground',
+                      tone === 'danger' && 'text-destructive',
+                      tone === 'warning' && 'text-amber-700 dark:text-amber-400',
+                    )}
+                  >
+                    <span className="font-medium text-foreground">{formatTime(v.measuredAt)}</span>
+                    {v.temperatureC != null && <span>{v.temperatureC}°C</span>}
+                    {(v.bloodPressureSystolic != null || v.bloodPressureDiastolic != null) && (
+                      <span>
+                        HA {v.bloodPressureSystolic ?? '—'}/{v.bloodPressureDiastolic ?? '—'}
+                      </span>
+                    )}
+                    {v.pulse != null && <span>Mạch {v.pulse}</span>}
+                    {v.spO2 != null && <span>SpO2 {v.spO2}%</span>}
+                    {v.measuredByName && <span>· {v.measuredByName}</span>}
+                    {tone !== 'default' && <TriangleAlert className="size-3" />}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

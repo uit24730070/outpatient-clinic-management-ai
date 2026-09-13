@@ -74,13 +74,14 @@ export default function PharmacyAlertsPage() {
                     <TableHead>Tên thuốc</TableHead>
                     <TableHead>Tồn</TableHead>
                     <TableHead>Ngưỡng</TableHead>
+                    <TableHead>Trạng thái</TableHead>
                     <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.lowStock.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-16 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="h-16 text-center text-muted-foreground">
                         Không có thuốc tồn thấp.
                       </TableCell>
                     </TableRow>
@@ -93,6 +94,11 @@ export default function PharmacyAlertsPage() {
                         {m.stockOnHand} {m.unit}
                       </TableCell>
                       <TableCell>{m.reorderLevel}</TableCell>
+                      <TableCell>
+                        <TonedBadge tone={m.stockOnHand <= 0 ? 'red' : 'amber'}>
+                          {m.stockOnHand <= 0 ? 'Hết hàng' : 'Tồn thấp'}
+                        </TonedBadge>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button asChild size="sm" variant="ghost">
                           <Link to="/stock-receipts/new">
