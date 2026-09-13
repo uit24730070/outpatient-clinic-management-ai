@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FlaskConical } from 'lucide-react'
+import { Activity, Clock, FlaskConical } from 'lucide-react'
 import { listLabOrders } from '../services/labOrderService'
 import { toastError } from '../lib/toast'
 import { useAuth } from '../store/auth'
@@ -7,6 +7,8 @@ import { canRecordEncounter } from '../config/access'
 import { LabOrderStatus, type LabOrder } from '../types/labOrder'
 import { LabOrderCard } from '../components/LabOrderPanel'
 import { PageHeader } from '../components/PageHeader'
+import { PatientContextHeader } from '../components/PatientContextHeader'
+import { WorkspaceSummaryBar } from '../components/workspace/WorkspaceSummaryBar'
 import { Card, CardContent } from '@/components/ui/card'
 
 /**
@@ -46,7 +48,22 @@ export default function TechnicianLabPage() {
     <section className="flex flex-col gap-4">
       <PageHeader
         title="Thực hiện cận lâm sàng"
-        description="Hàng chờ các phiếu chỉ định cần thực hiện và nhập kết quả."
+        description="Hàng chờ các phiếu chỉ định cần thực hiện và nhập kết quả — một màn (UX-06)."
+      />
+
+      <WorkspaceSummaryBar
+        items={[
+          {
+            icon: Clock,
+            label: 'Chờ thực hiện',
+            value: String(orders.filter((o) => o.status === LabOrderStatus.Ordered).length),
+          },
+          {
+            icon: Activity,
+            label: 'Đang thực hiện',
+            value: String(orders.filter((o) => o.status === LabOrderStatus.InProgress).length),
+          },
+        ]}
       />
 
       {loading ? (
@@ -62,10 +79,17 @@ export default function TechnicianLabPage() {
         <div className="flex flex-col gap-3">
           {orders.map((o) => (
             <div key={o.id} className="rounded-lg border bg-card p-3">
-              <div className="mb-2 text-sm text-muted-foreground">
-                Bệnh nhân: <span className="font-medium text-foreground">{o.patientName ?? '—'}</span>
-                {o.doctorName && <> · BS chỉ định: {o.doctorName}</>}
-                {!o.encounterId && <> · <span className="text-primary">Walk-in</span></>}
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <PatientContextHeader patientId={o.patientId} fallbackName={o.patientName} variant="inline" />
+                <div className="text-sm text-muted-foreground">
+                  {o.doctorName && <>BS chỉ định: {o.doctorName}</>}
+                  {!o.encounterId && (
+                    <>
+                      {o.doctorName && ' · '}
+                      <span className="text-primary">Walk-in</span>
+                    </>
+                  )}
+                </div>
               </div>
               <LabOrderCard order={o} canRecord canCancel={canCancel} onChanged={load} />
             </div>
