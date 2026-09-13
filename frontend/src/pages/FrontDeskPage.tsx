@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PhoneCall, Plus, Receipt, RefreshCw, X } from 'lucide-react'
+import { Clock, PhoneCall, Plus, Receipt, RefreshCw, Wallet, X } from 'lucide-react'
 import { getVisit, listVisits } from '../services/visitService'
 import { getInvoicesByVisit, payVisitInvoices } from '../services/invoiceService'
 import { listQueue, transitionQueueTicket } from '../services/queueService'
@@ -24,6 +24,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { VisitForm } from '../components/VisitForm'
 import { useWorkspaceTabs } from '../components/workspace/useWorkspaceTabs'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
+import { WorkspaceSummaryBar } from '../components/workspace/WorkspaceSummaryBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -192,6 +193,7 @@ export default function FrontDeskPage() {
   const [visitPage, setVisitPage] = useState(1)
   const [visitData, setVisitData] = useState<PagedResult<VisitListItem> | null>(null)
   const [queue, setQueue] = useState<QueueTicket[]>([])
+  const [openTodayCount, setOpenTodayCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const { tabs, active, setActive, openTab, closeTab } = useWorkspaceTabs<FrontDeskTab>()
 
@@ -201,7 +203,7 @@ export default function FrontDeskPage() {
     setLoading(true)
     try {
       const today = todayLocal()
-      const [v, q] = await Promise.all([
+      const [v, q, openToday] = await Promise.all([
         listVisits({
           page: visitPage,
           pageSize: PAGE_SIZE,
@@ -209,9 +211,12 @@ export default function FrontDeskPage() {
           status: visitStatus === ALL_STATUS ? undefined : (Number(visitStatus) as VisitListItem['status']),
         }),
         listQueue({ date: today }),
+        // Đếm riêng, không phụ thuộc bộ lọc bảng bên dưới — để thẻ tóm tắt luôn phản ánh đúng "hôm nay".
+        listVisits({ page: 1, pageSize: 1, date: today, status: VisitStatus.Open }),
       ])
       setVisitData(v)
       setQueue(q)
+      setOpenTodayCount(openToday.totalCount)
     } catch (err) {
       toastError(err)
     } finally {
@@ -257,6 +262,13 @@ export default function FrontDeskPage() {
             </Button>
           </div>
         }
+      />
+
+      <WorkspaceSummaryBar
+        items={[
+          { icon: Clock, label: 'Đang chờ/đã gọi', value: String(waiting.length) },
+          { icon: Wallet, label: 'Lượt đang mở hôm nay', value: String(openTodayCount) },
+        ]}
       />
 
       {queueManage && (

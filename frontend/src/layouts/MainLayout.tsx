@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../store/auth'
 import { roleLabels } from '../types/auth'
 import { navGroupsFor } from '../config/access'
+import { useAttentionBadges } from '../hooks/useAttentionBadges'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
@@ -34,6 +35,22 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Toaster } from '@/components/ui/sonner'
 
+const toneBadgeClasses: Record<'default' | 'warning' | 'danger', string> = {
+  default: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15',
+  warning:
+    'border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400',
+  danger: 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15',
+}
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString('vi-VN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
 // Icon theo đường dẫn nav — tra cứu để không phải sửa config/access.ts (nguồn sự thật RBAC).
 const navIcons: Record<string, typeof Calendar> = {
   '/my-clinic': Hospital,
@@ -45,6 +62,9 @@ const navIcons: Record<string, typeof Calendar> = {
   '/medications': Pill,
   '/stock-receipts': PackagePlus,
   '/pharmacy/alerts': TriangleAlert,
+  '/pharmacy/workspace': Pill,
+  '/nurse': Hospital,
+  '/front-desk': Hospital,
   '/invoices': Receipt,
   '/service-prices': Banknote,
   '/assistant': Bot,
@@ -58,9 +78,10 @@ function initials(name: string): string {
 }
 
 export default function MainLayout() {
-  const { user, logout } = useAuth()
+  const { user, doctorId, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const attentionBadges = useAttentionBadges(user?.role, doctorId)
 
   const onLogout = () => {
     logout()
@@ -146,7 +167,28 @@ export default function MainLayout() {
             </SheetContent>
           </Sheet>
 
+          <p className="hidden text-sm capitalize text-muted-foreground md:block">{todayLabel()}</p>
+
           <div className="flex-1" />
+
+          {attentionBadges.length > 0 && (
+            <div className="flex items-center gap-2">
+              {attentionBadges.map((badge) => (
+                <Button
+                  key={badge.key}
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn('h-8 gap-1.5 rounded-full border px-3', toneBadgeClasses[badge.tone ?? 'default'])}
+                >
+                  <NavLink to={badge.to}>
+                    <span className="font-semibold tabular-nums">{badge.count}</span>
+                    <span className="hidden sm:inline">{badge.label}</span>
+                  </NavLink>
+                </Button>
+              ))}
+            </div>
+          )}
 
           {user && (
             <DropdownMenu>

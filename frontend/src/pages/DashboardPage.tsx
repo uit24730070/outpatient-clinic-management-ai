@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import {
-  Users,
-  Stethoscope,
-  ClipboardList,
-  Wallet,
-  Clock,
-  CalendarDays,
-  type LucideIcon,
-} from 'lucide-react'
+import { Users, Stethoscope, ClipboardList, Wallet, Clock, CalendarDays } from 'lucide-react'
 import { toastError } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import {
@@ -23,6 +15,7 @@ import type {
   RevenueReport,
 } from '../types/report'
 import { PageHeader } from '../components/PageHeader'
+import { KpiCard } from '@/components/KpiCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,22 +40,6 @@ function isoDate(d: Date): string {
 function shortDay(iso: string): string {
   const [, m, d] = iso.split('-')
   return `${d}/${m}`
-}
-
-function KpiCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="size-5" />
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
 }
 
 export default function DashboardPage() {

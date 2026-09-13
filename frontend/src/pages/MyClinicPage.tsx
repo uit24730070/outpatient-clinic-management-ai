@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { History, Play, RefreshCw, Stethoscope, TriangleAlert } from 'lucide-react'
+import { CalendarClock, History, Play, RefreshCw, Stethoscope, TriangleAlert, Users } from 'lucide-react'
 import { listAppointments, transitionAppointment } from '../services/appointmentService'
 import { listQueue } from '../services/queueService'
 import { useAuth } from '../store/auth'
@@ -12,6 +12,7 @@ import { AppointmentStatusBadge, QueueTicketStatusBadge } from '../components/St
 import { EncounterForm } from '../components/EncounterForm'
 import { useWorkspaceTabs } from '../components/workspace/useWorkspaceTabs'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
+import { WorkspaceSummaryBar } from '../components/workspace/WorkspaceSummaryBar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -151,6 +152,22 @@ export default function MyClinicPage() {
             Làm mới
           </Button>
         }
+      />
+
+      <WorkspaceSummaryBar
+        items={[
+          {
+            icon: Users,
+            label: 'Đã tiếp đón, chờ khám',
+            value: String(items.filter((a) => a.status === AppointmentStatus.CheckedIn).length),
+          },
+          {
+            icon: Stethoscope,
+            label: 'Đang khám',
+            value: String(items.filter((a) => a.status === AppointmentStatus.InProgress).length),
+          },
+          { icon: CalendarClock, label: 'Lịch hôm nay còn lại', value: String(upcoming.length) },
+        ]}
       />
 
       <Card>

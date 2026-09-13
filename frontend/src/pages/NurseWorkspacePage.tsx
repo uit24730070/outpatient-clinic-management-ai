@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Check, PhoneCall, Play, RefreshCw, SkipForward } from 'lucide-react'
+import { Activity, Check, CheckCheck, Clock, PhoneCall, Play, RefreshCw, SkipForward } from 'lucide-react'
 import { listQueue, transitionQueueTicket, type QueueAction } from '../services/queueService'
 import { toastError, toastSuccess } from '../lib/toast'
 import { QueueTicketStatus, type QueueTicket } from '../types/queue'
 import { PageHeader } from '../components/PageHeader'
 import { QueueTicketStatusBadge } from '../components/StatusBadge'
 import { VitalsFormDialog } from '../components/VitalsFormDialog'
+import { WorkspaceSummaryBar } from '../components/workspace/WorkspaceSummaryBar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -90,6 +91,30 @@ export default function NurseWorkspacePage() {
             Làm mới
           </Button>
         }
+      />
+
+      <WorkspaceSummaryBar
+        items={[
+          {
+            icon: Clock,
+            label: 'Đang chờ',
+            value: String(tickets.filter((t) => t.status === QueueTicketStatus.Waiting).length),
+          },
+          {
+            icon: Activity,
+            label: 'Đã gọi/đang khám',
+            value: String(
+              tickets.filter(
+                (t) => t.status === QueueTicketStatus.Called || t.status === QueueTicketStatus.InProgress,
+              ).length,
+            ),
+          },
+          {
+            icon: CheckCheck,
+            label: 'Hoàn tất hôm nay',
+            value: String(tickets.filter((t) => t.status === QueueTicketStatus.Done).length),
+          },
+        ]}
       />
 
       <Card>
