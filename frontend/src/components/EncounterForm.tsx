@@ -29,6 +29,7 @@ import { PageHeader } from './PageHeader'
 import { DispenseStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
 import { LabOrderPanel } from './LabOrderPanel'
+import { PatientContextHeader } from './PatientContextHeader'
 import { VitalsCard } from './VitalsCard'
 import { Combobox } from './Combobox'
 import { Button } from '@/components/ui/button'
@@ -113,6 +114,7 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
   const canBill = canManageBilling(user?.role)
 
   const [encounter, setEncounter] = useState<Encounter | null>(null)
+  const [patientId, setPatientId] = useState('')
   const [patientName, setPatientName] = useState('')
   const [doctorName, setDoctorName] = useState('')
   const [medications, setMedications] = useState<Medication[]>([])
@@ -143,6 +145,7 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
         }
         const appt = await getAppointment(appointmentId)
         if (active) {
+          setPatientId(appt.patientId)
           setPatientName(appt.patientName ?? '—')
           setDoctorName(appt.doctorName ?? '—')
         }
@@ -256,6 +259,12 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
             </>
           }
         />
+      )}
+
+      {patientId && (
+        <div className="mb-4">
+          <PatientContextHeader patientId={patientId} fallbackName={patientName} />
+        </div>
       )}
 
       <div className="mb-4">

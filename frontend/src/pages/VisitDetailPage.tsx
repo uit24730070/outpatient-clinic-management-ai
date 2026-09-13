@@ -37,6 +37,7 @@ import {
   VisitStatusBadge,
 } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PatientContextHeader } from '../components/PatientContextHeader'
 import { Combobox } from '../components/Combobox'
 import { ServiceMultiPicker } from '../components/ServiceMultiPicker'
 import { Button } from '@/components/ui/button'
@@ -349,6 +350,8 @@ export default function VisitDetailPage() {
           </div>
         }
       />
+
+      <PatientContextHeader patientId={visit.patientId} fallbackName={visit.patientName} />
 
       {/* Tổng viện phí gom cả lượt */}
       <Card>
