@@ -1,5 +1,6 @@
 using ClinicManagement.Application.Common.Interfaces;
 using ClinicManagement.Application.Queue.Dtos;
+using ClinicManagement.Domain.Appointments;
 using ClinicManagement.Domain.Queue;
 using ClinicManagement.Shared.Results;
 using Microsoft.EntityFrameworkCore;
@@ -86,8 +87,30 @@ public sealed class QueueService : IQueueService
         return (await ProjectByIdAsync(ticket.Id, ct))!;
     }
 
-    public Task<Result<QueueTicketDto>> CallAsync(Guid id, CancellationToken ct = default)
-        => TransitionAsync(id, t => t.Call(), ct);
+    /// <summary>
+    /// Gọi số (Waiting → Called). Gộp luôn Check-in lịch khám gắn vé (Scheduled → CheckedIn, nếu có)
+    /// để bác sĩ thấy ngay ở /my-clinic — khỏi phải thao tác Check-in thủ công riêng ở màn khác.
+    /// </summary>
+    public async Task<Result<QueueTicketDto>> CallAsync(Guid id, CancellationToken ct = default)
+    {
+        var ticket = await _db.QueueTickets.FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (ticket is null)
+            return Error.NotFound("Queue.NotFound", $"Không tìm thấy vé hàng đợi với Id {id}.");
+
+        var result = ticket.Call();
+        if (result.IsFailure)
+            return Result.Failure<QueueTicketDto>(result.Error);
+
+        if (ticket.AppointmentId is { } appointmentId)
+        {
+            var appointment = await _db.Appointments.FirstOrDefaultAsync(a => a.Id == appointmentId, ct);
+            if (appointment is { Status: AppointmentStatus.Scheduled })
+                appointment.CheckIn();
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return (await ProjectByIdAsync(ticket.Id, ct))!;
+    }
 
     public Task<Result<QueueTicketDto>> StartAsync(Guid id, CancellationToken ct = default)
         => TransitionAsync(id, t => t.Start(), ct);
