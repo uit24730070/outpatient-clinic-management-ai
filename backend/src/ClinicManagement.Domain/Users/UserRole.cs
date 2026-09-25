@@ -6,7 +6,7 @@ public enum UserRole
     /// <summary>Quản trị hệ thống — toàn quyền.</summary>
     Admin = 0,
 
-    /// <summary>Lễ tân — tiếp đón, quản lý bệnh nhân/đặt lịch.</summary>
+    /// <summary>Lễ tân — tiếp nhận, quản lý bệnh nhân/đặt lịch.</summary>
     Receptionist = 1,
 
     /// <summary>Bác sĩ — khám và xem hồ sơ liên quan.</summary>
@@ -18,6 +18,6 @@ public enum UserRole
     /// <summary>Kỹ thuật viên — thực hiện dịch vụ cận lâm sàng và nhập kết quả (ADR 0016).</summary>
     Technician = 4,
 
-    /// <summary>Điều dưỡng — nhập sinh hiệu sau tiếp đón và điều phối hàng đợi khám (ADR 0019).</summary>
+    /// <summary>Điều dưỡng — nhập sinh hiệu sau tiếp nhận và điều phối hàng đợi khám (ADR 0019).</summary>
     Nurse = 5
 }

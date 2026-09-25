@@ -24,7 +24,7 @@ public sealed class ListDoctorsTool : IAssistantTool
         var query = args.GetString("query");
         var limit = Math.Clamp(args.GetInt("limit") ?? 20, 1, 50);
 
-        var result = await _doctors.GetListAsync(1, limit, query, ct);
+        var result = await _doctors.GetListAsync(1, limit, query, ct: ct);
         if (result.IsFailure)
             return ToolJson.Error(result.Error.Message);
 

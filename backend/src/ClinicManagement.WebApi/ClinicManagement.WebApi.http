@@ -610,10 +610,10 @@ POST {{host}}/api/invoices/from-lab-order/{{labOrderId}}
 Authorization: Bearer {{token}}
 
 ###############################################
-# Lượt tiếp đón (Visit) — ADR 0017
+# Lượt tiếp nhận (Visit) — ADR 0017
 ###############################################
 
-### Tạo lượt tiếp đón + nhiều dịch vụ khám (walk-in; RBAC ManageStaff)
+### Tạo lượt tiếp nhận + nhiều dịch vụ khám (walk-in; RBAC ManageStaff)
 POST {{host}}/api/visits
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -651,7 +651,7 @@ Authorization: Bearer {{token}}
 POST {{host}}/api/visits/{{visitId}}/cancel
 Authorization: Bearer {{token}}
 
-### Gom hoá đơn theo lượt tiếp đón + tổng (ADR 0017)
+### Gom hoá đơn theo lượt tiếp nhận + tổng (ADR 0017)
 GET {{host}}/api/invoices/by-visit/{{visitId}}
 Authorization: Bearer {{token}}
 

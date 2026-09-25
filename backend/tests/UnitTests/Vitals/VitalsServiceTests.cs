@@ -110,7 +110,7 @@ public sealed class VitalsServiceTests
         Assert.Empty(result.Value);
     }
 
-    // ── Sinh hiệu gom theo Lượt tiếp đón (nhiều dịch vụ khám cùng lượt dùng chung lịch sử đo) ──
+    // ── Sinh hiệu gom theo Lượt tiếp nhận (nhiều dịch vụ khám cùng lượt dùng chung lịch sử đo) ──
 
     private static VitalsService CreateServiceWithVisit(
         out TestDbContext db, out Guid apptId1, out Guid apptId2, out Guid patientId)

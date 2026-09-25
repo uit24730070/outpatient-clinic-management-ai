@@ -10,7 +10,7 @@ using UnitTests.Common;
 
 namespace UnitTests.Billing;
 
-/// <summary>Gom & thu viện phí theo lượt tiếp đón (ADR 0017): Invoice.VisitId suy từ lịch gắn hoá đơn.</summary>
+/// <summary>Gom & thu viện phí theo lượt tiếp nhận (ADR 0017): Invoice.VisitId suy từ lịch gắn hoá đơn.</summary>
 public sealed class VisitBillingTests
 {
     private static readonly DateTimeOffset Base = new(2026, 9, 20, 8, 0, 0, TimeSpan.Zero);

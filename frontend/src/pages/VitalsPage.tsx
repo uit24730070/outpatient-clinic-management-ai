@@ -40,7 +40,7 @@ export default function VitalsPage() {
         (a) =>
           a.status === AppointmentStatus.CheckedIn || a.status === AppointmentStatus.InProgress,
       )
-      // Gom theo Lượt tiếp đón — sinh hiệu chỉ đo MỘT LẦN cho cả lượt (nhiều dịch vụ khám/chuyên khoa
+      // Gom theo Lượt tiếp nhận — sinh hiệu chỉ đo MỘT LẦN cho cả lượt (nhiều dịch vụ khám/chuyên khoa
       // cùng lần đến dùng chung), nên chỉ hiện 1 dòng/lượt (giữ lịch đầu tiên làm đại diện để mở form).
       const byGroup = new Map<string, Appointment>()
       for (const a of checkedIn) {
@@ -61,7 +61,7 @@ export default function VitalsPage() {
 
   return (
     <section>
-      <PageHeader title="Sinh hiệu" description="Nhập sinh hiệu cho bệnh nhân đã tiếp đón" />
+      <PageHeader title="Sinh hiệu" description="Nhập sinh hiệu cho bệnh nhân đã tiếp nhận" />
 
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center gap-3">
@@ -98,7 +98,7 @@ export default function VitalsPage() {
               {!loading && appointments.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                    Không có bệnh nhân đã tiếp đón trong ngày.
+                    Không có bệnh nhân đã tiếp nhận trong ngày.
                   </TableCell>
                 </TableRow>
               )}

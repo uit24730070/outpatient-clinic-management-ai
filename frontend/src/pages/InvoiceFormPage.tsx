@@ -63,7 +63,7 @@ export default function InvoiceFormPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // Chế độ tiếp đón: điều hướng từ một lượt khám kèm ?patientId=&appointmentId=
+  // Chế độ tiếp nhận: điều hướng từ một lượt khám kèm ?patientId=&appointmentId=
   // → khoá bệnh nhân + gắn hoá đơn vào lượt.
   const prefillPatientId = searchParams.get('patientId')
   const prefillAppointmentId = searchParams.get('appointmentId')
@@ -114,7 +114,7 @@ export default function InvoiceFormPage() {
             })
           }
         } else if (prefillPatientId) {
-          // Tiếp đón: nạp tên bệnh nhân để hiển thị + đặt sẵn patientId (khoá field).
+          // Tiếp nhận: nạp tên bệnh nhân để hiển thị + đặt sẵn patientId (khoá field).
           const p = await getPatient(prefillPatientId)
           if (active) {
             setPatientName(`${p.fullName} (${p.code})`)
@@ -132,7 +132,7 @@ export default function InvoiceFormPage() {
     }
   }, [id, reset, prefillPatientId, setValue])
 
-  // Lượt tiếp đón (tuỳ chọn, UX-05 — lập hoá đơn ở cấp Lượt): tự nạp sẵn dòng dịch vụ khám + phiếu CLS
+  // Lượt tiếp nhận (tuỳ chọn, UX-05 — lập hoá đơn ở cấp Lượt): tự nạp sẵn dòng dịch vụ khám + phiếu CLS
   // chưa lập hoá đơn của lượt vào hoá đơn (thay vì phải chọn lại từ đầu) — dựa thẳng vào cờ
   // Appointment.invoicedAt (đáng tin cậy, không suy diễn qua Invoice.appointmentId neo).
   useEffect(() => {
@@ -266,7 +266,7 @@ export default function InvoiceFormPage() {
           prefillVisitId
             ? 'Đã tự nạp sẵn các dịch vụ khám + CLS chưa lập hoá đơn của lượt — rà lại rồi tạo hoá đơn.'
             : prefillAppointmentId
-              ? 'Hoá đơn gắn với lượt tiếp đón — chọn dịch vụ từ bảng giá (khám/tái khám/CLS).'
+              ? 'Hoá đơn gắn với lượt tiếp nhận — chọn dịch vụ từ bảng giá (khám/tái khám/CLS).'
               : undefined
         }
       />

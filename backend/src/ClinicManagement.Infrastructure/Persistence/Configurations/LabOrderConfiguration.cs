@@ -22,7 +22,7 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
             .IsRequired();
         builder.HasIndex(o => o.Code).IsUnique();
 
-        // Tra phiếu chỉ định theo phiếu khám / bệnh nhân / lượt tiếp đón (walk-in).
+        // Tra phiếu chỉ định theo phiếu khám / bệnh nhân / lượt tiếp nhận (walk-in).
         builder.HasIndex(o => o.EncounterId);
         builder.HasIndex(o => o.PatientId);
         builder.HasIndex(o => o.AppointmentId);

@@ -64,7 +64,7 @@ public sealed class VitalsService : IVitalsService
     }
 
     /// <summary>
-    /// Mọi lần đo của lịch khám — nếu lịch thuộc một Lượt tiếp đón thì gom theo <c>VisitId</c> (dùng chung
+    /// Mọi lần đo của lịch khám — nếu lịch thuộc một Lượt tiếp nhận thì gom theo <c>VisitId</c> (dùng chung
     /// cho mọi dịch vụ khám trong lượt), ngược lại gom theo chính <c>AppointmentId</c> (lịch lẻ).
     /// </summary>
     private async Task<IQueryable<Domain.Clinical.Vitals>> BuildQueryAsync(Guid appointmentId, CancellationToken ct)

@@ -10,7 +10,7 @@ using UnitTests.Common;
 namespace UnitTests.Encounters;
 
 /// <summary>
-/// Tự đóng lượt tiếp đón khi dịch vụ khám cuối cùng của lượt hoàn tất (chốt phiếu) — coi như bác sĩ đã
+/// Tự đóng lượt tiếp nhận khi dịch vụ khám cuối cùng của lượt hoàn tất (chốt phiếu) — coi như bác sĩ đã
 /// xong việc, chuyển bệnh nhân xuống quầy thuốc/thu ngân (thanh toán/cấp phát độc lập với VisitStatus).
 /// Chỉ kích hoạt tại thời điểm chốt phiếu — Huỷ/Không đến ở lịch khác cùng lượt không tự kích hoạt lại
 /// kiểm tra (vẫn còn nút "Đóng lượt" thủ công cho các trường hợp đó).
@@ -109,7 +109,7 @@ public sealed class EncounterAutoCloseVisitTests
         var doctor = new Doctor("BS-000002", "BS. Lẻ", Guid.NewGuid(), null, null);
         db.Patients.Add(patient);
         db.Doctors.Add(doctor);
-        // Lịch lẻ, không gắn lượt tiếp đón nào (visitId = null).
+        // Lịch lẻ, không gắn lượt tiếp nhận nào (visitId = null).
         var appt = new Appointment(patient.Id, doctor.Id, Base.AddHours(3), Base.AddHours(3).AddMinutes(30), null);
         appt.CheckIn();
         appt.Start();

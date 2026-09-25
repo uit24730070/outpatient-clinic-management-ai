@@ -34,7 +34,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.HasIndex(a => new { a.DoctorId, a.StartTime });
         builder.HasIndex(a => a.PatientId);
 
-        // Lượt tiếp đón gom lịch (ADR 0017) — nullable, hỗ trợ gom lịch theo lượt.
+        // Lượt tiếp nhận gom lịch (ADR 0017) — nullable, hỗ trợ gom lịch theo lượt.
         builder.HasIndex(a => a.VisitId);
         builder.HasOne<Visit>()
             .WithMany()

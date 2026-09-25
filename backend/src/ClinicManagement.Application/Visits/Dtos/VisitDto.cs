@@ -5,7 +5,7 @@ using ClinicManagement.Domain.Visits;
 namespace ClinicManagement.Application.Visits.Dtos;
 
 /// <summary>
-/// Chi tiết một lượt tiếp đón: các dịch vụ khám (appointment con) + tổng viện phí gom cả lượt
+/// Chi tiết một lượt tiếp nhận: các dịch vụ khám (appointment con) + tổng viện phí gom cả lượt
 /// (tính phía server từ các hoá đơn gắn với lịch trong lượt). Hoá đơn đã huỷ không tính vào
 /// <see cref="TotalBilled"/> (ADR 0017).
 /// </summary>
@@ -33,7 +33,7 @@ public sealed record VisitLabOrderDto(
     DateTimeOffset? InvoicedAt,
     int ItemCount);
 
-/// <summary>Dòng danh sách lượt tiếp đón (nhẹ, không nạp chi tiết dịch vụ/viện phí).</summary>
+/// <summary>Dòng danh sách lượt tiếp nhận (nhẹ, không nạp chi tiết dịch vụ/viện phí).</summary>
 public sealed record VisitListItemDto(
     Guid Id,
     string Code,

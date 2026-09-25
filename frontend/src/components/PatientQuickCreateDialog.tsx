@@ -33,7 +33,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 /**
- * Hộp thoại tạo nhanh bệnh nhân mới ngay trong luồng khác (vd tiếp đón), tránh
+ * Hộp thoại tạo nhanh bệnh nhân mới ngay trong luồng khác (vd tiếp nhận), tránh
  * lễ tân phải rời màn sang `/patients/new` rồi quay lại chọn lại bệnh nhân.
  * Dùng chung 1 request `createPatient` với `PatientFormPage`.
  */

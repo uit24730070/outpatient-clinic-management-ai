@@ -24,7 +24,7 @@ public sealed class SearchPatientsTool : IAssistantTool
         var query = args.GetString("query");
         var limit = Math.Clamp(args.GetInt("limit") ?? 10, 1, 20);
 
-        var result = await _patients.GetListAsync(1, limit, query, ct);
+        var result = await _patients.GetListAsync(1, limit, query, ct: ct);
         if (result.IsFailure)
             return ToolJson.Error(result.Error.Message);
 

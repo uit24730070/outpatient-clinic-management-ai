@@ -51,14 +51,14 @@ public static class Roles
     public const string RecordLabResult = Admin + "," + Doctor + "," + Technician;
 
     /// <summary>
-    /// Nhóm được phép nhập/cập nhật sinh hiệu (vitals) sau tiếp đón: Admin và Điều dưỡng (ADR 0019).
+    /// Nhóm được phép nhập/cập nhật sinh hiệu (vitals) sau tiếp nhận: Admin và Điều dưỡng (ADR 0019).
     /// Bác sĩ chỉ <b>đọc</b> sinh hiệu trong bệnh án (không ghi qua vai trò này).
     /// </summary>
     public const string RecordVitals = Admin + "," + Nurse;
 
     /// <summary>
     /// Nhóm được phép điều phối hàng đợi khám (lấy số, gọi số, chuyển trạng thái vé): Admin, Lễ tân và
-    /// Điều dưỡng (ADR 0019). Lễ tân lấy số khi tiếp đón; Điều dưỡng gọi/điều phối phòng.
+    /// Điều dưỡng (ADR 0019). Lễ tân lấy số khi tiếp nhận; Điều dưỡng gọi/điều phối phòng.
     /// </summary>
     public const string ManageQueue = Admin + "," + Receptionist + "," + Nurse;
 }

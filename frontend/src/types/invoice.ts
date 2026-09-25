@@ -134,7 +134,7 @@ export interface AppointmentInvoices {
   totalOutstanding: number
 }
 
-/** Gom hoá đơn theo lượt tiếp đón + tổng (khớp VisitInvoicesDto backend, ADR 0017). */
+/** Gom hoá đơn theo lượt tiếp nhận + tổng (khớp VisitInvoicesDto backend, ADR 0017). */
 export interface VisitInvoices {
   visitId: string
   invoices: Invoice[]
@@ -154,7 +154,7 @@ export interface CreateInvoiceInput {
   note: string | null
   items: InvoiceItemInput[]
   /**
-   * Các dịch vụ khám được thu trong hoá đơn này (tuỳ chọn, có thể nhiều — gộp cấp Lượt tiếp đón);
+   * Các dịch vụ khám được thu trong hoá đơn này (tuỳ chọn, có thể nhiều — gộp cấp Lượt tiếp nhận);
    * để trống/undefined với vãng lai/chỉ-CLS. Mỗi dịch vụ khám chỉ lập được một lần.
    */
   appointmentIds?: string[]

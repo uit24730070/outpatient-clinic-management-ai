@@ -73,7 +73,7 @@ function bloodPressure(v: Vitals): string | number | null {
 
 /**
  * Thẻ hiển thị sinh hiệu (đọc-chỉ) của một lượt khám — dùng cho bác sĩ xem trong bệnh án (QN-04).
- * Sinh hiệu do điều dưỡng nhập sau tiếp đón, có thể đo lại nhiều lần (lịch sử) — thẻ hiện lần đo gần
+ * Sinh hiệu do điều dưỡng nhập sau tiếp nhận, có thể đo lại nhiều lần (lịch sử) — thẻ hiện lần đo gần
  * nhất làm chính, các lần trước có thể mở rộng để xem lại (vd đối chiếu khi bệnh nhân yêu cầu đo lại).
  */
 export function VitalsCard({ appointmentId }: { appointmentId: string }) {

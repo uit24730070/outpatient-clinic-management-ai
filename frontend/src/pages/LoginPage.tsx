@@ -19,7 +19,7 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from '@/component
 // Vài nét về nghiệp vụ hệ thống — cho khung đăng nhập "cảm giác phần mềm phòng khám" thay vì
 // một form admin trần trụi bất kỳ (Epic 18, VIS-05).
 const highlights = [
-  { icon: CalendarCheck, label: 'Tiếp đón & hàng đợi khám' },
+  { icon: CalendarCheck, label: 'Tiếp nhận & hàng đợi khám' },
   { icon: Stethoscope, label: 'Bệnh án & kê đơn điện tử' },
   { icon: Pill, label: 'Kho thuốc theo lô, hạn dùng' },
   { icon: Wallet, label: 'Viện phí & thu ngân' },

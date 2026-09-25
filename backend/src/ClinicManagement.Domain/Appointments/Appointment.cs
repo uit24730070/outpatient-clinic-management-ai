@@ -42,12 +42,12 @@ public class Appointment : Entity
     public Guid DoctorId { get; private set; }
 
     /// <summary>
-    /// Lượt tiếp đón gom lịch này (nếu thuộc một lượt nhiều dịch vụ — ADR 0017); null với lịch lẻ
+    /// Lượt tiếp nhận gom lịch này (nếu thuộc một lượt nhiều dịch vụ — ADR 0017); null với lịch lẻ
     /// (tương thích lịch tạo trước Sprint 17 — mỗi lịch lẻ coi như "lượt một dịch vụ").
     /// </summary>
     public Guid? VisitId { get; private set; }
 
-    /// <summary>Gắn/gỡ lượt tiếp đón cho lịch này.</summary>
+    /// <summary>Gắn/gỡ lượt tiếp nhận cho lịch này.</summary>
     public void SetVisit(Guid? visitId) => VisitId = visitId;
     public DateTimeOffset StartTime { get; private set; }
     public DateTimeOffset EndTime { get; private set; }
@@ -94,7 +94,7 @@ public class Appointment : Entity
 
     /// <summary>
     /// Thời điểm đã lập hoá đơn cho dịch vụ khám này — null nếu chưa lập. Cờ chống lập hoá đơn trùng
-    /// (như <c>LabOrder.InvoicedAt</c>), cần khi một hoá đơn ở cấp Lượt tiếp đón có
+    /// (như <c>LabOrder.InvoicedAt</c>), cần khi một hoá đơn ở cấp Lượt tiếp nhận có
     /// thể gộp nhiều dịch vụ khám cùng lúc (ADR 0017/0021).
     /// </summary>
     public DateTimeOffset? InvoicedAt { get; private set; }

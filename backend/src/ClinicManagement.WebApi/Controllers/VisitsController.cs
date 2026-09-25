@@ -15,13 +15,13 @@ public sealed class VisitsController : ApiControllerBase
 
     public VisitsController(IVisitService visits) => _visits = visits;
 
-    /// <summary>Tạo lượt tiếp đón kèm 1..n dịch vụ khám (walk-in — ADR 0017).</summary>
+    /// <summary>Tạo lượt tiếp nhận kèm 1..n dịch vụ khám (walk-in — ADR 0017).</summary>
     [Authorize(Roles = Roles.ManageStaff)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVisitRequest request, CancellationToken ct)
         => ToResponse(await _visits.CreateAsync(request, ct), StatusCodes.Status201Created);
 
-    /// <summary>Danh sách lượt tiếp đón, lọc theo ngày, bệnh nhân, trạng thái.</summary>
+    /// <summary>Danh sách lượt tiếp nhận, lọc theo ngày, bệnh nhân, trạng thái.</summary>
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
@@ -32,7 +32,7 @@ public sealed class VisitsController : ApiControllerBase
         CancellationToken ct = default)
         => ToResponse(await _visits.GetListAsync(page, pageSize, patientId, status, date, ct));
 
-    /// <summary>Chi tiết một lượt tiếp đón (các dịch vụ khám + tổng viện phí gom cả lượt).</summary>
+    /// <summary>Chi tiết một lượt tiếp nhận (các dịch vụ khám + tổng viện phí gom cả lượt).</summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         => ToResponse(await _visits.GetByIdAsync(id, ct));

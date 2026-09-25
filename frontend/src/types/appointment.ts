@@ -54,7 +54,7 @@ export interface Appointment {
   updatedAt: string | null
   /** Thời điểm đã lập hoá đơn cho dịch vụ khám này — null nếu chưa lập. */
   invoicedAt: string | null
-  /** Lượt tiếp đón gom lịch này (ADR 0017); null với lịch lẻ. */
+  /** Lượt tiếp nhận gom lịch này (ADR 0017); null với lịch lẻ. */
   visitId: string | null
   /** Số thứ tự hàng đợi cấp cho lịch này (ADR 0019); null nếu chưa có vé. */
   queueNumber: number | null

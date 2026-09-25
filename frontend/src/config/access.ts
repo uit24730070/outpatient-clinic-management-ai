@@ -60,7 +60,7 @@ export interface NavItem {
 export const NavGroup = {
   Overview: 'Tổng quan',
   Workspace: 'Workspace theo vai trò',
-  Clinical: 'Khám bệnh',
+  Clinical: 'Khám & Hồ sơ',
   Paraclinical: 'Cận lâm sàng',
   Billing: 'Viện phí',
   Pharmacy: 'Kho thuốc',
@@ -76,19 +76,19 @@ export const navItems: NavItem[] = [
   { label: 'Tổng quan', to: '/dashboard', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Overview },
 
   // Workspace theo vai trò (Epic 17) — 1 màn gộp việc lặp lại liên tiếp của từng vai trò.
-  { label: 'Bác sĩ — Một màn', to: '/my-clinic', roles: [UserRole.Doctor], group: NavGroup.Workspace },
-  { label: 'Lễ tân — Một màn', to: '/front-desk', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Workspace },
-  { label: 'Điều dưỡng — Một màn', to: '/nurse', roles: [UserRole.Admin, UserRole.Nurse], group: NavGroup.Workspace },
-  { label: 'Dược sĩ — Một màn', to: '/pharmacy/workspace', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Workspace },
+  { label: 'Khám bệnh', to: '/my-clinic', roles: [UserRole.Doctor], group: NavGroup.Workspace },
+  { label: 'Tiếp nhận', to: '/front-desk', roles: [UserRole.Admin, UserRole.Receptionist], group: NavGroup.Workspace },
+  { label: 'Sinh hiệu & Hàng đợi', to: '/nurse', roles: [UserRole.Admin, UserRole.Nurse], group: NavGroup.Workspace },
+  { label: 'Cấp phát & Cảnh báo kho', to: '/pharmacy/workspace', roles: [UserRole.Admin, UserRole.Pharmacist], group: NavGroup.Workspace },
 
-  // Khám bệnh — tiếp đón, lịch, hàng đợi, sinh hiệu, hồ sơ bệnh nhân.
-  // Lượt tiếp đón (danh sách + tạo mới) đã gộp vào "Lễ tân — Một màn" (/front-desk) ở trên.
+  // Khám & Hồ sơ — tiếp nhận, lịch, hàng đợi, sinh hiệu, hồ sơ bệnh nhân.
+  // Lượt tiếp nhận (danh sách + tạo mới) đã gộp vào "Tiếp nhận" (/front-desk) ở trên.
   { label: 'Lịch khám', to: '/appointments', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor], group: NavGroup.Clinical },
   { label: 'Hàng đợi', to: '/queue', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Nurse], group: NavGroup.Clinical },
   { label: 'Sinh hiệu', to: '/vitals', roles: [UserRole.Admin, UserRole.Nurse], group: NavGroup.Clinical },
   { label: 'Bệnh nhân', to: '/patients', roles: [UserRole.Admin, UserRole.Receptionist, UserRole.Doctor], group: NavGroup.Clinical },
 
-  // Cận lâm sàng — đăng ký gắn vào lượt tiếp đón (Tiếp đón/VisitDetailPage) + thực hiện/nhập kết
+  // Cận lâm sàng — đăng ký gắn vào lượt tiếp nhận (Tiếp nhận/VisitDetailPage) + thực hiện/nhập kết
   // quả (kỹ thuật viên), ADR 0016.
   { label: 'Thực hiện CLS', to: '/lab/technician', roles: [UserRole.Admin, UserRole.Technician], group: NavGroup.Paraclinical },
 

@@ -4,7 +4,7 @@ using ClinicManagement.Shared.Results;
 namespace ClinicManagement.Domain.Visits;
 
 /// <summary>
-/// Lượt tiếp đón (lượt khám): gom <b>một lần bệnh nhân đến phòng khám</b>. Một lượt có thể đăng ký
+/// Lượt tiếp nhận (lượt khám): gom <b>một lần bệnh nhân đến phòng khám</b>. Một lượt có thể đăng ký
 /// <b>nhiều dịch vụ khám</b> (nhiều bác sĩ/chuyên khoa) — mỗi dịch vụ là một
 /// <see cref="ClinicManagement.Domain.Appointments.Appointment"/> con tham chiếu
 /// <c>VisitId</c> (khoá gom nhóm), kèm cận lâm sàng và hoá đơn cùng lượt (ADR 0017).
@@ -33,12 +33,12 @@ public class Visit : Entity
     /// <summary>Bệnh nhân của lượt (snapshot).</summary>
     public Guid PatientId { get; private set; }
 
-    /// <summary>Ghi chú tiếp đón (tuỳ chọn).</summary>
+    /// <summary>Ghi chú tiếp nhận (tuỳ chọn).</summary>
     public string? Note { get; private set; }
 
     public VisitStatus Status { get; private set; }
 
-    /// <summary>Cập nhật ghi chú tiếp đón.</summary>
+    /// <summary>Cập nhật ghi chú tiếp nhận.</summary>
     public void UpdateNote(string? note) => Note = note;
 
     /// <summary>Open → Closed (lượt khám hoàn tất).</summary>

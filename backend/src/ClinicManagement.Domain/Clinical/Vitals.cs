@@ -7,7 +7,7 @@ namespace ClinicManagement.Domain.Clinical;
 /// lần điều dưỡng đo là một dòng mới, kể cả khi đo lại nhiều lần cho cùng một lần đến (bệnh nhân yêu cầu
 /// đo lại, chỉ số bất thường cần đo kiểm tra…) — không ghi đè lần đo trước.
 /// Gắn với lịch khám (<see cref="AppointmentId"/>) tại thời điểm đo; khi lịch đó thuộc một
-/// <b>Lượt tiếp đón</b> (<see cref="VisitId"/>, ADR 0017) thì mọi lần đo trong lượt (đo từ dịch vụ khám
+/// <b>Lượt tiếp nhận</b> (<see cref="VisitId"/>, ADR 0017) thì mọi lần đo trong lượt (đo từ dịch vụ khám
 /// nào cũng vậy — nhiều chuyên khoa cùng một lần đến chỉ cần đo chung) được <b>gom theo VisitId</b>, xem
 /// được lịch sử/lần gần nhất từ bất kỳ dịch vụ khám nào trong lượt. Lịch lẻ (không thuộc lượt nào —
 /// tương thích trước Sprint 17) gom theo <see cref="AppointmentId"/>.
@@ -54,7 +54,7 @@ public class Vitals : Entity
     public Guid AppointmentId { get; private set; }
 
     /// <summary>
-    /// Lượt tiếp đón (nếu lịch khám thuộc một lượt) — khoá gom lịch sử đo dùng chung cho mọi dịch vụ
+    /// Lượt tiếp nhận (nếu lịch khám thuộc một lượt) — khoá gom lịch sử đo dùng chung cho mọi dịch vụ
     /// khám trong lượt; null với lịch lẻ (gom theo <see cref="AppointmentId"/>).
     /// </summary>
     public Guid? VisitId { get; private set; }

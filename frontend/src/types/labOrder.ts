@@ -43,7 +43,7 @@ export interface LabOrder {
   encounterId: string | null
   /** Lịch khám gắn kèm (walk-in) hoặc null. */
   appointmentId: string | null
-  /** Lượt tiếp đón gắn kèm (walk-in, ADR 0017) hoặc null. */
+  /** Lượt tiếp nhận gắn kèm (walk-in, ADR 0017) hoặc null. */
   visitId: string | null
   patientId: string
   patientName: string | null
@@ -78,7 +78,7 @@ export interface CreateWalkInLabOrderInput {
   appointmentId: string | null
   note: string | null
   items: CreateLabOrderItemInput[]
-  /** Lượt tiếp đón để gom phiếu CLS & hoá đơn phí CLS theo lượt (ADR 0017); null nếu vãng lai. */
+  /** Lượt tiếp nhận để gom phiếu CLS & hoá đơn phí CLS theo lượt (ADR 0017); null nếu vãng lai. */
   visitId?: string | null
 }
 

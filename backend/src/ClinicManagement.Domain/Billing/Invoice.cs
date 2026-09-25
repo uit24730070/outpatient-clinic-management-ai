@@ -53,7 +53,7 @@ public class Invoice : Entity
     public Guid? AppointmentId { get; private set; }
 
     /// <summary>
-    /// Lượt tiếp đón nguồn (ADR 0017) để gom nhiều hoá đơn cùng lượt trực tiếp — suy ra từ lịch khám
+    /// Lượt tiếp nhận nguồn (ADR 0017) để gom nhiều hoá đơn cùng lượt trực tiếp — suy ra từ lịch khám
     /// gắn hoá đơn lúc lập. Null với hoá đơn không thuộc lượt nào.
     /// </summary>
     public Guid? VisitId { get; private set; }

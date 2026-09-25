@@ -387,7 +387,7 @@ public sealed class InvoiceServiceTests
         Assert.All(byAppointment.Value.Items, i => Assert.Equal(apptA, i.AppointmentId));
     }
 
-    // ── BILL-07: lập hoá đơn lúc tiếp đón (từ dịch vụ, gắn lượt) ──────────────
+    // ── BILL-07: lập hoá đơn lúc tiếp nhận (từ dịch vụ, gắn lượt) ──────────────
 
     [Fact]
     public async Task CreateAsync_AtReception_WithAppointment_ShouldSnapshotAndLinkAppointment()
@@ -406,7 +406,7 @@ public sealed class InvoiceServiceTests
 
         var service = CreateService(db);
         var result = await service.CreateAsync(new CreateInvoiceRequest(
-            patient.Id, "Thu lúc tiếp đón",
+            patient.Id, "Thu lúc tiếp nhận",
             new[] { new CreateInvoiceItemRequest(kham.Id, 1), new CreateInvoiceItemRequest(xquang.Id, 1) },
             new[] { appointment.Id }));
 
@@ -448,7 +448,7 @@ public sealed class InvoiceServiceTests
     [Fact]
     public async Task CreateAsync_AtReception_WithTwoAppointments_ShouldCombineIntoOneInvoice()
     {
-        // UX-05: lập hoá đơn ở cấp Lượt tiếp đón — gộp nhiều dịch vụ khám cùng lúc vào một hoá đơn.
+        // UX-05: lập hoá đơn ở cấp Lượt tiếp nhận — gộp nhiều dịch vụ khám cùng lúc vào một hoá đơn.
         var db = TestDbContext.CreateInMemory();
         var patient = new Patient("BN-000001", "Nguyễn Văn A", null, Gender.Male, null, null);
         db.Patients.Add(patient);
