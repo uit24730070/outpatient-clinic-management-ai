@@ -218,8 +218,12 @@ public sealed class LabOrderService : ILabOrderService
             return Result.Failure<LabOrderDto>(Error.Conflict("Paraclinical.NotPaid",
                 "Phiếu chỉ định chưa được thanh toán phí cận lâm sàng; không thể nhập kết quả."));
 
+        var parameters = request.Parameters?
+            .Select(p => LabResultParameter.Create(
+                p.Name.Trim(), p.Value.Trim(), NormalizeOptional(p.Unit), NormalizeOptional(p.ReferenceRange)));
+
         var result = order.SetItemResult(
-            itemId, NormalizeOptional(request.ResultText), NormalizeOptional(request.Conclusion),
+            itemId, NormalizeOptional(request.ResultText), NormalizeOptional(request.Conclusion), parameters,
             DateTimeOffset.UtcNow);
         if (result.IsFailure)
             return Result.Failure<LabOrderDto>(result.Error);
@@ -276,7 +280,12 @@ public sealed class LabOrderService : ILabOrderService
             o.PaidAt,
             o.Items.Select(i => new LabOrderItemDto(
                 i.Id, i.ServicePriceId, i.ServiceName, i.UnitPrice,
-                i.ResultText, i.Conclusion, i.Status, i.ResultedAt)).ToList(),
+                _db.ServicePrices.Where(sp => sp.Id == i.ServicePriceId)
+                    .Select(sp => (ParaclinicalGroup?)sp.Group).FirstOrDefault(),
+                i.ResultText, i.Conclusion,
+                i.Parameters.Select(p => new LabResultParameterDto(
+                    p.Name, p.Value, p.Unit, p.ReferenceRange, p.IsAbnormal)).ToList(),
+                i.Status, i.ResultedAt)).ToList(),
             o.CreatedAt,
             o.UpdatedAt));
 

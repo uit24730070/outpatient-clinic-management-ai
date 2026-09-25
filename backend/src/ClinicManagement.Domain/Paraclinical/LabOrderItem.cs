@@ -9,6 +9,8 @@ namespace ClinicManagement.Domain.Paraclinical;
 /// </summary>
 public class LabOrderItem
 {
+    private readonly List<LabResultParameter> _parameters = new();
+
     // EF Core cần constructor không tham số.
     private LabOrderItem() { }
 
@@ -39,17 +41,31 @@ public class LabOrderItem
     /// <summary>Kết luận/nhận định (tuỳ chọn).</summary>
     public string? Conclusion { get; private set; }
 
+    /// <summary>
+    /// Kết quả có cấu trúc theo từng thông số (ADR 0025) — dùng cho mục nhóm Xét nghiệm thay cho
+    /// <see cref="ResultText"/>; rỗng với mục dùng văn bản tự do (Chẩn đoán hình ảnh/Thăm dò chức
+    /// năng/Nội soi). Hai cách không loại trừ nhau — mục có thể có cả hai nếu kỹ thuật viên muốn.
+    /// </summary>
+    public IReadOnlyCollection<LabResultParameter> Parameters => _parameters.AsReadOnly();
+
     /// <summary>Trạng thái mục (chờ/đã có kết quả).</summary>
     public LabOrderItemStatus Status { get; private set; }
 
     /// <summary>Thời điểm nhập kết quả (null khi chưa có).</summary>
     public DateTimeOffset? ResultedAt { get; private set; }
 
-    /// <summary>Ghi kết quả cho mục và đánh dấu hoàn tất. Gọi từ <see cref="LabOrder.SetItemResult"/>.</summary>
-    internal void SetResult(string? resultText, string? conclusion, DateTimeOffset when)
+    /// <summary>
+    /// Ghi kết quả cho mục và đánh dấu hoàn tất. Gọi từ <see cref="LabOrder.SetItemResult"/>.
+    /// <paramref name="parameters"/> null/rỗng → xoá hết thông số cũ (thay toàn bộ, không gộp).
+    /// </summary>
+    internal void SetResult(
+        string? resultText, string? conclusion, IEnumerable<LabResultParameter>? parameters, DateTimeOffset when)
     {
         ResultText = resultText;
         Conclusion = conclusion;
+        _parameters.Clear();
+        if (parameters is not null)
+            _parameters.AddRange(parameters);
         Status = LabOrderItemStatus.Completed;
         ResultedAt = when;
     }

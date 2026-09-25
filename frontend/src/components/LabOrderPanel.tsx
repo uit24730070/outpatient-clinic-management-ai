@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FlaskConical, Plus, Printer, Receipt, Save, Trash2 } from 'lucide-react'
+import { AlertTriangle, FlaskConical, Plus, Printer, Receipt, Save, Trash2, X } from 'lucide-react'
 import {
   cancelLabOrder,
   createLabOrder,
@@ -11,11 +11,12 @@ import { createInvoiceFromLabOrder } from '../services/invoiceService'
 import { listServicePrices } from '../services/servicePriceService'
 import { toastError, toastSuccess } from '../lib/toast'
 import { formatVnd } from '../lib/format'
-import { ServiceCategory, type ServicePrice } from '../types/invoice'
+import { ParaclinicalGroup, ServiceCategory, type ParaclinicalGroupValue, type ServicePrice } from '../types/invoice'
 import {
   LabOrderItemStatus,
   LabOrderStatus,
   type LabOrder,
+  type ResultParameterInput,
 } from '../types/labOrder'
 import { LabOrderStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -23,7 +24,9 @@ import { ServiceMultiPicker } from './ServiceMultiPicker'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Props {
   encounterId: string
@@ -290,6 +293,36 @@ export function LabOrderCard({
   )
 }
 
+interface ParamRow {
+  name: string
+  value: string
+  unit: string
+  referenceRange: string
+}
+
+const emptyParamRow = (): ParamRow => ({ name: '', value: '', unit: '', referenceRange: '' })
+
+/** Gợi ý placeholder theo nhóm CLS (ADR 0024) cho ô "Kết quả" văn bản tự do. */
+function freeTextPlaceholder(group: ParaclinicalGroupValue | null): string {
+  switch (group) {
+    case ParaclinicalGroup.Imaging:
+      return 'Mô tả hình ảnh…'
+    case ParaclinicalGroup.Endoscopy:
+      return 'Mô tả tổn thương quan sát được…'
+    case ParaclinicalGroup.Functional:
+      return 'Kết quả đo, nhận định…'
+    default:
+      return 'Kết quả'
+  }
+}
+
+/**
+ * Nhập/xem kết quả một mục chỉ định — giao diện tách theo nhóm CLS (ADR 0025, phản hồi giảng viên: màn
+ * Kỹ thuật viên trước đây chỉ có 2 ô chữ chung cho mọi loại). Nhóm **Xét nghiệm** dùng bảng thông số có
+ * cấu trúc (tên/giá trị/đơn vị/khoảng tham chiếu, tự gắn cờ bất thường khi so sánh được bằng số); các
+ * nhóm còn lại (Chẩn đoán hình ảnh/Thăm dò chức năng/Nội soi) vẫn dùng văn bản mô tả tự do — bản chất
+ * kết quả của chúng là diễn giải chứ không phải chỉ số so sánh được.
+ */
 function LabItemRow({
   orderId,
   item,
@@ -304,17 +337,45 @@ function LabItemRow({
   blockedUnpaid?: boolean
   onChanged: () => Promise<void>
 }) {
+  const isLabTest = item.group === ParaclinicalGroup.LabTest
   const [resultText, setResultText] = useState(item.resultText ?? '')
   const [conclusion, setConclusion] = useState(item.conclusion ?? '')
+  const [rows, setRows] = useState<ParamRow[]>(() =>
+    item.parameters.length > 0
+      ? item.parameters.map((p) => ({
+          name: p.name,
+          value: p.value,
+          unit: p.unit ?? '',
+          referenceRange: p.referenceRange ?? '',
+        }))
+      : [emptyParamRow()],
+  )
   const [saving, setSaving] = useState(false)
   const done = item.status === LabOrderItemStatus.Completed
+
+  const updateRow = (idx: number, patch: Partial<ParamRow>) =>
+    setRows((cur) => cur.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
+  const addRow = () => setRows((cur) => [...cur, emptyParamRow()])
+  const removeRow = (idx: number) =>
+    setRows((cur) => (cur.length > 1 ? cur.filter((_, i) => i !== idx) : cur))
 
   const save = async () => {
     setSaving(true)
     try {
+      const parameters: ResultParameterInput[] | undefined = isLabTest
+        ? rows
+            .filter((r) => r.name.trim() && r.value.trim())
+            .map((r) => ({
+              name: r.name.trim(),
+              value: r.value.trim(),
+              unit: r.unit.trim() || null,
+              referenceRange: r.referenceRange.trim() || null,
+            }))
+        : undefined
       await setLabResult(orderId, item.id, {
-        resultText: resultText.trim() || null,
+        resultText: isLabTest ? null : resultText.trim() || null,
         conclusion: conclusion.trim() || null,
+        parameters,
       })
       toastSuccess('Đã lưu kết quả.')
       await onChanged()
@@ -333,28 +394,150 @@ function LabItemRow({
           {done ? 'Đã có kết quả' : 'Chờ kết quả'}
         </span>
       </div>
-      {editable ? (
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <Input
-            placeholder="Kết quả"
+
+      {editable && isLabTest && (
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Thông số</TableHead>
+                  <TableHead>Giá trị</TableHead>
+                  <TableHead>Đơn vị</TableHead>
+                  <TableHead>Khoảng tham chiếu</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="p-1">
+                      <Input
+                        value={r.name}
+                        onChange={(e) => updateRow(idx, { name: e.target.value })}
+                        placeholder="VD: Bạch cầu (WBC)"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input
+                        value={r.value}
+                        onChange={(e) => updateRow(idx, { value: e.target.value })}
+                        placeholder="VD: 7.2"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input
+                        value={r.unit}
+                        onChange={(e) => updateRow(idx, { unit: e.target.value })}
+                        placeholder="10^9/L"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input
+                        value={r.referenceRange}
+                        onChange={(e) => updateRow(idx, { referenceRange: e.target.value })}
+                        placeholder="4.0-10.0"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removeRow(idx)}
+                        disabled={rows.length === 1}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={addRow}>
+              <Plus className="size-4" />
+              Thêm thông số
+            </Button>
+            <Input
+              placeholder="Kết luận (tuỳ chọn)"
+              value={conclusion}
+              onChange={(e) => setConclusion(e.target.value)}
+              className="max-w-xs"
+            />
+            <Button type="button" size="sm" onClick={() => void save()} disabled={saving} className="ml-auto">
+              <Save className="size-4" />
+              Lưu
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {editable && !isLabTest && (
+        <div className="mt-2 flex flex-col gap-2">
+          <Textarea
+            placeholder={freeTextPlaceholder(item.group)}
+            rows={3}
             value={resultText}
             onChange={(e) => setResultText(e.target.value)}
           />
-          <Input
-            placeholder="Kết luận (tuỳ chọn)"
-            value={conclusion}
-            onChange={(e) => setConclusion(e.target.value)}
-          />
-          <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
-            <Save className="size-4" />
-            Lưu
-          </Button>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Kết luận (tuỳ chọn)"
+              value={conclusion}
+              onChange={(e) => setConclusion(e.target.value)}
+            />
+            <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
+              <Save className="size-4" />
+              Lưu
+            </Button>
+          </div>
         </div>
-      ) : blockedUnpaid ? (
+      )}
+
+      {!editable && blockedUnpaid && (
         <p className="mt-1 text-sm text-amber-600">
           Cần thu phí cận lâm sàng (lập hoá đơn + thanh toán) trước khi nhập kết quả.
         </p>
-      ) : (
+      )}
+
+      {!editable && !blockedUnpaid && item.parameters.length > 0 && (
+        <div className="mt-2 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thông số</TableHead>
+                <TableHead>Giá trị</TableHead>
+                <TableHead>Đơn vị</TableHead>
+                <TableHead>Khoảng tham chiếu</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {item.parameters.map((p, idx) => (
+                <TableRow key={`${p.name}-${idx}`} className={p.isAbnormal ? 'bg-destructive/5' : undefined}>
+                  <TableCell>{p.name}</TableCell>
+                  <TableCell className={p.isAbnormal ? 'font-medium text-destructive' : undefined}>
+                    <span className="inline-flex items-center gap-1">
+                      {p.isAbnormal && <AlertTriangle className="size-3.5" />}
+                      {p.value}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{p.unit ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.referenceRange ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {item.conclusion && (
+            <p className="border-t px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Kết luận:</span> {item.conclusion}
+            </p>
+          )}
+        </div>
+      )}
+
+      {!editable && !blockedUnpaid && item.parameters.length === 0 && (
         <div className="mt-1 text-sm">
           {item.resultText ? (
             <>

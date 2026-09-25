@@ -95,6 +95,15 @@ public sealed class TestDbContext : DbContext, IAppDbContext
                 item.WithOwner().HasForeignKey("LabOrderId");
                 item.HasKey(x => x.Id);
                 item.Property(x => x.Id).ValueGeneratedNever();
+
+                item.OwnsMany(x => x.Parameters, p =>
+                {
+                    p.WithOwner().HasForeignKey("LabOrderItemId");
+                    p.Property<int>("Id");
+                    p.HasKey("Id");
+                });
+                item.Navigation(x => x.Parameters)
+                    .UsePropertyAccessMode(PropertyAccessMode.Field);
             });
             builder.Navigation(o => o.Items)
                 .UsePropertyAccessMode(PropertyAccessMode.Field);

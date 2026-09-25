@@ -1,5 +1,7 @@
 // Kiểu dữ liệu miền Cận lâm sàng (phiếu chỉ định + kết quả), khớp API backend (ADR 0015).
 
+import type { ParaclinicalGroupValue } from './invoice'
+
 // Const-map thay cho enum (tsconfig bật erasableSyntaxOnly). Giá trị số khớp
 // LabOrderStatus backend (serialize enum thành số).
 export const LabOrderStatus = {
@@ -25,13 +27,28 @@ export const LabOrderItemStatus = {
 
 export type LabOrderItemStatusValue = (typeof LabOrderItemStatus)[keyof typeof LabOrderItemStatus]
 
+/** Một thông số kết quả có cấu trúc (nhóm Xét nghiệm, ADR 0025). */
+export interface LabResultParameter {
+  name: string
+  value: string
+  unit: string | null
+  referenceRange: string | null
+  /** Tự tính khi Giá trị/Khoảng tham chiếu đều đọc được dạng số — không đọc được thì luôn false. */
+  isAbnormal: boolean
+}
+
 export interface LabOrderItem {
   id: string
   servicePriceId: string
   serviceName: string
   unitPrice: number
+  /** Nhóm CLS hiện tại của dịch vụ (ADR 0024) — tra theo ServicePriceId, không snapshot; dùng để chọn
+   * giao diện nhập kết quả (bảng thông số cho Xét nghiệm, văn bản tự do cho nhóm còn lại). */
+  group: ParaclinicalGroupValue | null
   resultText: string | null
   conclusion: string | null
+  /** Kết quả có cấu trúc (ADR 0025) — rỗng nếu dùng resultText văn bản tự do. */
+  parameters: LabResultParameter[]
   status: LabOrderItemStatusValue
   resultedAt: string | null
 }
@@ -82,7 +99,16 @@ export interface CreateWalkInLabOrderInput {
   visitId?: string | null
 }
 
+/** Một dòng thông số gửi lên khi nhập kết quả có cấu trúc (khớp ResultParameterInput). */
+export interface ResultParameterInput {
+  name: string
+  value: string
+  unit: string | null
+  referenceRange: string | null
+}
+
 export interface SetLabResultInput {
   resultText: string | null
   conclusion: string | null
+  parameters?: ResultParameterInput[] | null
 }

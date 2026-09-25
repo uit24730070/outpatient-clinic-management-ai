@@ -121,7 +121,9 @@ public class LabOrder : Entity
     /// thì phiếu → Completed, ngược lại → InProgress. Sai vòng đời (đã Completed/Cancelled) → 409;
     /// mục không tồn tại → NotFound.
     /// </summary>
-    public Result SetItemResult(Guid itemId, string? resultText, string? conclusion, DateTimeOffset when)
+    public Result SetItemResult(
+        Guid itemId, string? resultText, string? conclusion,
+        IEnumerable<LabResultParameter>? parameters, DateTimeOffset when)
     {
         if (Status is LabOrderStatus.Completed or LabOrderStatus.Cancelled)
             return InvalidTransition(nameof(SetItemResult));
@@ -131,7 +133,7 @@ public class LabOrder : Entity
             return Result.Failure(Error.NotFound(
                 "Paraclinical.ItemNotFound", $"Không tìm thấy mục chỉ định với Id {itemId}."));
 
-        item.SetResult(resultText, conclusion, when);
+        item.SetResult(resultText, conclusion, parameters, when);
 
         Status = _items.All(i => i.Status == LabOrderItemStatus.Completed)
             ? LabOrderStatus.Completed

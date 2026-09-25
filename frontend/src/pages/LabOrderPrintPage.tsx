@@ -95,7 +95,29 @@ export default function LabOrderPrintPage() {
           {order.items.map((it) => (
             <tr key={it.id} className="border-b align-top">
               <td className="py-2 font-medium">{it.serviceName}</td>
-              <td className="py-2">{it.resultText ?? '—'}</td>
+              <td className="py-2">
+                {it.parameters.length > 0 ? (
+                  <table className="w-full border-collapse text-xs">
+                    <tbody>
+                      {it.parameters.map((p, idx) => (
+                        <tr key={idx}>
+                          <td className="pr-2 py-0.5">{p.name}</td>
+                          <td className={`pr-2 py-0.5 ${p.isAbnormal ? 'font-bold' : ''}`}>
+                            {p.value}
+                            {p.isAbnormal ? ' *' : ''}
+                          </td>
+                          <td className="pr-2 py-0.5 text-gray-500">{p.unit ?? ''}</td>
+                          <td className="py-0.5 text-gray-500">
+                            {p.referenceRange ? `(${p.referenceRange})` : ''}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  (it.resultText ?? '—')
+                )}
+              </td>
               <td className="py-2">{it.conclusion ?? '—'}</td>
               <td className="py-2 text-right tabular-nums">{formatVnd(it.unitPrice)}</td>
             </tr>
@@ -112,6 +134,10 @@ export default function LabOrderPrintPage() {
           </tr>
         </tfoot>
       </table>
+
+      {order.items.some((it) => it.parameters.some((p) => p.isAbnormal)) && (
+        <p className="mt-2 text-xs text-gray-500">* Ngoài khoảng tham chiếu.</p>
+      )}
 
       <div className="mt-12 flex justify-end pr-8 text-center">
         <div>

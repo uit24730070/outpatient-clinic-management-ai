@@ -409,6 +409,74 @@ public sealed class LabOrderServiceTests
         Assert.NotNull(result.Value.PaidAt);
     }
 
+    // ── ADR 0025: kết quả có cấu trúc theo thông số (nhóm Xét nghiệm) ─────────
+
+    [Fact]
+    public async Task SetItemResult_WithParameters_ShouldFlagOutOfRangeAsAbnormal()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        var xn = new ServicePrice(
+            "DV-CLS001", "Công thức máu", 80000m, null,
+            ServiceCategory.Paraclinical, ParaclinicalGroup.LabTest);
+        db.ServicePrices.Add(xn);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+        await MarkPaidAsync(db, created.Value.Id);
+
+        var result = await service.SetItemResultAsync(created.Value.Id, created.Value.Items[0].Id,
+            new SetLabResultRequest(null, "Theo dõi thêm", new[]
+            {
+                new ResultParameterInput("Bạch cầu (WBC)", "12.5", "10^9/L", "4.0-10.0"), // ngoài khoảng
+                new ResultParameterInput("Hồng cầu (RBC)", "4.8", "10^12/L", "4.0-5.5"),  // trong khoảng
+                new ResultParameterInput("Nhóm máu", "O", null, null),                    // định tính
+            }));
+
+        Assert.True(result.IsSuccess);
+        var item = result.Value.Items[0];
+        Assert.Equal(ParaclinicalGroup.LabTest, item.Group);
+        Assert.Equal(3, item.Parameters.Count);
+        Assert.True(item.Parameters.Single(p => p.Name == "Bạch cầu (WBC)").IsAbnormal);
+        Assert.False(item.Parameters.Single(p => p.Name == "Hồng cầu (RBC)").IsAbnormal);
+        Assert.False(item.Parameters.Single(p => p.Name == "Nhóm máu").IsAbnormal);
+    }
+
+    [Fact]
+    public async Task SetItemResult_CalledAgain_ShouldReplaceParametersEntirely()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var encounter = SeedDraftEncounter(db);
+        var xn1 = new ServicePrice(
+            "DV-CLS001", "Công thức máu", 80000m, null,
+            ServiceCategory.Paraclinical, ParaclinicalGroup.LabTest);
+        var xn2 = new ServicePrice(
+            "DV-CLS002", "Đường huyết", 40000m, null,
+            ServiceCategory.Paraclinical, ParaclinicalGroup.LabTest);
+        db.ServicePrices.AddRange(xn1, xn2);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var created = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null,
+            new[] { new CreateLabOrderItemRequest(xn1.Id), new CreateLabOrderItemRequest(xn2.Id) }));
+        await MarkPaidAsync(db, created.Value.Id);
+        var itemId = created.Value.Items[0].Id;
+
+        // Sửa lại kết quả mục thứ nhất khi mục thứ hai còn Pending (phiếu chưa Completed nên vẫn cho
+        // sửa) — phải THAY hẳn thông số, không cộng dồn qua các lần gọi.
+        await service.SetItemResultAsync(created.Value.Id, itemId,
+            new SetLabResultRequest(null, null, new[] { new ResultParameterInput("A", "1", null, null) }));
+        var result = await service.SetItemResultAsync(created.Value.Id, itemId,
+            new SetLabResultRequest(null, null, new[] { new ResultParameterInput("B", "2", null, null) }));
+
+        var item = result.Value.Items.Single(i => i.Id == itemId);
+        Assert.Single(item.Parameters);
+        Assert.Equal("B", item.Parameters[0].Name);
+    }
+
     [Fact]
     public async Task GetListAsync_ShouldFilterByEncounterAndStatus()
     {

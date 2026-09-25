@@ -84,6 +84,24 @@ public sealed class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
                 .IsRequired();
 
             item.HasIndex(x => x.ServicePriceId);
+
+            // Cháu–ông: thông số kết quả có cấu trúc, lồng thêm một tầng owned (ADR 0025) — thay toàn
+            // bộ mỗi lần nhập lại kết quả, không có khoá nghiệp vụ riêng nên dùng khoá ẩn.
+            item.OwnsMany(x => x.Parameters, p =>
+            {
+                p.ToTable("lab_result_parameters");
+                p.WithOwner().HasForeignKey("LabOrderItemId");
+                p.Property<int>("Id");
+                p.HasKey("Id");
+
+                p.Property(x => x.Name).HasMaxLength(100).IsRequired();
+                p.Property(x => x.Value).HasMaxLength(200).IsRequired();
+                p.Property(x => x.Unit).HasMaxLength(50);
+                p.Property(x => x.ReferenceRange).HasMaxLength(100);
+            });
+
+            item.Navigation(x => x.Parameters)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         builder.Navigation(o => o.Items)
