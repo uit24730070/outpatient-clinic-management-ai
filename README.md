@@ -2,7 +2,7 @@
 
 Đồ án tốt nghiệp: hệ thống quản lý phòng khám / khám ngoại trú, tích hợp trợ lý AI (LLM) hỗ trợ nghiệp vụ.
 
-> **Trạng thái:** Sprint 9 — Quản lý người dùng (Admin) + gắn/gỡ `User↔Doctor` qua UI + **Docker Compose** dựng toàn hệ thống. (Đã có: bệnh nhân, bác sĩ/chuyên khoa, đặt lịch/tiếp đón, bệnh án/đơn thuốc, xác thực/RBAC, trợ lý AI tóm tắt + hỏi đáp RAG.)
+> **Trạng thái:** Sprint 9 — Quản lý người dùng (Admin) + gắn/gỡ `User↔Doctor` qua UI + **Docker Compose** dựng toàn hệ thống. (Đã có: bệnh nhân, bác sĩ/chuyên khoa, đặt lịch/tiếp nhận, bệnh án/đơn thuốc, xác thực/RBAC, trợ lý AI tóm tắt + hỏi đáp RAG.)
 
 ## Tech Stack
 
