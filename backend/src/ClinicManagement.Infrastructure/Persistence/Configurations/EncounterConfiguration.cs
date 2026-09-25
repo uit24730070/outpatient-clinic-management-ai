@@ -18,6 +18,7 @@ public sealed class EncounterConfiguration : IEntityTypeConfiguration<Encounter>
         builder.Property(e => e.Symptoms).HasMaxLength(1000);
         builder.Property(e => e.Diagnosis).HasMaxLength(1000).IsRequired();
         builder.Property(e => e.Notes).HasMaxLength(1000);
+        builder.Property(e => e.ReturnReason).HasMaxLength(500);
 
         // Enum trạng thái lưu dạng chuỗi (đồng nhất Gender/UserRole/AppointmentStatus).
         builder.Property(e => e.Status)

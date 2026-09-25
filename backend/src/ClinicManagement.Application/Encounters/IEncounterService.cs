@@ -38,7 +38,9 @@ public interface IEncounterService
 
     /// <summary>
     /// Hoàn kho đơn đã cấp phát (Dispensed → Returned): nhập lại tồn đúng lô đã trừ + ghi sổ cái bù Return.
-    /// Gọi hai lần → 409. Chưa cấp phát → 409 (ADR 0022, REF-02).
+    /// Gọi hai lần → 409. Chưa cấp phát → 409 (ADR 0022, REF-02). Bắt buộc lý do; ghi lại người thực hiện
+    /// (<paramref name="returnedByUserId"/>) làm audit tối thiểu chống hoàn kho nhầm.
     /// </summary>
-    Task<Result<EncounterDto>> ReturnStockAsync(Guid id, CancellationToken ct = default);
+    Task<Result<EncounterDto>> ReturnStockAsync(
+        Guid id, ReturnStockRequest request, Guid returnedByUserId, CancellationToken ct = default);
 }

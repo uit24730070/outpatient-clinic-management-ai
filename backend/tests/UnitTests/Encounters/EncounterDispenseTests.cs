@@ -229,10 +229,15 @@ public sealed class EncounterDispenseTests
         var before = await db.MedicationBatches.FindAsync(batchId);
         Assert.Equal(6, before!.QuantityOnHand);
 
-        var result = await service.ReturnStockAsync(created.Value.Id);
+        var returnedByUserId = Guid.NewGuid();
+        var result = await service.ReturnStockAsync(
+            created.Value.Id, new ReturnStockRequest("Bệnh nhân đổi ý, chưa dùng thuốc"), returnedByUserId);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(DispenseStatus.Returned, result.Value.DispenseStatus);
+        Assert.Equal("Bệnh nhân đổi ý, chưa dùng thuốc", result.Value.ReturnReason);
+        Assert.Equal(returnedByUserId, result.Value.ReturnedByUserId);
+        Assert.NotNull(result.Value.ReturnedAt);
 
         // Sau hoàn: tồn = 10 (khôi phục đúng lô)
         await db.Entry(before).ReloadAsync();
@@ -246,6 +251,99 @@ public sealed class EncounterDispenseTests
     }
 
     [Fact]
+    public async Task ReturnStock_Partial_ShouldOnlyRestoreRequestedQuantity()
+    {
+        var service = Setup(nameof(ReturnStock_Partial_ShouldOnlyRestoreRequestedQuantity),
+            out var db, out var appt, out var medId);
+        var batchId = AddBatch(db, medId, "LOT-E", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 10));
+        await service.CompleteAsync(created.Value.Id);
+        await MarkPaidAsync(db, created.Value.Id);
+        await service.DispenseAsync(created.Value.Id);
+
+        // Chỉ hoàn 4/10 đã cấp.
+        var result = await service.ReturnStockAsync(
+            created.Value.Id,
+            new ReturnStockRequest("Bệnh nhân trả lại 4 viên chưa dùng", [new ReturnStockItemRequest(medId, 4)]),
+            Guid.NewGuid());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DispenseStatus.Returned, result.Value.DispenseStatus);
+
+        var batch = await db.MedicationBatches.FindAsync(batchId);
+        Assert.Equal(4, batch!.QuantityOnHand); // 10 − 10 (cấp) + 4 (hoàn 1 phần) = 4
+
+        var returnTx = await db.StockTransactions
+            .FirstOrDefaultAsync(t => t.Type == StockTransactionType.Return && t.MedicationBatchId == batchId);
+        Assert.NotNull(returnTx);
+        Assert.Equal(4, returnTx!.QuantityDelta);
+    }
+
+    [Fact]
+    public async Task ReturnStock_WhenQuantityExceedsDispensed_ShouldReturnValidationError()
+    {
+        var service = Setup(nameof(ReturnStock_WhenQuantityExceedsDispensed_ShouldReturnValidationError),
+            out var db, out var appt, out var medId);
+        AddBatch(db, medId, "LOT-F", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 4));
+        await service.CompleteAsync(created.Value.Id);
+        await MarkPaidAsync(db, created.Value.Id);
+        await service.DispenseAsync(created.Value.Id);
+
+        var result = await service.ReturnStockAsync(
+            created.Value.Id,
+            new ReturnStockRequest("Hoàn quá số đã cấp", [new ReturnStockItemRequest(medId, 5)]),
+            Guid.NewGuid());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.Equal("Pharmacy.ReturnQuantityExceedsDispensed", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task ReturnStock_WhenPastReturnWindow_ShouldReturnConflict()
+    {
+        var service = Setup(nameof(ReturnStock_WhenPastReturnWindow_ShouldReturnConflict),
+            out var db, out var appt, out var medId);
+        AddBatch(db, medId, "LOT-G", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 2));
+        await service.CompleteAsync(created.Value.Id);
+        await MarkPaidAsync(db, created.Value.Id);
+        await service.DispenseAsync(created.Value.Id);
+
+        // Giả lập đã cấp phát từ 25 giờ trước — quá cửa sổ 24h (Encounter.ReturnWindow).
+        var entity = await db.Encounters.FindAsync(created.Value.Id);
+        typeof(Encounter).GetProperty(nameof(Encounter.DispensedAt))!
+            .SetValue(entity, DateTimeOffset.UtcNow.AddHours(-25));
+        await db.SaveChangesAsync();
+
+        var result = await service.ReturnStockAsync(
+            created.Value.Id, new ReturnStockRequest("Thử hoàn quá hạn"), Guid.NewGuid());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Pharmacy.ReturnWindowExpired", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task ReturnStock_WhenReasonEmpty_ShouldReturnValidationError()
+    {
+        var service = Setup(nameof(ReturnStock_WhenReasonEmpty_ShouldReturnValidationError),
+            out var db, out var appt, out var medId);
+        AddBatch(db, medId, "LOT-D", Today.AddMonths(6), 10);
+        var created = await service.CreateAsync(Req(appt.Id, medId, 2));
+        await service.CompleteAsync(created.Value.Id);
+        await MarkPaidAsync(db, created.Value.Id);
+        await service.DispenseAsync(created.Value.Id);
+
+        var result = await service.ReturnStockAsync(created.Value.Id, new ReturnStockRequest("  "), Guid.NewGuid());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.Equal("Pharmacy.ReturnReasonRequired", result.Error.Code);
+    }
+
+    [Fact]
     public async Task ReturnStock_ShouldBeIdempotentGuard_ReturnConflictOnSecondCall()
     {
         var service = Setup(nameof(ReturnStock_ShouldBeIdempotentGuard_ReturnConflictOnSecondCall),
@@ -255,10 +353,11 @@ public sealed class EncounterDispenseTests
         await service.CompleteAsync(created.Value.Id);
         await MarkPaidAsync(db, created.Value.Id);
         await service.DispenseAsync(created.Value.Id);
-        await service.ReturnStockAsync(created.Value.Id);
+        await service.ReturnStockAsync(created.Value.Id, new ReturnStockRequest("Hoàn kho lần 1"), Guid.NewGuid());
 
         // Gọi lần 2 → 409
-        var second = await service.ReturnStockAsync(created.Value.Id);
+        var second = await service.ReturnStockAsync(
+            created.Value.Id, new ReturnStockRequest("Hoàn kho lần 2"), Guid.NewGuid());
 
         Assert.True(second.IsFailure);
         Assert.Equal(ErrorType.Conflict, second.Error.Type);
@@ -275,7 +374,7 @@ public sealed class EncounterDispenseTests
         await service.CompleteAsync(created.Value.Id);
         // Chưa thu tiền, chưa cấp phát — gọi ReturnStock ngay → 409
 
-        var result = await service.ReturnStockAsync(created.Value.Id);
+        var result = await service.ReturnStockAsync(created.Value.Id, new ReturnStockRequest("Thử hoàn kho"), Guid.NewGuid());
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Conflict, result.Error.Type);

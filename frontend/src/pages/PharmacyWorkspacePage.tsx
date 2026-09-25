@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PackageCheck, PackagePlus, RefreshCw, TriangleAlert } from 'lucide-react'
-import { dispenseEncounter, listEncounters, returnStock } from '../services/encounterService'
+import { dispenseEncounter, listEncounters, returnStock, type ReturnStockItem } from '../services/encounterService'
 import { getPharmacyAlerts } from '../services/pharmacyService'
 import { toastError, toastSuccess } from '../lib/toast'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { DispenseStatus, type Encounter } from '../types/encounter'
 import type { PharmacyAlerts } from '../types/medication'
 import { PageHeader } from '../components/PageHeader'
@@ -27,8 +28,8 @@ export default function PharmacyWorkspacePage() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const [pendingRes, dispensedRes, alertsRes] = await Promise.all([
         listEncounters({ page: 1, pageSize: 100, dispenseStatus: DispenseStatus.Paid }),
@@ -39,15 +40,18 @@ export default function PharmacyWorkspacePage() {
       setDispensedOrders(dispensedRes.items)
       setAlerts(alertsRes)
     } catch (err) {
-      toastError(err)
+      if (!opts?.silent) toastError(err)
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Bác sĩ chỉ định/lễ tân thu tiền ở màn khác — tự làm mới đơn chờ cấp phát.
+  useAutoRefresh(() => void load({ silent: true }))
 
   const dispense = async (id: string) => {
     setBusyId(id)
@@ -62,10 +66,10 @@ export default function PharmacyWorkspacePage() {
     }
   }
 
-  const doReturnStock = async (id: string) => {
+  const doReturnStock = async (id: string, reason: string, items: ReturnStockItem[]) => {
     setBusyId(id)
     try {
-      await returnStock(id)
+      await returnStock(id, reason, items)
       toastSuccess('Đã hoàn kho — tồn kho được khôi phục về đúng lô.')
       await load()
     } catch (err) {
@@ -80,7 +84,7 @@ export default function PharmacyWorkspacePage() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
-        title="Dược sĩ — Một màn"
+        title="Cấp phát & Cảnh báo kho"
         description="Chờ cấp phát, hoàn kho & cảnh báo tồn kho trong ca — workspace theo vai trò (UX-05)"
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -165,7 +169,7 @@ export default function PharmacyWorkspacePage() {
                   action="dispense"
                   busy={busyId === e.id}
                   onDispense={(id) => void dispense(id)}
-                  onReturnStock={(id) => void doReturnStock(id)}
+                  onReturnStock={(id, reason, items) => void doReturnStock(id, reason, items)}
                 />
               ))
             )}
@@ -184,7 +188,7 @@ export default function PharmacyWorkspacePage() {
                   action="return"
                   busy={busyId === e.id}
                   onDispense={(id) => void dispense(id)}
-                  onReturnStock={(id) => void doReturnStock(id)}
+                  onReturnStock={(id, reason, items) => void doReturnStock(id, reason, items)}
                 />
               ))}
             </div>

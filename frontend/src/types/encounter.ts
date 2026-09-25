@@ -108,6 +108,12 @@ export interface Encounter {
   dispensedAt: string | null
   /** Thời điểm đã lập hoá đơn thuốc từ phiếu này — null nếu chưa lập. */
   medicationInvoicedAt: string | null
+  /** Lý do hoàn kho — null nếu chưa hoàn. */
+  returnReason: string | null
+  /** Thời điểm hoàn kho — null nếu chưa hoàn. */
+  returnedAt: string | null
+  returnedByUserId: string | null
+  returnedByUserName: string | null
   createdAt: string
   updatedAt: string | null
 }

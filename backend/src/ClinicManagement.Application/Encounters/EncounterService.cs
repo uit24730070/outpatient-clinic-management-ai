@@ -29,7 +29,7 @@ public sealed class EncounterService : IEncounterService
     // Best-effort: tự lập hoá đơn thuốc khi chốt phiếu (null trong unit test → bỏ qua, dùng lại
     // nút "Lập HĐ thuốc" thủ công ở VisitDetailPage làm phương án dự phòng).
     private readonly IInvoiceService? _invoices;
-    // Best-effort: tự đóng lượt tiếp đón khi dịch vụ khám cuối cùng của lượt hoàn tất (null trong
+    // Best-effort: tự đóng lượt tiếp nhận khi dịch vụ khám cuối cùng của lượt hoàn tất (null trong
     // unit test → bỏ qua, dùng lại nút "Đóng lượt"/"Mở lại lượt" thủ công làm phương án dự phòng).
     private readonly IVisitService? _visits;
     // Best-effort: tự xử lý vé hàng đợi khi chốt phiếu (null trong unit test → bỏ qua) — tránh số ảo
@@ -236,42 +236,104 @@ public sealed class EncounterService : IEncounterService
         return (await ProjectByIdAsync(encounter.Id, ct))!;
     }
 
-    public async Task<Result<EncounterDto>> ReturnStockAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result<EncounterDto>> ReturnStockAsync(
+        Guid id, ReturnStockRequest request, Guid returnedByUserId, CancellationToken ct = default)
     {
         var encounter = await _db.Encounters.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (encounter is null)
             return Error.NotFound("Encounter.NotFound", $"Không tìm thấy phiếu khám với Id {id}.");
 
-        // Chỉ được hoàn khi đã cấp phát thực (Dispensed → Returned).
-        var mark = encounter.MarkReturned();
-        if (mark.IsFailure)
-            return Result.Failure<EncounterDto>(mark.Error);
+        var reason = request.Reason?.Trim();
+        if (string.IsNullOrEmpty(reason))
+            return Error.Validation("Pharmacy.ReturnReasonRequired", "Lý do hoàn kho không được để trống.");
 
         var occurredAt = DateTimeOffset.UtcNow;
 
+        // Chỉ được hoàn khi đã cấp phát thực và còn trong cửa sổ thời gian (Dispensed → Returned).
+        var mark = encounter.MarkReturned(reason, returnedByUserId, occurredAt);
+        if (mark.IsFailure)
+            return Result.Failure<EncounterDto>(mark.Error);
+
         // Truy sổ cái Dispense theo encounterId để nhập lại đúng lô đã trừ (sổ cái bất biến — chỉ thêm).
+        // Giữ thứ tự tạo (FEFO lúc cấp) để hoàn một phần cũng ưu tiên đúng lô đã lấy trước.
         var dispenses = await _db.StockTransactions
             .Where(t => t.Type == StockTransactionType.Dispense
                         && t.ReferenceType == nameof(Encounter)
                         && t.ReferenceId == encounter.Id)
+            .OrderBy(t => t.CreatedAt)
             .ToListAsync(ct);
+        if (dispenses.Count == 0)
+            return Result.Failure<EncounterDto>(Error.Validation(
+                "Pharmacy.NothingToReturn", "Đơn này không có giao dịch xuất kho để hoàn."));
 
-        foreach (var tx in dispenses)
+        var batchIds = dispenses.Select(t => t.MedicationBatchId).Distinct().ToList();
+        var batches = await _db.MedicationBatches
+            .Where(b => batchIds.Contains(b.Id))
+            .ToDictionaryAsync(b => b.Id, ct);
+
+        var dispensedByMedication = dispenses
+            .GroupBy(t => batches[t.MedicationBatchId].MedicationId)
+            .ToDictionary(g => g.Key, g => g.Sum(t => Math.Abs(t.QuantityDelta)));
+
+        // Không chọn dòng nào → hoàn toàn bộ (tương thích ngược, hành vi cũ trước khi có hoàn một phần).
+        List<ReturnStockItemRequest> itemsToReturn;
+        if (request.Items is null || request.Items.Count == 0)
         {
-            var batch = await _db.MedicationBatches.FindAsync(new object[] { tx.MedicationBatchId }, ct);
-            if (batch is null)
-                continue;
+            itemsToReturn = dispensedByMedication
+                .Select(kv => new ReturnStockItemRequest(kv.Key, kv.Value))
+                .ToList();
+        }
+        else
+        {
+            var seen = new HashSet<Guid>();
+            foreach (var item in request.Items)
+            {
+                if (!seen.Add(item.MedicationId))
+                    return Error.Validation("Pharmacy.ReturnDuplicateMedication",
+                        "Danh sách hoàn kho có thuốc bị lặp.");
 
-            var qty = Math.Abs(tx.QuantityDelta);
-            batch.Increase(qty);
+                if (item.Quantity <= 0)
+                    return Error.Validation("Pharmacy.ReturnQuantityInvalid",
+                        "Số lượng hoàn phải lớn hơn 0.");
 
-            _db.StockTransactions.Add(new StockTransaction(
-                tx.MedicationBatchId,
-                StockTransactionType.Return,
-                qty,
-                referenceType: nameof(Encounter),
-                referenceId: encounter.Id,
-                occurredAt: occurredAt));
+                if (!dispensedByMedication.TryGetValue(item.MedicationId, out var dispensedQty))
+                    return Error.Validation("Pharmacy.ReturnMedicationNotDispensed",
+                        $"Thuốc {item.MedicationId} không thuộc đơn đã cấp phát này.");
+
+                if (item.Quantity > dispensedQty)
+                    return Error.Validation("Pharmacy.ReturnQuantityExceedsDispensed",
+                        $"Chỉ hoàn tối đa {dispensedQty} (đã cấp) cho thuốc {item.MedicationId}.");
+            }
+
+            itemsToReturn = request.Items.ToList();
+        }
+
+        foreach (var item in itemsToReturn)
+        {
+            var remaining = item.Quantity;
+            var medicationTxs = dispenses.Where(t => batches[t.MedicationBatchId].MedicationId == item.MedicationId);
+
+            foreach (var tx in medicationTxs)
+            {
+                if (remaining <= 0)
+                    break;
+
+                var batch = batches[tx.MedicationBatchId];
+                var take = Math.Min(remaining, Math.Abs(tx.QuantityDelta));
+                if (take <= 0)
+                    continue;
+
+                batch.Increase(take);
+                _db.StockTransactions.Add(new StockTransaction(
+                    batch.Id,
+                    StockTransactionType.Return,
+                    take,
+                    referenceType: nameof(Encounter),
+                    referenceId: encounter.Id,
+                    occurredAt: occurredAt));
+
+                remaining -= take;
+            }
         }
 
         await _db.SaveChangesAsync(ct);
@@ -420,7 +482,7 @@ public sealed class EncounterService : IEncounterService
     }
 
     /// <summary>
-    /// Tự đóng lượt tiếp đón khi dịch vụ khám vừa chốt là dịch vụ <b>cuối cùng</b> của lượt còn dang dở
+    /// Tự đóng lượt tiếp nhận khi dịch vụ khám vừa chốt là dịch vụ <b>cuối cùng</b> của lượt còn dang dở
     /// (mọi Appointment khác cùng lượt đã Completed/Cancelled/NoShow) — coi như bác sĩ đã xong việc,
     /// chuyển bệnh nhân xuống quầy thuốc/thu ngân. Không đụng tới việc thanh toán/cấp phát thuốc (độc
     /// lập với VisitStatus). Best-effort: lượt lẻ (không gắn Visit) hoặc lỗi transition (vd đã đóng/huỷ
@@ -459,7 +521,11 @@ public sealed class EncounterService : IEncounterService
             e.DispensedAt,
             e.CreatedAt,
             e.UpdatedAt,
-            e.MedicationInvoicedAt));
+            e.MedicationInvoicedAt,
+            e.ReturnReason,
+            e.ReturnedAt,
+            e.ReturnedByUserId,
+            _db.Users.Where(u => u.Id == e.ReturnedByUserId).Select(u => u.FullName).FirstOrDefault()));
 
     private async Task<EncounterDto?> ProjectByIdAsync(Guid id, CancellationToken ct) =>
         await Project(_db.Encounters.AsNoTracking().Where(e => e.Id == id)).FirstOrDefaultAsync(ct);

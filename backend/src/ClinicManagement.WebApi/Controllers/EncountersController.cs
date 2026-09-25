@@ -84,9 +84,12 @@ public sealed class EncountersController : ApiControllerBase
     public async Task<IActionResult> Dispense(Guid id, CancellationToken ct)
         => ToResponse(await _encounters.DispenseAsync(id, ct));
 
-    /// <summary>Hoàn kho đơn thuốc đã cấp phát (Dispensed → Returned): nhập lại tồn đúng lô + ghi sổ cái bù.</summary>
+    /// <summary>
+    /// Hoàn kho đơn thuốc đã cấp phát (Dispensed → Returned): nhập lại tồn đúng lô + ghi sổ cái bù.
+    /// Bắt buộc lý do; ghi lại người thực hiện (audit tối thiểu chống hoàn kho nhầm).
+    /// </summary>
     [Authorize(Roles = Roles.ManagePharmacy)]
     [HttpPost("{id:guid}/return-stock")]
-    public async Task<IActionResult> ReturnStock(Guid id, CancellationToken ct)
-        => ToResponse(await _encounters.ReturnStockAsync(id, ct));
+    public async Task<IActionResult> ReturnStock(Guid id, [FromBody] ReturnStockRequest request, CancellationToken ct)
+        => ToResponse(await _encounters.ReturnStockAsync(id, request, CurrentUserId, ct));
 }

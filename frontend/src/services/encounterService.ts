@@ -62,8 +62,17 @@ export async function dispenseEncounter(id: string): Promise<Encounter> {
   return unwrap(res.data)
 }
 
+export interface ReturnStockItem {
+  medicationId: string
+  quantity: number
+}
+
 // Hoàn kho đơn đã cấp phát (Dược sĩ) — nhập lại tồn đúng lô + ghi sổ cái bù (ADR 0022, REF-02).
-export async function returnStock(id: string): Promise<Encounter> {
-  const res = await apiClient.post<ApiResponse<Encounter>>(`/api/encounters/${id}/return-stock`)
+// Bắt buộc lý do; `items` chọn hoàn một phần theo từng thuốc/số lượng (rỗng = hoàn toàn bộ).
+export async function returnStock(id: string, reason: string, items: ReturnStockItem[]): Promise<Encounter> {
+  const res = await apiClient.post<ApiResponse<Encounter>>(`/api/encounters/${id}/return-stock`, {
+    reason,
+    items,
+  })
   return unwrap(res.data)
 }

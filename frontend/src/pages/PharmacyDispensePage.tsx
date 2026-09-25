@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PackageCheck } from 'lucide-react'
-import { dispenseEncounter, listEncounters, returnStock } from '../services/encounterService'
+import { dispenseEncounter, listEncounters, returnStock, type ReturnStockItem } from '../services/encounterService'
 import { toastError, toastSuccess } from '../lib/toast'
 import { DispenseStatus, type Encounter } from '../types/encounter'
 import { PageHeader } from '../components/PageHeader'
@@ -50,10 +50,10 @@ export default function PharmacyDispensePage() {
     }
   }
 
-  const doReturnStock = async (id: string) => {
+  const doReturnStock = async (id: string, reason: string, items: ReturnStockItem[]) => {
     setBusyId(id)
     try {
-      await returnStock(id)
+      await returnStock(id, reason, items)
       toastSuccess('Đã hoàn kho — tồn kho được khôi phục về đúng lô.')
       await load()
     } catch (err) {
@@ -92,7 +92,7 @@ export default function PharmacyDispensePage() {
                   action="dispense"
                   busy={busyId === e.id}
                   onDispense={(id) => void dispense(id)}
-                  onReturnStock={(id) => void doReturnStock(id)}
+                  onReturnStock={(id, reason, items) => void doReturnStock(id, reason, items)}
                 />
               ))
             )}
@@ -111,7 +111,7 @@ export default function PharmacyDispensePage() {
                   action="return"
                   busy={busyId === e.id}
                   onDispense={(id) => void dispense(id)}
-                  onReturnStock={(id) => void doReturnStock(id)}
+                  onReturnStock={(id, reason, items) => void doReturnStock(id, reason, items)}
                 />
               ))}
             </div>

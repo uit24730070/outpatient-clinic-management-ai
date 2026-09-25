@@ -30,6 +30,7 @@ import { DispenseStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
 import { LabOrderPanel } from './LabOrderPanel'
 import { PatientContextHeader } from './PatientContextHeader'
+import { RecentEncountersCard } from './RecentEncountersCard'
 import { VitalsCard } from './VitalsCard'
 import { Combobox } from './Combobox'
 import { Button } from '@/components/ui/button'
@@ -117,6 +118,7 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
   const [patientId, setPatientId] = useState('')
   const [patientName, setPatientName] = useState('')
   const [doctorName, setDoctorName] = useState('')
+  const [visitId, setVisitId] = useState<string | null>(null)
   const [medications, setMedications] = useState<Medication[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -129,6 +131,7 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
   const { register, handleSubmit, control, watch, setValue, reset, formState } = form
   const { fields, append, remove } = useFieldArray({ control, name: 'prescriptionItems' })
   const items = watch('prescriptionItems')
+  const diagnosis = watch('diagnosis')
 
   const medMap = useMemo(() => new Map(medications.map((m) => [m.id, m])), [medications])
 
@@ -148,8 +151,17 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
           setPatientId(appt.patientId)
           setPatientName(appt.patientName ?? '—')
           setDoctorName(appt.doctorName ?? '—')
+          setVisitId(appt.visitId)
         }
-        const existing = await getEncounterByAppointment(appointmentId)
+        // Tự tạo phiếu nháp ngay khi mở màn khám (nếu chưa có) để bác sĩ chỉ định CLS được luôn,
+        // không phải bấm "Tạo phiếu" trước — chẩn đoán để trống, backend chặn chốt phiếu tới khi
+        // nhập (Encounter.DiagnosisRequired). Lỗi (vd lịch chưa InProgress) thì bỏ qua yên lặng,
+        // giữ hành vi cũ (hiện thông báo "Lưu phiếu khám để chỉ định CLS").
+        const existing =
+          (await getEncounterByAppointment(appointmentId)) ??
+          (await createEncounter({ appointmentId, symptoms: null, diagnosis: '', notes: null, prescriptionItems: [] }).catch(
+            () => null,
+          ))
         if (active && existing) {
           setEncounter(existing)
           reset({
@@ -236,12 +248,13 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
   if (loading) return <p className="text-muted-foreground">Đang tải…</p>
 
   const hasLinked = items.some((it) => it.medicationId)
+  const diagnosisMissing = !diagnosis.trim()
   const completeMessage = hasLinked
     ? 'Thuốc trong danh mục sẽ được cấp phát (trừ tồn theo hạn dùng gần nhất). Nếu không đủ tồn, việc chốt sẽ bị huỷ. Sau khi chốt sẽ không sửa được.'
     : 'Sau khi chốt sẽ không sửa được và lịch khám chuyển sang Hoàn tất.'
 
   return (
-    <section className="mx-auto max-w-6xl">
+    <section className="mx-auto max-w-7xl">
       {!hideHeader && (
         <PageHeader
           title="Phiếu khám"
@@ -254,6 +267,12 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
                 <>
                   {' · '}
                   <DispenseStatusBadge status={encounter.dispenseStatus} />
+                  {encounter.dispenseStatus === DispenseStatus.Returned && encounter.returnReason && (
+                    <span className="ml-1 text-muted-foreground">
+                      (lý do: {encounter.returnReason}
+                      {encounter.returnedByUserName && ` · bởi ${encounter.returnedByUserName}`})
+                    </span>
+                  )}
                 </>
               )}
             </>
@@ -261,15 +280,30 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
         />
       )}
 
-      {patientId && (
-        <div className="mb-4">
-          <PatientContextHeader patientId={patientId} fallbackName={patientName} />
+      <div className="flex flex-col gap-4">
+        {/* Ngữ cảnh bệnh nhân — đặt trên cùng một cột để dễ đọc, thay vì chia cột (phản hồi UX). */}
+        <div className="flex flex-col gap-4">
+          {patientId && (
+            <Card>
+              <CardContent className="flex flex-col divide-y">
+                <PatientContextHeader
+                  patientId={patientId}
+                  fallbackName={patientName}
+                  showHistoryLink={false}
+                  bare
+                />
+                <div className="pt-4">
+                  <RecentEncountersCard
+                    patientId={patientId}
+                    excludeEncounterId={encounter?.id}
+                    bare
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          <VitalsCard appointmentId={appointmentId} />
         </div>
-      )}
-
-      <div className="mb-4">
-        <VitalsCard appointmentId={appointmentId} />
-      </div>
 
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Card>
@@ -472,6 +506,7 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
         {encounter ? (
           <LabOrderPanel
             encounterId={encounter.id}
+            visitId={visitId}
             canOrder={canRecordEncounter && !isCompleted}
             canRecord={canRecordEncounter}
             canBill={canBill}
@@ -503,7 +538,11 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
           {encounter && !isCompleted && (
             <ConfirmDialog
               trigger={
-                <Button type="button" disabled={formState.isSubmitting}>
+                <Button
+                  type="button"
+                  disabled={formState.isSubmitting || diagnosisMissing}
+                  title={diagnosisMissing ? 'Cần nhập chẩn đoán trước khi chốt phiếu.' : undefined}
+                >
                   <CheckCircle2 className="size-4" />
                   Chốt phiếu
                 </Button>
@@ -516,6 +555,7 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
           )}
         </div>
       </form>
+      </div>
     </section>
   )
 }

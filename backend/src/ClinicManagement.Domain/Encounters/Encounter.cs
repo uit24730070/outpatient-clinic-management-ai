@@ -85,6 +85,15 @@ public class Encounter : Entity
     /// <summary>Cụm dòng đơn thuốc (chỉ đọc từ ngoài; thay cả cụm qua <see cref="ReplaceItems"/>).</summary>
     public IReadOnlyCollection<PrescriptionItem> PrescriptionItems => _prescriptionItems.AsReadOnly();
 
+    /// <summary>Lý do hoàn kho (bắt buộc nhập khi hoàn — ADR 0022 bổ sung audit) — null nếu chưa hoàn.</summary>
+    public string? ReturnReason { get; private set; }
+
+    /// <summary>Thời điểm hoàn kho — null nếu chưa hoàn.</summary>
+    public DateTimeOffset? ReturnedAt { get; private set; }
+
+    /// <summary>Người thực hiện hoàn kho (Id user) — null nếu chưa hoàn.</summary>
+    public Guid? ReturnedByUserId { get; private set; }
+
     /// <summary>Cập nhật nội dung phiếu. Chỉ khi còn <see cref="EncounterStatus.Draft"/>.</summary>
     public Result UpdateDetails(string? symptoms, string diagnosis, string? notes)
     {
@@ -113,6 +122,12 @@ public class Encounter : Entity
     {
         if (Status != EncounterStatus.Draft)
             return InvalidTransition(nameof(Complete));
+
+        // Phiếu nháp có thể được tạo rỗng chẩn đoán (frontend tự tạo nháp lúc mở màn khám để bác sĩ
+        // chỉ định CLS trước) — chặn chốt phiếu tới khi bác sĩ thực sự nhập chẩn đoán.
+        if (string.IsNullOrWhiteSpace(Diagnosis))
+            return Result.Failure(Error.Validation("Encounter.DiagnosisRequired",
+                "Vui lòng nhập chẩn đoán trước khi chốt phiếu."));
 
         Status = EncounterStatus.Completed;
         return Result.Success();
@@ -167,17 +182,30 @@ public class Encounter : Entity
         return Result.Success();
     }
 
+    /// <summary>Cửa sổ thời gian còn được hoàn kho, tính từ <see cref="DispensedAt"/> (bổ sung sau ADR 0022).</summary>
+    public static readonly TimeSpan ReturnWindow = TimeSpan.FromHours(24);
+
     /// <summary>
-    /// Hoàn kho (Dispensed → Returned): đặt lại trạng thái sau khi service nhập lại tồn đúng lô.
-    /// Chỉ hợp lệ khi đang <see cref="DispenseStatus.Dispensed"/>; gọi hai lần → 409 (ADR 0022, REF-02).
+    /// Hoàn kho (Dispensed → Returned): đặt lại trạng thái sau khi service nhập lại tồn (toàn phần hoặc một
+    /// phần theo lựa chọn dược sĩ). Chỉ hợp lệ khi đang <see cref="DispenseStatus.Dispensed"/>; gọi hai lần
+    /// → 409 (ADR 0022, REF-02) — hoàn một phần cũng đóng hẳn vòng đời, không hoàn tiếp được phần còn lại.
+    /// Quá <see cref="ReturnWindow"/> kể từ <see cref="DispensedAt"/> → 409 <c>Pharmacy.ReturnWindowExpired</c>.
+    /// Ghi lại lý do + người thực hiện + thời điểm (audit tối thiểu, bổ sung sau ADR 0022).
     /// </summary>
-    public Result MarkReturned()
+    public Result MarkReturned(string reason, Guid returnedByUserId, DateTimeOffset when)
     {
         if (DispenseStatus != DispenseStatus.Dispensed)
             return Result.Failure(Error.Conflict("Pharmacy.InvalidDispenseTransition",
                 $"Không thể hoàn kho khi trạng thái cấp phát là {DispenseStatus}."));
 
+        if (when - DispensedAt!.Value > ReturnWindow)
+            return Result.Failure(Error.Conflict("Pharmacy.ReturnWindowExpired",
+                $"Đã quá {ReturnWindow.TotalHours:0} giờ kể từ khi cấp phát, không thể hoàn kho."));
+
         DispenseStatus = DispenseStatus.Returned;
+        ReturnReason = reason;
+        ReturnedByUserId = returnedByUserId;
+        ReturnedAt = when;
         return Result.Success();
     }
 

@@ -22,4 +22,9 @@ public sealed record EncounterDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
     // Thời điểm đã lập hoá đơn thuốc từ phiếu này — null nếu chưa lập.
-    DateTimeOffset? MedicationInvoicedAt);
+    DateTimeOffset? MedicationInvoicedAt,
+    // Audit hoàn kho (ADR 0022 bổ sung) — null nếu chưa hoàn.
+    string? ReturnReason,
+    DateTimeOffset? ReturnedAt,
+    Guid? ReturnedByUserId,
+    string? ReturnedByUserName);

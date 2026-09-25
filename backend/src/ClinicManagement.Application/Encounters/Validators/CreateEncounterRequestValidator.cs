@@ -10,8 +10,11 @@ public sealed class CreateEncounterRequestValidator : AbstractValidator<CreateEn
         RuleFor(x => x.AppointmentId)
             .NotEmpty().WithMessage("Lịch khám không được để trống.");
 
+        // Cho phép tạo phiếu nháp chưa có chẩn đoán (frontend tự tạo nháp khi mở màn khám để bác sĩ
+        // chỉ định CLS trước khi nhập chẩn đoán) — bắt buộc lại NotEmpty ở UpdateEncounterRequestValidator
+        // và CompleteAsync chặn chốt phiếu khi còn trống.
         RuleFor(x => x.Diagnosis)
-            .NotEmpty().WithMessage("Chẩn đoán không được để trống.")
+            .NotNull().WithMessage("Chẩn đoán không được để trống.")
             .MaximumLength(1000);
 
         RuleFor(x => x.Symptoms)
