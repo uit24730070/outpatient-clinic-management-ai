@@ -46,11 +46,16 @@ Thứ tự khởi động được đảm bảo qua **healthcheck** DB (`pg_isre
 
 | Vai trò | Đăng nhập | Mật khẩu |
 |---------|-----------|----------|
-| Admin | `admin` | `Admin@123` |
+| Quản trị viên | `admin` | `Admin@123` |
+| Lễ tân | `letan` | `Receptionist@123` |
 | Bác sĩ | `bacsi` | `Doctor@123` (đã gắn hồ sơ `BS-000001`) |
-| Dược sĩ | `duocsi` | `Pharmacist@123` (quản lý kho thuốc — ADR 0013) |
+| Điều dưỡng | `dieuduong` | `Nurse@123` |
+| Dược sĩ | `duocsi` | `Pharmacist@123` (quản lý kho thuốc) |
+| Kỹ thuật viên | `kythuatvien` | `Technician@123` |
 
-Đăng nhập Admin để vào **Người dùng** (tạo tài khoản, gắn bác sĩ…); đăng nhập `bacsi` để thấy **Phòng khám của tôi**; đăng nhập `duocsi` để quản lý **Kho thuốc** (danh mục, nhập kho, cảnh báo).
+Đăng nhập Admin để vào **Người dùng** (tạo tài khoản, gắn bác sĩ…); `letan` để vào **Tiếp nhận**
+(`/front-desk`); `bacsi` để thấy **Phòng khám của tôi**; `dieuduong` để vào **Sinh hiệu & Hàng đợi**;
+`duocsi` để quản lý **Kho thuốc**; `kythuatvien` để vào **Thực hiện CLS**.
 
 ## Biến môi trường (`.env`)
 
@@ -72,7 +77,7 @@ Thứ tự khởi động được đảm bảo qua **healthcheck** DB (`pg_isre
 
 ## Bật trợ lý AI thật (tuỳ chọn)
 
-Trong `.env` đặt `AI_USE_FAKE=false`, `AI_USE_FAKE_EMBEDDING=false` và điền `AI_API_KEY` (OpenAI) + `AI_EMBEDDING_API_KEY` (Voyage). Sau đó đăng nhập Admin và gọi `POST /api/ai/reindex` để lập chỉ mục embedding cho phiếu khám hiện có. Xem [ADR 0007](../adr/0007-tich-hop-llm.md) và [ADR 0008](../adr/0008-rag-va-vector-store.md).
+Trong `.env` đặt `AI_USE_FAKE=false`, `AI_USE_FAKE_EMBEDDING=false` và điền `AI_API_KEY` (OpenAI) + `AI_EMBEDDING_API_KEY` (Voyage). Sau đó đăng nhập Admin và gọi `POST /api/ai/reindex` để lập chỉ mục embedding cho phiếu khám hiện có.
 
 ## Ghi chú vận hành
 
