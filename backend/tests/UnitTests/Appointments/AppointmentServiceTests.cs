@@ -112,7 +112,7 @@ public sealed class AppointmentServiceTests
     [Fact]
     public async Task CheckIn_ThenStart_ThenComplete_ShouldFollowStateMachine()
     {
-        var service = CreateService(out _, out var patientId, out var doctorId);
+        var service = CreateService(out var db, out var patientId, out var doctorId);
         var created = await service.CreateAsync(ValidRequest(patientId, doctorId));
         var id = created.Value.Id;
 
@@ -121,6 +121,7 @@ public sealed class AppointmentServiceTests
         Assert.Equal(AppointmentStatus.CheckedIn, checkedIn.Value.Status);
         Assert.NotNull(checkedIn.Value.CheckedInAt);
 
+        AddVitals(db, id, patientId);
         var started = await service.StartAsync(id);
         Assert.Equal(AppointmentStatus.InProgress, started.Value.Status);
 
@@ -140,6 +141,45 @@ public sealed class AppointmentServiceTests
         Assert.True(started.IsFailure);
         Assert.Equal(ErrorType.Conflict, started.Error.Type);
         Assert.Equal("Appointment.InvalidTransition", started.Error.Code);
+    }
+
+    // ── Khép kín vai trò Điều dưỡng: bắt đầu khám đòi hỏi đã đo sinh hiệu ─────
+
+    [Fact]
+    public async Task Start_ShouldFail_WhenVitalsNotRecorded()
+    {
+        var service = CreateService(out _, out var patientId, out var doctorId);
+        var created = await service.CreateAsync(ValidRequest(patientId, doctorId));
+        await service.CheckInAsync(created.Value.Id);
+
+        var started = await service.StartAsync(created.Value.Id);
+
+        Assert.True(started.IsFailure);
+        Assert.Equal(ErrorType.Conflict, started.Error.Type);
+        Assert.Equal("Appointment.VitalsRequired", started.Error.Code);
+    }
+
+    [Fact]
+    public async Task Start_ShouldSucceed_WhenVitalsRecorded()
+    {
+        var service = CreateService(out var db, out var patientId, out var doctorId);
+        var created = await service.CreateAsync(ValidRequest(patientId, doctorId));
+        var id = created.Value.Id;
+        await service.CheckInAsync(id);
+        AddVitals(db, id, patientId);
+
+        var started = await service.StartAsync(id);
+
+        Assert.True(started.IsSuccess);
+        Assert.Equal(AppointmentStatus.InProgress, started.Value.Status);
+    }
+
+    private static void AddVitals(TestDbContext db, Guid appointmentId, Guid patientId)
+    {
+        db.Vitals.Add(new ClinicManagement.Domain.Clinical.Vitals(
+            appointmentId, patientId, Guid.NewGuid(), null,
+            null, null, 37.0m, 78, 120, 80, 98, null, null));
+        db.SaveChanges();
     }
 
     [Fact]

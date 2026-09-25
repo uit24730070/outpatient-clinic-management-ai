@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Check, CheckCheck, Clock, PhoneCall, Play, RefreshCw, SkipForward } from 'lucide-react'
+import { Activity, Check, CheckCheck, CircleCheck, Clock, PhoneCall, Play, RefreshCw, SkipForward } from 'lucide-react'
 import { listQueue, transitionQueueTicket, type QueueAction } from '../services/queueService'
 import { toastError, toastSuccess } from '../lib/toast'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
@@ -44,7 +44,9 @@ const actionsByStatus: Record<number, { action: QueueAction; label: string; icon
 /**
  * Workspace Điều dưỡng (Epic 17, UX-04): gộp hàng đợi hôm nay (gọi/bắt đầu/hoàn tất số) + đo sinh
  * hiệu ngay tại dòng — thay cho việc chuyển qua lại `/queue` · `/vitals`. Hai trang cũ vẫn giữ
- * nguyên; đây là bổ sung, cùng pattern với `/front-desk` (UX-03).
+ * nguyên; đây là bổ sung, cùng pattern với `/front-desk` (UX-03). Khép kín quy trình: bác sĩ không
+ * "Bắt đầu khám" được ở `/my-clinic` khi `hasVitals` còn false — nút "Sinh hiệu" ở đây là bước bắt
+ * buộc, không còn tuỳ chọn.
  */
 export default function NurseWorkspacePage() {
   const [tickets, setTickets] = useState<QueueTicket[]>([])
@@ -166,9 +168,13 @@ export default function NurseWorkspacePage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
                         {t.appointmentId && (
-                          <Button size="sm" variant="outline" onClick={() => setVitalsFor(t)}>
-                            <Activity className="size-4" />
-                            Sinh hiệu
+                          <Button
+                            size="sm"
+                            variant={t.hasVitals ? 'ghost' : 'outline'}
+                            onClick={() => setVitalsFor(t)}
+                          >
+                            {t.hasVitals ? <CircleCheck className="size-4 text-emerald-600" /> : <Activity className="size-4" />}
+                            {t.hasVitals ? 'Đã đo' : 'Sinh hiệu'}
                           </Button>
                         )}
                         {actionsByStatus[t.status]?.map(({ action, label, icon: Icon }) => (

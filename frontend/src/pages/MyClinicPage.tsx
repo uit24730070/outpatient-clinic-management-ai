@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, History, Play, RefreshCw, Stethoscope, TriangleAlert, Users } from 'lucide-react'
+import { Activity, CalendarClock, History, Play, RefreshCw, Stethoscope, TriangleAlert, Users } from 'lucide-react'
 import { listAppointments, transitionAppointment } from '../services/appointmentService'
 import { listQueue } from '../services/queueService'
 import { useAuth } from '../store/auth'
@@ -65,10 +65,11 @@ function PatientCell({ patientId, patientName }: { patientId: string; patientNam
 /**
  * Khám bệnh (Epic 17, UX-05): danh sách bệnh nhân đang chờ/đang khám của chính bác sĩ
  * (lọc doctorId, ADR 0009). Bác sĩ tự "Bắt đầu khám" (CheckedIn → InProgress, action `start` sẵn có
- * ở Lịch khám) ngay tại đây — không cần chờ Lễ tân/Điều dưỡng thao tác ở màn khác trước. Vé hàng đợi
- * (ADR 0019) hôm nay được nối vào chỉ để hiển thị số thứ tự/trạng thái, không dùng để chặn thao tác.
- * Có thêm mục lịch hôm nay còn lại để nắm ca làm, và lối tắt xem lịch sử khám mỗi bệnh nhân. Mở
- * nhiều phiếu khám song song dạng tab; nháp lưu server-side nên đóng/mở lại tab (kể cả F5) vẫn nạp đúng.
+ * ở Lịch khám) ngay tại đây. Kể từ khi khép kín vai trò Điều dưỡng, server chặn "start" nếu lịch khám
+ * chưa được đo sinh hiệu (Appointment.VitalsRequired) — nút ở đây tự vô hiệu hoá trước khi bác sĩ
+ * bấm nhầm, dựa trên `hasVitals` của vé hàng đợi (ADR 0019) nối theo lịch khám. Có thêm mục lịch hôm
+ * nay còn lại để nắm ca làm, và lối tắt xem lịch sử khám mỗi bệnh nhân. Mở nhiều phiếu khám song song
+ * dạng tab; nháp lưu server-side nên đóng/mở lại tab (kể cả F5) vẫn nạp đúng.
  */
 export default function MyClinicPage() {
   const { doctorId } = useAuth()
@@ -232,6 +233,11 @@ export default function MyClinicPage() {
                           <Button size="sm" onClick={() => openTab(a.id, a.patientName ?? '—', a)}>
                             <Stethoscope className="size-4" />
                             {tabs.some((t) => t.key === a.id) ? 'Mở lại' : 'Khám'}
+                          </Button>
+                        ) : ticket && !ticket.hasVitals ? (
+                          <Button size="sm" variant="outline" disabled title="Cần điều dưỡng đo sinh hiệu trước">
+                            <Activity className="size-4" />
+                            Chờ đo sinh hiệu
                           </Button>
                         ) : (
                           <Button size="sm" onClick={() => void onStartExam(a)}>

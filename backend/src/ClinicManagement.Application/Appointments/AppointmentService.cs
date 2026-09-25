@@ -199,8 +199,26 @@ public sealed class AppointmentService : IAppointmentService
     public Task<Result<AppointmentDto>> CheckInAsync(Guid id, CancellationToken ct = default)
         => TransitionAsync(id, a => a.CheckIn(), ct);
 
+    // Bắt đầu khám đòi hỏi đã có sinh hiệu (điều dưỡng/admin đo) — khép kín quy trình, bác sĩ không
+    // tự bỏ qua bước điều dưỡng được nữa (trước Sprint 25 vai trò này gần như tuỳ chọn).
     public Task<Result<AppointmentDto>> StartAsync(Guid id, CancellationToken ct = default)
-        => TransitionAsync(id, a => a.Start(), ct);
+        => TransitionAsync(id, a => a.Start(), ct, EnsureVitalsRecordedAsync);
+
+    /// <summary>
+    /// Đã có ít nhất một lần đo sinh hiệu cho lịch khám (gom theo Lượt nếu lịch thuộc một Lượt tiếp
+    /// nhận — cùng cách gom của <c>VitalsService</c>) chưa. Chặn "Bắt đầu khám" nếu chưa có.
+    /// </summary>
+    private async Task<Result> EnsureVitalsRecordedAsync(Appointment appointment, CancellationToken ct)
+    {
+        var hasVitals = appointment.VisitId is { } visitId
+            ? await _db.Vitals.AsNoTracking().AnyAsync(v => v.VisitId == visitId, ct)
+            : await _db.Vitals.AsNoTracking().AnyAsync(v => v.AppointmentId == appointment.Id, ct);
+
+        return hasVitals
+            ? Result.Success()
+            : Result.Failure(Error.Conflict("Appointment.VitalsRequired",
+                "Cần đo sinh hiệu trước khi bắt đầu khám — nhờ điều dưỡng đo tại màn \"Sinh hiệu & Hàng đợi\"."));
+    }
 
     public Task<Result<AppointmentDto>> CompleteAsync(Guid id, CancellationToken ct = default)
         => TransitionAsync(id, a => a.Complete(), ct);
@@ -211,9 +229,15 @@ public sealed class AppointmentService : IAppointmentService
     public Task<Result<AppointmentDto>> MarkNoShowAsync(Guid id, CancellationToken ct = default)
         => TransitionAsync(id, a => a.MarkNoShow(), ct);
 
-    /// <summary>Nạp lịch, áp một chuyển trạng thái của Domain rồi lưu; lỗi chuyển tiếp giữ nguyên mã.</summary>
+    /// <summary>
+    /// Nạp lịch, áp một chuyển trạng thái của Domain, rồi (tuỳ chọn) kiểm điều kiện tiên quyết ngoài
+    /// máy trạng thái trước khi lưu — máy trạng thái báo lỗi trước (vd Scheduled → Start vẫn phải là
+    /// <c>InvalidTransition</c>, không bị át bởi điều kiện tiên quyết) vì chưa <c>SaveChangesAsync</c>
+    /// nên chuyển trạng thái thử không lưu xuống DB nếu bước sau thất bại.
+    /// </summary>
     private async Task<Result<AppointmentDto>> TransitionAsync(
-        Guid id, Func<Appointment, Result> transition, CancellationToken ct)
+        Guid id, Func<Appointment, Result> transition, CancellationToken ct,
+        Func<Appointment, CancellationToken, Task<Result>>? preCheck = null)
     {
         var appointment = await _db.Appointments.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (appointment is null)
@@ -222,6 +246,13 @@ public sealed class AppointmentService : IAppointmentService
         var result = transition(appointment);
         if (result.IsFailure)
             return Result.Failure<AppointmentDto>(result.Error);
+
+        if (preCheck is not null)
+        {
+            var preCheckResult = await preCheck(appointment, ct);
+            if (preCheckResult.IsFailure)
+                return Result.Failure<AppointmentDto>(preCheckResult.Error);
+        }
 
         await _db.SaveChangesAsync(ct);
         return (await ProjectByIdAsync(appointment.Id, ct))!;

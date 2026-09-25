@@ -17,4 +17,5 @@ public sealed record QueueTicketDto(
     QueueTicketStatus Status,
     DateTimeOffset? CalledAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    bool HasVitals);

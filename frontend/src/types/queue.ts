@@ -36,6 +36,7 @@ export interface QueueTicket {
   calledAt: string | null
   createdAt: string
   updatedAt: string | null
+  hasVitals: boolean
 }
 
 export interface CreateQueueTicketValues {

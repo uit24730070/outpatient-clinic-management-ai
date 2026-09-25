@@ -178,7 +178,11 @@ public sealed class QueueService : IQueueService
             t.Status,
             t.CalledAt,
             t.CreatedAt,
-            t.UpdatedAt));
+            t.UpdatedAt,
+            // Gợi ý cho điều dưỡng/bác sĩ đã đo sinh hiệu cho lịch khám của vé chưa (so trực tiếp
+            // AppointmentId — chỉ để hiển thị; kiểm tiên quyết thật khi bắt đầu khám gom theo cả Lượt,
+            // xem AppointmentService.EnsureVitalsRecordedAsync).
+            t.AppointmentId != null && _db.Vitals.Any(v => v.AppointmentId == t.AppointmentId)));
 
     private async Task<QueueTicketDto?> ProjectByIdAsync(Guid id, CancellationToken ct) =>
         await Project(_db.QueueTickets.AsNoTracking().Where(t => t.Id == id)).FirstOrDefaultAsync(ct);
