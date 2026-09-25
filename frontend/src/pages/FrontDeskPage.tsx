@@ -12,6 +12,7 @@ import { VisitStatus, visitStatusLabels, type Visit, type VisitListItem } from '
 import { QueueTicketStatus, type QueueTicket } from '../types/queue'
 import type { PagedResult } from '../types/common'
 import {
+  invoiceItemTypeLabels,
   PaymentMethod,
   paymentMethodLabels,
   type PaymentMethodValue,
@@ -95,6 +96,9 @@ function VisitQuickPayPanel({ visitId, onChanged }: { visitId: string; onChanged
     try {
       const result = await payVisitInvoices(visitId, payMethod)
       setInvoices(result)
+      // payVisitInvoices chỉ trả về hoá đơn — nạp lại visit để khối Đã lập/Đã thu/Còn nợ (tính từ
+      // visit.totalPaid/totalOutstanding) khớp ngay, không đợi vòng tự làm mới định kỳ.
+      setVisit(await getVisit(visitId))
       toastSuccess('Đã thu tiền toàn bộ hoá đơn còn nợ của lượt.')
       onChanged()
     } catch (err) {
@@ -124,6 +128,23 @@ function VisitQuickPayPanel({ visitId, onChanged }: { visitId: string; onChanged
             ))}
           </div>
         )}
+        {invoices && invoices.invoices.length > 0 && (
+          <div className="flex flex-col gap-1 border-b pb-3">
+            <p className="text-sm font-medium text-muted-foreground">Dịch vụ đã chọn</p>
+            {invoices.invoices.flatMap((inv) => inv.items).map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <span>
+                  {item.description}
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    ({invoiceItemTypeLabels[item.itemType] ?? '—'})
+                  </span>
+                </span>
+                <span className="tabular-nums text-muted-foreground">{formatVnd(item.lineTotal)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-sm text-muted-foreground">Đã lập</p>

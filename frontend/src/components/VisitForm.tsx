@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Trash2, UserPlus } from 'lucide-react'
 import { createVisit } from '../services/visitService'
+import { createInvoice } from '../services/invoiceService'
 import { listPatients } from '../services/patientService'
 import { listDoctors } from '../services/doctorService'
 import { listServicePrices } from '../services/servicePriceService'
@@ -124,6 +125,27 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
         paraclinicalServiceIds: pickedCls,
       })
       toastSuccess(`Đã tạo lượt tiếp nhận ${visit.code}.`)
+
+      // Lập hoá đơn gộp ngay (dịch vụ khám có giá + phiếu CLS vừa tạo) để panel thu tiền mở ra sau đó
+      // đã sẵn sàng thu — khỏi phải qua "Lập hoá đơn" ở màn Chi tiết lượt như một thao tác rời.
+      const billableAppointments = visit.appointments.filter((a) => a.servicePriceId && !a.invoicedAt)
+      const labOrder = visit.labOrders[0]
+      if (billableAppointments.length > 0 || labOrder) {
+        try {
+          await createInvoice({
+            patientId,
+            note: null,
+            items: billableAppointments.map((a) => ({ servicePriceId: a.servicePriceId!, quantity: 1 })),
+            appointmentIds: billableAppointments.map((a) => a.id),
+            labOrderId: labOrder?.id ?? null,
+          })
+        } catch (err) {
+          // Lượt đã tạo thành công — lỗi lập hoá đơn không nên chặn cả luồng, để lễ tân lập tay ở
+          // màn Chi tiết lượt như phương án dự phòng (giữ nguyên đường cũ).
+          toastError(err, 'Đã tạo lượt nhưng chưa lập được hoá đơn — vào chi tiết lượt để lập tay.')
+        }
+      }
+
       onCreated(visit)
     } catch (err) {
       toastError(err)
