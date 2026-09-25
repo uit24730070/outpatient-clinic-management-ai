@@ -424,13 +424,13 @@ public sealed class LabOrderServiceTests
         await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
             enc2.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
 
-        var byEncounter = await service.GetListAsync(1, 20, enc1.Id, null, null);
+        var byEncounter = await service.GetListAsync(1, 20, enc1.Id, null, null, null);
         Assert.Equal(1, byEncounter.Value.TotalCount);
 
-        var ordered = await service.GetListAsync(1, 20, null, null, LabOrderStatus.Ordered);
+        var ordered = await service.GetListAsync(1, 20, null, null, null, LabOrderStatus.Ordered);
         Assert.Equal(2, ordered.Value.TotalCount);
 
-        var completed = await service.GetListAsync(1, 20, null, null, LabOrderStatus.Completed);
+        var completed = await service.GetListAsync(1, 20, null, null, null, LabOrderStatus.Completed);
         Assert.Equal(0, completed.Value.TotalCount);
     }
 
@@ -513,5 +513,125 @@ public sealed class LabOrderServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(LabOrderStatus.Cancelled, result.Value.Status);
+    }
+
+    // ── Chặn chỉ định trùng dịch vụ CLS trong cùng lượt tiếp nhận ──────────
+
+    [Fact]
+    public async Task CreateFromEncounter_ShouldFail_WhenServiceAlreadyOrderedInSameVisit()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var visit = new Visit("LK-000001", patient.Id, null);
+        db.Visits.Add(visit);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Siêu âm ổ bụng", 150000m);
+        await db.SaveChangesAsync();
+
+        // Đăng ký CLS walk-in lúc tiếp nhận (lễ tân).
+        var service = CreateService(db);
+        var walkIn = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, visit.Id));
+        Assert.True(walkIn.IsSuccess);
+
+        // Bác sĩ chỉ định lại đúng dịch vụ đó trong cùng lượt (qua một lịch khám khác).
+        var appt = new Appointment(patient.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, null,
+            visitId: visit.Id);
+        db.Appointments.Add(appt);
+        var encounter = new Encounter(appt.Id, patient.Id, appt.DoctorId, null, "Đau bụng", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+
+        var result = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Paraclinical.AlreadyOrderedInVisit", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_ShouldFail_WhenServiceAlreadyOrderedInSameVisit()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var visit = new Visit("LK-000001", patient.Id, null);
+        db.Visits.Add(visit);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Siêu âm ổ bụng", 150000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var first = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, visit.Id));
+        Assert.True(first.IsSuccess);
+
+        // Lễ tân đăng ký thêm một phiếu walk-in khác nhưng trùng dịch vụ, cùng lượt.
+        var result = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, visit.Id));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Paraclinical.AlreadyOrderedInVisit", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateFromEncounter_ShouldSucceed_WhenSameServiceCancelledInSameVisit()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var visit = new Visit("LK-000001", patient.Id, null);
+        db.Visits.Add(visit);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Siêu âm ổ bụng", 150000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var walkIn = await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, visit.Id));
+        await service.CancelAsync(walkIn.Value.Id);
+
+        var appt = new Appointment(patient.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, null,
+            visitId: visit.Id);
+        db.Appointments.Add(appt);
+        var encounter = new Encounter(appt.Id, patient.Id, appt.DoctorId, null, "Đau bụng", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+
+        var result = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xn.Id) }));
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task GetListAsync_ShouldFilterByVisitId()
+    {
+        var db = TestDbContext.CreateInMemory();
+        var patient = SeedPatient(db);
+        var visit = new Visit("LK-000001", patient.Id, null);
+        db.Visits.Add(visit);
+        var xn = SeedParaclinical(db, "DV-CLS001", "Siêu âm ổ bụng", 150000m);
+        var xq = SeedParaclinical(db, "DV-CLS002", "X-quang ngực", 120000m);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        // Phiếu walk-in gắn thẳng lượt.
+        await service.CreateWalkInAsync(new CreateWalkInLabOrderRequest(
+            patient.Id, null, null, new[] { new CreateLabOrderItemRequest(xn.Id) }, visit.Id));
+
+        // Phiếu do bác sĩ chỉ định (qua lịch khám gắn cùng lượt) — phải tự suy ra và gắn VisitId
+        // (bug đã gặp: bác sĩ không thấy CLS do chính mình vừa chỉ định vì thiếu VisitId).
+        var appt = new Appointment(patient.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, null,
+            visitId: visit.Id);
+        db.Appointments.Add(appt);
+        var encounter = new Encounter(appt.Id, patient.Id, appt.DoctorId, null, "Đau bụng", null);
+        db.Encounters.Add(encounter);
+        await db.SaveChangesAsync();
+        var fromEncounter = await service.CreateFromEncounterAsync(new CreateLabOrderRequest(
+            encounter.Id, null, new[] { new CreateLabOrderItemRequest(xq.Id) }));
+        Assert.True(fromEncounter.IsSuccess);
+        Assert.Equal(visit.Id, fromEncounter.Value.VisitId);
+
+        var byVisit = await service.GetListAsync(1, 20, null, null, visit.Id, null);
+
+        Assert.Equal(2, byVisit.Value.TotalCount);
     }
 }

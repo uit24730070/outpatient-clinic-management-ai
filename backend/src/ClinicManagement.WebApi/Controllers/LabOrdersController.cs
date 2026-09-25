@@ -29,7 +29,7 @@ public sealed class LabOrdersController : ApiControllerBase
         return ToResponse(result, StatusCodes.Status201Created);
     }
 
-    /// <summary>Đăng ký cận lâm sàng walk-in (lễ tân): không cần phiếu khám, có thể gắn lượt tiếp đón (ADR 0016).</summary>
+    /// <summary>Đăng ký cận lâm sàng walk-in (lễ tân): không cần phiếu khám, có thể gắn lượt tiếp nhận (ADR 0016).</summary>
     [HttpPost("walk-in")]
     [Authorize(Roles = Roles.ManageStaff)]
     public async Task<IActionResult> CreateWalkIn([FromBody] CreateWalkInLabOrderRequest request, CancellationToken ct)
@@ -38,17 +38,18 @@ public sealed class LabOrdersController : ApiControllerBase
         return ToResponse(result, StatusCodes.Status201Created);
     }
 
-    /// <summary>Danh sách phiếu chỉ định có phân trang + lọc theo phiếu khám/bệnh nhân/trạng thái.</summary>
+    /// <summary>Danh sách phiếu chỉ định có phân trang + lọc theo phiếu khám/bệnh nhân/lượt tiếp nhận/trạng thái.</summary>
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] Guid? encounterId = null,
         [FromQuery] Guid? patientId = null,
+        [FromQuery] Guid? visitId = null,
         [FromQuery] LabOrderStatus? status = null,
         CancellationToken ct = default)
     {
-        var result = await _labOrders.GetListAsync(page, pageSize, encounterId, patientId, status, ct);
+        var result = await _labOrders.GetListAsync(page, pageSize, encounterId, patientId, visitId, status, ct);
         return ToResponse(result);
     }
 

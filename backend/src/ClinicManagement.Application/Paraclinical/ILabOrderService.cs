@@ -9,12 +9,12 @@ public interface ILabOrderService
     /// <summary>Tạo phiếu chỉ định CLS từ một phiếu khám (đang Draft): snapshot tên/giá dịch vụ Paraclinical.</summary>
     Task<Result<LabOrderDto>> CreateFromEncounterAsync(CreateLabOrderRequest request, CancellationToken ct = default);
 
-    /// <summary>Đăng ký CLS walk-in (lễ tân): không cần phiếu khám/bác sĩ, có thể gắn lượt tiếp đón (ADR 0016).</summary>
+    /// <summary>Đăng ký CLS walk-in (lễ tân): không cần phiếu khám/bác sĩ, có thể gắn lượt tiếp nhận (ADR 0016).</summary>
     Task<Result<LabOrderDto>> CreateWalkInAsync(CreateWalkInLabOrderRequest request, CancellationToken ct = default);
 
-    /// <summary>Danh sách phiếu chỉ định có phân trang + lọc theo phiếu khám/bệnh nhân/trạng thái.</summary>
+    /// <summary>Danh sách phiếu chỉ định có phân trang + lọc theo phiếu khám/bệnh nhân/lượt tiếp nhận/trạng thái.</summary>
     Task<Result<PagedResult<LabOrderDto>>> GetListAsync(
-        int page, int pageSize, Guid? encounterId, Guid? patientId, LabOrderStatus? status,
+        int page, int pageSize, Guid? encounterId, Guid? patientId, Guid? visitId, LabOrderStatus? status,
         CancellationToken ct = default);
 
     /// <summary>Chi tiết một phiếu chỉ định.</summary>

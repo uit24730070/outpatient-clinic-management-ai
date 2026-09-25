@@ -20,12 +20,17 @@ import {
 import { LabOrderStatusBadge } from './StatusBadge'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ServiceMultiPicker } from './ServiceMultiPicker'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 
 interface Props {
   encounterId: string
+  /** Lượt tiếp nhận của lịch khám đang mở — dùng để liệt kê MỌI phiếu CLS trong lượt (kể cả phiếu
+   * walk-in lễ tân đăng ký lúc tiếp nhận, hoặc do bác sĩ khác chỉ định), không chỉ phiếu của riêng
+   * phiếu khám này — để bác sĩ thấy đủ trước khi chỉ định thêm, tránh chỉ định trùng dịch vụ. */
+  visitId?: string | null
   /** Cho phép chỉ định mới (bác sĩ + phiếu khám còn nháp). */
   canOrder: boolean
   /** Cho phép nhập kết quả (bác sĩ/kỹ thuật viên). */
@@ -35,10 +40,12 @@ interface Props {
 }
 
 /**
- * Khối "Cận lâm sàng" nhúng trong màn khám: liệt kê phiếu chỉ định của một phiếu khám,
- * cho chỉ định dịch vụ Paraclinical mới, nhập kết quả từng mục, và in phiếu kết quả (ADR 0015).
+ * Khối "Cận lâm sàng" nhúng trong màn khám: liệt kê phiếu chỉ định trong cả lượt tiếp nhận (không chỉ
+ * riêng phiếu khám này — bác sĩ cần thấy CLS đã đăng ký lúc tiếp nhận/do bác sĩ khác chỉ định để tránh
+ * chỉ định trùng, dù backend cũng đã chặn), cho chỉ định dịch vụ Paraclinical mới, nhập kết quả từng
+ * mục, và in phiếu kết quả (ADR 0015).
  */
-export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Props) {
+export function LabOrderPanel({ encounterId, visitId, canOrder, canRecord, canBill }: Props) {
   const [orders, setOrders] = useState<LabOrder[]>([])
   const [services, setServices] = useState<ServicePrice[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,20 +53,26 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     try {
-      const res = await listLabOrders({ page: 1, pageSize: 50, encounterId })
+      const res = visitId
+        ? await listLabOrders({ page: 1, pageSize: 50, visitId })
+        : await listLabOrders({ page: 1, pageSize: 50, encounterId })
       setOrders(res.items)
     } catch (err) {
-      toastError(err)
+      if (!opts?.silent) toastError(err)
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
-  }, [encounterId])
+  }, [encounterId, visitId])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Lễ tân/bác sĩ khác có thể chỉ định thêm CLS vào cùng lượt trong lúc popup khám đang mở — tự làm
+  // mới để thấy ngay, không cần đóng/mở lại tab (khớp pattern ở các workspace khác).
+  useAutoRefresh(() => void load({ silent: true }))
 
   useEffect(() => {
     if (!canOrder) return
@@ -145,6 +158,9 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
               <LabOrderCard
                 key={o.id}
                 order={o}
+                // Phiếu không gắn phiếu khám này (đăng ký lúc tiếp nhận, hoặc do bác sĩ khác chỉ định
+                // trong cùng lượt) — gắn nhãn để bác sĩ biết, tránh chỉ định trùng dịch vụ.
+                fromOtherSource={o.encounterId !== encounterId}
                 canRecord={canRecord}
                 // Panel này chỉ nhúng ở màn khám (canRecord truyền vào = canRecordEncounter của bác sĩ),
                 // nên trùng luôn quyền huỷ phiếu (Roles.RecordEncounter) — khác TechnicianLabPage.
@@ -166,12 +182,15 @@ export function LabOrderPanel({ encounterId, canOrder, canRecord, canBill }: Pro
  */
 export function LabOrderCard({
   order,
+  fromOtherSource,
   canRecord,
   canCancel,
   canBill,
   onChanged,
 }: {
   order: LabOrder
+  /** Phiếu không gắn phiếu khám hiện tại (đăng ký lúc tiếp nhận hoặc do bác sĩ khác chỉ định cùng lượt). */
+  fromOtherSource?: boolean
   /** Cho phép nhập/sửa kết quả — khớp Roles.RecordLabResult (Admin/Bác sĩ/Kỹ thuật viên). */
   canRecord: boolean
   /** Cho phép huỷ phiếu chỉ định — khớp Roles.RecordEncounter (chỉ Admin/Bác sĩ, không gồm Kỹ thuật viên). */
@@ -213,6 +232,11 @@ export function LabOrderCard({
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm">{order.code}</span>
           <LabOrderStatusBadge status={order.status} />
+          {fromOtherSource && (
+            <span className="text-xs text-muted-foreground">
+              · {order.doctorName ? `BS. ${order.doctorName} chỉ định` : 'đăng ký lúc tiếp nhận'}
+            </span>
+          )}
           {order.invoicedAt && (
             <span className="text-xs text-muted-foreground">· đã lập HĐ</span>
           )}

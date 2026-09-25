@@ -7,7 +7,7 @@ namespace ClinicManagement.Domain.Paraclinical;
 /// Phiếu chỉ định cận lâm sàng. Có <b>hai nguồn phát sinh</b> (ADR 0016):
 /// (1) <b>bác sĩ chỉ định trong lúc khám</b> — gắn phiếu khám nguồn (<see cref="EncounterId"/>) + bác sĩ
 /// (<see cref="DoctorId"/>); (2) <b>walk-in do lễ tân đăng ký</b> — không cần phiếu khám/bác sĩ
-/// (<see cref="EncounterId"/>/<see cref="DoctorId"/> null), có thể gắn lượt tiếp đón (<see cref="AppointmentId"/>).
+/// (<see cref="EncounterId"/>/<see cref="DoctorId"/> null), có thể gắn lượt tiếp nhận (<see cref="AppointmentId"/>).
 /// Mã phiếu (<see cref="Code"/>, dạng CLS-) là định danh nghiệp vụ; lưu <b>snapshot</b> bệnh nhân/bác sĩ.
 /// Là <b>aggregate root</b> của cụm mục chỉ định (<see cref="Items"/>, owned collection). Vòng đời
 /// <see cref="LabOrderStatus"/> chuyển tự động theo tiến độ nhập kết quả. Phí CLS được lập <b>hoá đơn riêng</b>
@@ -20,22 +20,24 @@ public class LabOrder : Entity
     // EF Core cần constructor không tham số.
     private LabOrder() { }
 
-    /// <summary>Đường bác sĩ chỉ định trong lúc khám (Sprint 15): encounter/doctor bắt buộc.</summary>
+    /// <summary>Đường bác sĩ chỉ định trong lúc khám (Sprint 15): encounter/doctor bắt buộc. Gắn kèm
+    /// lượt tiếp nhận suy từ lịch khám (nếu có) để gom chung với các phiếu CLS khác trong cùng lượt.</summary>
     public LabOrder(
         string code, Guid encounterId, Guid patientId, Guid doctorId, string? note,
-        IEnumerable<LabOrderItem> items)
+        IEnumerable<LabOrderItem> items, Guid? visitId = null)
     {
         Code = code;
         EncounterId = encounterId;
         PatientId = patientId;
         DoctorId = doctorId;
+        VisitId = visitId;
         Note = note;
         Status = LabOrderStatus.Ordered;
         _items.AddRange(items);
     }
 
     /// <summary>
-    /// Đường <b>walk-in</b> do lễ tân đăng ký (ADR 0016): không có phiếu khám/bác sĩ; có thể gắn lượt tiếp đón.
+    /// Đường <b>walk-in</b> do lễ tân đăng ký (ADR 0016): không có phiếu khám/bác sĩ; có thể gắn lượt tiếp nhận.
     /// </summary>
     public static LabOrder CreateWalkIn(
         string code, Guid patientId, Guid? appointmentId, string? note, IEnumerable<LabOrderItem> items,
@@ -65,7 +67,7 @@ public class LabOrder : Entity
     /// <summary>Lịch khám gắn kèm (nếu có) — gom hoá đơn theo lịch cho walk-in.</summary>
     public Guid? AppointmentId { get; private set; }
 
-    /// <summary>Lượt tiếp đón gắn kèm (nếu có, ADR 0017) — gom phiếu CLS & hoá đơn phí CLS theo lượt.</summary>
+    /// <summary>Lượt tiếp nhận gắn kèm (nếu có, ADR 0017) — gom phiếu CLS & hoá đơn phí CLS theo lượt.</summary>
     public Guid? VisitId { get; private set; }
 
     /// <summary>Bệnh nhân (snapshot từ phiếu khám hoặc do lễ tân chọn khi walk-in).</summary>

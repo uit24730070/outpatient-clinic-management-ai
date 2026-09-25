@@ -44,16 +44,51 @@ public sealed class LabOrderService : ILabOrderService
         if (itemsResult.IsFailure)
             return Result.Failure<LabOrderDto>(itemsResult.Error);
 
+        // Chống chỉ định trùng dịch vụ CLS trong cùng lượt tiếp nhận (đã đăng ký lúc tiếp nhận hoặc
+        // do bác sĩ khác chỉ định) — tránh KTV làm lại xét nghiệm thừa + thu tiền 2 lần.
+        var visitId = await _db.Appointments.AsNoTracking()
+            .Where(a => a.Id == encounter.AppointmentId)
+            .Select(a => a.VisitId)
+            .FirstOrDefaultAsync(ct);
+        if (visitId is not null)
+        {
+            var duplicateCheck = await CheckDuplicateInVisitAsync(visitId.Value, itemsResult.Value, ct);
+            if (duplicateCheck.IsFailure)
+                return Result.Failure<LabOrderDto>(duplicateCheck.Error);
+        }
+
         var code = await GenerateCodeAsync(ct);
         var order = new LabOrder(
             code, encounter.Id, encounter.PatientId, encounter.DoctorId,
-            NormalizeOptional(request.Note), itemsResult.Value);
+            NormalizeOptional(request.Note), itemsResult.Value, visitId);
 
         _db.LabOrders.Add(order);
         await _db.SaveChangesAsync(ct);
 
         await AutoInvoiceAsync(order.Id, ct);
         return (await ProjectByIdAsync(order.Id, ct))!;
+    }
+
+    /// <summary>
+    /// Chặn chỉ định trùng dịch vụ CLS đã có trong cùng lượt tiếp nhận (phiếu nào cũng được — walk-in
+    /// lễ tân, bác sĩ khác — miễn còn hiệu lực, chưa <see cref="LabOrderStatus.Cancelled"/>).
+    /// </summary>
+    private async Task<Result> CheckDuplicateInVisitAsync(
+        Guid visitId, IReadOnlyList<LabOrderItem> items, CancellationToken ct)
+    {
+        var serviceIds = items.Select(i => i.ServicePriceId).ToList();
+        var duplicateNames = await _db.LabOrders.AsNoTracking()
+            .Where(o => o.VisitId == visitId && o.Status != LabOrderStatus.Cancelled)
+            .SelectMany(o => o.Items)
+            .Where(i => serviceIds.Contains(i.ServicePriceId))
+            .Select(i => i.ServiceName)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return duplicateNames.Count == 0
+            ? Result.Success()
+            : Result.Failure(Error.Conflict("Paraclinical.AlreadyOrderedInVisit",
+                $"Dịch vụ đã được chỉ định trong lượt tiếp nhận này: {string.Join(", ", duplicateNames)}."));
     }
 
     /// <summary>
@@ -83,15 +118,22 @@ public sealed class LabOrderService : ILabOrderService
             return Error.NotFound("Appointment.NotFound",
                 $"Không tìm thấy lịch khám với Id {request.AppointmentId}.");
 
-        // Lượt tiếp đón tuỳ chọn (ADR 0017): kiểm tồn tại khi có, để gom phiếu CLS & hoá đơn theo lượt.
+        // Lượt tiếp nhận tuỳ chọn (ADR 0017): kiểm tồn tại khi có, để gom phiếu CLS & hoá đơn theo lượt.
         if (request.VisitId is not null &&
             !await _db.Visits.AnyAsync(v => v.Id == request.VisitId, ct))
             return Error.NotFound("Visit.NotFound",
-                $"Không tìm thấy lượt tiếp đón với Id {request.VisitId}.");
+                $"Không tìm thấy lượt tiếp nhận với Id {request.VisitId}.");
 
         var itemsResult = await BuildItemsAsync(lines, ct);
         if (itemsResult.IsFailure)
             return Result.Failure<LabOrderDto>(itemsResult.Error);
+
+        if (request.VisitId is { } walkInVisitId)
+        {
+            var duplicateCheck = await CheckDuplicateInVisitAsync(walkInVisitId, itemsResult.Value, ct);
+            if (duplicateCheck.IsFailure)
+                return Result.Failure<LabOrderDto>(duplicateCheck.Error);
+        }
 
         var code = await GenerateCodeAsync(ct);
         var order = LabOrder.CreateWalkIn(
@@ -131,7 +173,7 @@ public sealed class LabOrderService : ILabOrderService
     }
 
     public async Task<Result<PagedResult<LabOrderDto>>> GetListAsync(
-        int page, int pageSize, Guid? encounterId, Guid? patientId, LabOrderStatus? status,
+        int page, int pageSize, Guid? encounterId, Guid? patientId, Guid? visitId, LabOrderStatus? status,
         CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
@@ -142,6 +184,8 @@ public sealed class LabOrderService : ILabOrderService
             query = query.Where(o => o.EncounterId == encounterId);
         if (patientId is not null)
             query = query.Where(o => o.PatientId == patientId);
+        if (visitId is not null)
+            query = query.Where(o => o.VisitId == visitId);
         if (status is not null)
             query = query.Where(o => o.Status == status);
 

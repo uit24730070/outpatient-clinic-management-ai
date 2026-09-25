@@ -14,7 +14,7 @@ public sealed record CreateLabOrderItemRequest(Guid ServicePriceId);
 
 /// <summary>
 /// Dữ liệu đăng ký cận lâm sàng <b>walk-in</b> do lễ tân (ADR 0016): không cần phiếu khám/bác sĩ.
-/// Chỉ cần bệnh nhân + (tuỳ chọn) lượt tiếp đón + các dịch vụ CLS (bảng giá loại <c>Paraclinical</c>).
+/// Chỉ cần bệnh nhân + (tuỳ chọn) lượt tiếp nhận + các dịch vụ CLS (bảng giá loại <c>Paraclinical</c>).
 /// </summary>
 public sealed record CreateWalkInLabOrderRequest(
     Guid PatientId,

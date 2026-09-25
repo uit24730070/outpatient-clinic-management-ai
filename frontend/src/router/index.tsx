@@ -33,6 +33,7 @@ import InvoiceFormPage from '../pages/InvoiceFormPage'
 import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 import LabOrderPrintPage from '../pages/LabOrderPrintPage'
 import TechnicianLabPage from '../pages/TechnicianLabPage'
+import LabOrderExecutePage from '../pages/LabOrderExecutePage'
 import VisitDetailPage from '../pages/VisitDetailPage'
 import RoomsListPage from '../pages/RoomsListPage'
 import RoomFormPage from '../pages/RoomFormPage'
@@ -100,7 +101,7 @@ export const router = createBrowserRouter([
             children: [{ path: 'nurse', element: <NurseWorkspacePage /> }],
           },
 
-          // Lượt tiếp đón (ADR 0017): chi tiết đọc cho mọi vai trò; danh sách + tạo mới gộp vào
+          // Lượt tiếp nhận (ADR 0017): chi tiết đọc cho mọi vai trò; danh sách + tạo mới gộp vào
           // workspace Lễ tân (`/front-desk`, xem trên).
           {
             element: <RequireRole roles={ALL_ROLES} />,
@@ -108,7 +109,7 @@ export const router = createBrowserRouter([
           },
 
           // Lịch khám: xem tổng quan + xử lý trạng thái mọi dịch vụ khám (mọi bác sĩ/lượt).
-          // Tạo mới dồn hết về Lượt tiếp đón (ADR 0017) — không còn đặt lịch lẻ ở đây.
+          // Tạo mới dồn hết về Lượt tiếp nhận (ADR 0017) — không còn đặt lịch lẻ ở đây.
           {
             element: <RequireRole roles={ALL_ROLES} />,
             children: [{ path: 'appointments', element: <AppointmentsListPage /> }],
@@ -208,7 +209,10 @@ export const router = createBrowserRouter([
           // Thực hiện CLS + nhập kết quả — Kỹ thuật viên/Bác sĩ/Admin (RecordLabResult, ADR 0016).
           {
             element: <RequireRole roles={RECORD_LAB_RESULT} />,
-            children: [{ path: 'lab/technician', element: <TechnicianLabPage /> }],
+            children: [
+              { path: 'lab/technician', element: <TechnicianLabPage /> },
+              { path: 'lab/technician/:id', element: <LabOrderExecutePage /> },
+            ],
           },
 
           // Viện phí — thu ngân bởi Lễ tân/Admin (ManageBilling, ADR 0014).

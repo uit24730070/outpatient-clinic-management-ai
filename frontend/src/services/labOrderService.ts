@@ -13,6 +13,7 @@ export interface ListLabOrdersParams {
   pageSize: number
   encounterId?: string
   patientId?: string
+  visitId?: string
   status?: LabOrderStatusValue
 }
 
