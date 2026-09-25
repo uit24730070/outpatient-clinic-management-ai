@@ -10,6 +10,7 @@ import type { QueueTicket } from '../types/queue'
 import { PageHeader } from '../components/PageHeader'
 import { AppointmentStatusBadge, QueueTicketStatusBadge } from '../components/StatusBadge'
 import { EncounterForm } from '../components/EncounterForm'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { useWorkspaceTabs } from '../components/workspace/useWorkspaceTabs'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { WorkspaceSummaryBar } from '../components/workspace/WorkspaceSummaryBar'
@@ -24,7 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-// Các trạng thái thuộc "phòng khám của tôi": đã tiếp đón hoặc đang khám.
+// Các trạng thái thuộc "phòng khám của tôi": đã tiếp nhận hoặc đang khám.
 const CLINIC_STATUSES: number[] = [AppointmentStatus.CheckedIn, AppointmentStatus.InProgress]
 
 function todayLocal(): string {
@@ -62,7 +63,7 @@ function PatientCell({ patientId, patientName }: { patientId: string; patientNam
 }
 
 /**
- * Bác sĩ — Một màn (Epic 17, UX-05): danh sách bệnh nhân đang chờ/đang khám của chính bác sĩ
+ * Khám bệnh (Epic 17, UX-05): danh sách bệnh nhân đang chờ/đang khám của chính bác sĩ
  * (lọc doctorId, ADR 0009). Bác sĩ tự "Bắt đầu khám" (CheckedIn → InProgress, action `start` sẵn có
  * ở Lịch khám) ngay tại đây — không cần chờ Lễ tân/Điều dưỡng thao tác ở màn khác trước. Vé hàng đợi
  * (ADR 0019) hôm nay được nối vào chỉ để hiển thị số thứ tự/trạng thái, không dùng để chặn thao tác.
@@ -77,9 +78,9 @@ export default function MyClinicPage() {
   const [loading, setLoading] = useState(false)
   const { tabs, active, setActive, openTab, closeTab } = useWorkspaceTabs<Appointment>()
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!doctorId) return
-    setLoading(true)
+    if (!opts?.silent) setLoading(true)
     try {
       const [result, tickets] = await Promise.all([
         listAppointments({ page: 1, pageSize: 100, doctorId }),
@@ -100,15 +101,18 @@ export default function MyClinicPage() {
       }
       setTicketsByAppointment(byAppointment)
     } catch (err) {
-      toastError(err)
+      if (!opts?.silent) toastError(err)
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [doctorId])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Lễ tân/Điều dưỡng tiếp nhận ở màn khác — tự làm mới hàng đợi để bác sĩ thấy ngay, không cần F5.
+  useAutoRefresh(() => void load({ silent: true }))
 
   // "Bắt đầu khám" tự phục vụ: bác sĩ chuyển thẳng CheckedIn → InProgress (như ở Lịch khám),
   // không cần chờ Lễ tân/Điều dưỡng thao tác ở màn khác trước.
@@ -127,7 +131,7 @@ export default function MyClinicPage() {
   if (!doctorId) {
     return (
       <section>
-        <PageHeader title="Bác sĩ — Một màn" />
+        <PageHeader title="Khám bệnh" />
         <Card>
           <CardContent className="flex items-start gap-3 text-amber-800">
             <TriangleAlert className="mt-0.5 size-5 shrink-0" />
@@ -144,7 +148,7 @@ export default function MyClinicPage() {
   return (
     <section className="flex flex-col gap-4">
       <PageHeader
-        title="Bác sĩ — Một màn"
+        title="Khám bệnh"
         description="Bệnh nhân đang chờ và đang khám của bạn — mở nhiều phiếu song song (UX-05)"
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -158,7 +162,7 @@ export default function MyClinicPage() {
         items={[
           {
             icon: Users,
-            label: 'Đã tiếp đón, chờ khám',
+            label: 'Đã tiếp nhận, chờ khám',
             value: String(items.filter((a) => a.status === AppointmentStatus.CheckedIn).length),
           },
           {

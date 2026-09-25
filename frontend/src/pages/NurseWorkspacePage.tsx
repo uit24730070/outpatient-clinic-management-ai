@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Activity, Check, CheckCheck, Clock, PhoneCall, Play, RefreshCw, SkipForward } from 'lucide-react'
 import { listQueue, transitionQueueTicket, type QueueAction } from '../services/queueService'
 import { toastError, toastSuccess } from '../lib/toast'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { QueueTicketStatus, type QueueTicket } from '../types/queue'
 import { PageHeader } from '../components/PageHeader'
 import { QueueTicketStatusBadge } from '../components/StatusBadge'
@@ -50,21 +51,24 @@ export default function NurseWorkspacePage() {
   const [loading, setLoading] = useState(false)
   const [vitalsFor, setVitalsFor] = useState<QueueTicket | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const result = await listQueue({ date: todayLocal() })
       setTickets(result)
     } catch (err) {
-      toastError(err)
+      if (!opts?.silent) toastError(err)
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Lễ tân đăng ký/bác sĩ chuyển trạng thái ở màn khác — tự làm mới hàng đợi hôm nay.
+  useAutoRefresh(() => void load({ silent: true }))
 
   const onAction = async (t: QueueTicket, action: QueueAction) => {
     try {
@@ -83,7 +87,7 @@ export default function NurseWorkspacePage() {
   return (
     <section className="flex flex-col gap-4">
       <PageHeader
-        title="Điều dưỡng — Một màn"
+        title="Sinh hiệu & Hàng đợi"
         description="Hàng đợi hôm nay & đo sinh hiệu ngay tại dòng — thí điểm workspace theo vai trò (UX-04)"
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>

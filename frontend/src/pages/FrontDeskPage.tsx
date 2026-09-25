@@ -22,6 +22,7 @@ import { Pager } from '../components/Pager'
 import { VisitStatusBadge, QueueTicketStatusBadge } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { VisitForm } from '../components/VisitForm'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { useWorkspaceTabs } from '../components/workspace/useWorkspaceTabs'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { WorkspaceSummaryBar } from '../components/workspace/WorkspaceSummaryBar'
@@ -56,7 +57,7 @@ function formatDate(iso: string): string {
   })
 }
 
-// Nội dung một tab mở trong workspace: thu tiền nhanh 1 lượt, hoặc tiếp đón lượt mới.
+// Nội dung một tab mở trong workspace: thu tiền nhanh 1 lượt, hoặc tiếp nhận lượt mới.
 type FrontDeskTab = { kind: 'pay'; visitId: string } | { kind: 'new' }
 const NEW_VISIT_KEY = 'new-visit'
 
@@ -171,7 +172,7 @@ function VisitQuickPayPanel({ visitId, onChanged }: { visitId: string; onChanged
         )}
 
         <Button asChild size="sm" variant="ghost" className="self-start">
-          <Link to={`/visits/${visitId}`}>Xem đầy đủ lượt tiếp đón →</Link>
+          <Link to={`/visits/${visitId}`}>Xem đầy đủ lượt tiếp nhận →</Link>
         </Button>
       </CardContent>
     </Card>
@@ -179,8 +180,8 @@ function VisitQuickPayPanel({ visitId, onChanged }: { visitId: string; onChanged
 }
 
 /**
- * Workspace Lễ tân (Epic 17, UX-03; gộp `/visits` + `/visits/new` vào đây): tiếp đón mới + lượt
- * tiếp đón (mặc định hôm nay/đang mở, có thể lọc lại để tra toàn bộ lịch sử) + hàng đợi + thu tiền
+ * Workspace Lễ tân (Epic 17, UX-03; gộp `/visits` + `/visits/new` vào đây): tiếp nhận mới + lượt
+ * tiếp nhận (mặc định hôm nay/đang mở, có thể lọc lại để tra toàn bộ lịch sử) + hàng đợi + thu tiền
  * nhanh trên 1 màn, thay cho việc chuyển qua lại nhiều trang riêng (điểm nghẽn ghi nhận ở UX-01).
  */
 export default function FrontDeskPage() {
@@ -199,8 +200,8 @@ export default function FrontDeskPage() {
 
   const hasVisitFilter = visitDate !== todayLocal() || visitStatus !== String(VisitStatus.Open)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const today = todayLocal()
       const [v, q, openToday] = await Promise.all([
@@ -218,15 +219,18 @@ export default function FrontDeskPage() {
       setQueue(q)
       setOpenTodayCount(openToday.totalCount)
     } catch (err) {
-      toastError(err)
+      if (!opts?.silent) toastError(err)
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [visitPage, visitDate, visitStatus])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Nhiều lễ tân/ca có thể cùng thao tác — tự làm mới hàng đợi & lượt tiếp nhận theo chu kỳ.
+  useAutoRefresh(() => void load({ silent: true }))
 
   const onCall = async (t: QueueTicket) => {
     try {
@@ -245,16 +249,15 @@ export default function FrontDeskPage() {
   return (
     <section className="flex flex-col gap-4">
       <PageHeader
-        title="Lễ tân — Một màn"
-        description="Lượt tiếp đón đang mở, hàng đợi & thu tiền nhanh trong ca — thí điểm workspace theo vai trò (UX-03)"
+        title="Tiếp nhận"
+        description="Lượt tiếp nhận đang mở, hàng đợi & thu tiền nhanh trong ca — thí điểm workspace theo vai trò (UX-03)"
         actions={
           <div className="flex gap-2">
             <Button
-              variant="outline"
-              onClick={() => openTab(NEW_VISIT_KEY, 'Tiếp đón mới', { kind: 'new' })}
+              onClick={() => openTab(NEW_VISIT_KEY, 'Tiếp nhận mới', { kind: 'new' })}
             >
               <Plus className="size-4" />
-              Tiếp đón mới
+              Tiếp nhận mới
             </Button>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
               <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
@@ -323,7 +326,7 @@ export default function FrontDeskPage() {
       <Card>
         <CardContent className="p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
-            <h3 className="font-semibold">Lượt tiếp đón</h3>
+            <h3 className="font-semibold">Lượt tiếp nhận</h3>
             <div className="flex flex-wrap items-center gap-2">
               <Input
                 type="date"
@@ -391,7 +394,7 @@ export default function FrontDeskPage() {
               {!loading && visitData?.items.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    Không có lượt tiếp đón nào.
+                    Không có lượt tiếp nhận nào.
                   </TableCell>
                 </TableRow>
               )}
@@ -447,6 +450,7 @@ export default function FrontDeskPage() {
         active={active}
         onActiveChange={setActive}
         onClose={closeTab}
+        variant="side"
         renderContent={(t) =>
           t.data.kind === 'new' ? (
             <VisitForm

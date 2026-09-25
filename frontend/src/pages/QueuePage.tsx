@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, PhoneCall, Play, Check, SkipForward, Settings2, X } from 'lucide-react'
+import { Plus, PhoneCall, Play, Check, SkipForward, Settings2, X, RefreshCw } from 'lucide-react'
 import {
   assignQueueTicket,
   createQueueTicket,
@@ -11,6 +11,7 @@ import { listDoctors } from '../services/doctorService'
 import { listRooms } from '../services/roomService'
 import { listPatients } from '../services/patientService'
 import { toastError, toastSuccess } from '../lib/toast'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import {
   QueueTicketStatus,
   queueStatusLabels,
@@ -111,8 +112,8 @@ export default function QueuePage() {
     })()
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const result = await listQueue({
         date: date || undefined,
@@ -121,15 +122,18 @@ export default function QueuePage() {
       })
       setTickets(result)
     } catch (err) {
-      toastError(err)
+      if (!opts?.silent) toastError(err)
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [date, doctorFilter, status])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Lấy số/gọi số có thể diễn ra ở màn khác (Lễ tân, Điều dưỡng) — tự làm mới hàng đợi.
+  useAutoRefresh(() => void load({ silent: true }))
 
   // Tìm bệnh nhân trong dialog lấy số (debounce nhẹ qua effect).
   useEffect(() => {
@@ -212,10 +216,16 @@ export default function QueuePage() {
         title="Hàng đợi khám"
         description="Lấy số, gọi số & điều phối phòng/bác sĩ"
         actions={
-          <Button onClick={() => setTakeOpen(true)}>
-            <Plus className="size-4" />
-            Lấy số
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
+              Làm mới
+            </Button>
+            <Button onClick={() => setTakeOpen(true)}>
+              <Plus className="size-4" />
+              Lấy số
+            </Button>
+          </div>
         }
       />
 

@@ -57,7 +57,13 @@ export function toApiException(err: unknown): ApiException {
   if (axios.isAxiosError(err)) {
     const body = err.response?.data as ApiResponse<unknown> | undefined
     if (body?.error) return new ApiException(body.error)
-    return new ApiException({ code: 'Network', message: err.message })
+    // Không có response từ server (mất mạng/timeout/CORS) — message của axios là tiếng Anh,
+    // dịch lại để nhất quán với giao diện tiếng Việt thay vì lộ text gốc "Network Error".
+    const message =
+      err.code === 'ECONNABORTED'
+        ? 'Yêu cầu quá thời gian chờ. Kiểm tra kết nối mạng và thử lại.'
+        : 'Không thể kết nối máy chủ. Kiểm tra kết nối mạng và thử lại.'
+    return new ApiException({ code: 'Network', message })
   }
   return new ApiException({ code: 'Unknown', message: 'Lỗi không xác định.' })
 }
