@@ -17,6 +17,26 @@ export const serviceCategoryLabels: Record<number, string> = {
   2: 'Khác',
 }
 
+// Nhóm hiển thị dịch vụ Cận lâm sàng (số, khớp ParaclinicalGroup backend) — gom màn chỉ định CLS
+// theo nhóm thay vì liệt kê phẳng (ADR 0024). `null` = chưa phân nhóm, rơi vào "Khác" khi hiển thị.
+export const ParaclinicalGroup = {
+  LabTest: 0,
+  Imaging: 1,
+  Functional: 2,
+  Endoscopy: 3,
+  Other: 4,
+} as const
+
+export type ParaclinicalGroupValue = (typeof ParaclinicalGroup)[keyof typeof ParaclinicalGroup]
+
+export const paraclinicalGroupLabels: Record<number, string> = {
+  0: 'Xét nghiệm',
+  1: 'Chẩn đoán hình ảnh',
+  2: 'Thăm dò chức năng',
+  3: 'Nội soi',
+  4: 'Khác',
+}
+
 export interface ServicePrice {
   id: string
   code: string
@@ -24,6 +44,7 @@ export interface ServicePrice {
   unitPrice: number
   description: string | null
   category: ServiceCategoryValue
+  group: ParaclinicalGroupValue | null
   createdAt: string
   updatedAt: string | null
 }
@@ -33,6 +54,7 @@ export interface ServicePriceFormValues {
   unitPrice: number
   description: string | null
   category: ServiceCategoryValue
+  group: ParaclinicalGroupValue | null
 }
 
 // ── Hoá đơn (BILL-03/04) ──────────────────────────────────────────────

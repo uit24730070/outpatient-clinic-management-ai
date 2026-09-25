@@ -7,4 +7,5 @@ public sealed record UpdateServicePriceRequest(
     string Name,
     decimal UnitPrice,
     string? Description,
-    ServiceCategory Category = ServiceCategory.Other);
+    ServiceCategory Category = ServiceCategory.Other,
+    ParaclinicalGroup? Group = null);

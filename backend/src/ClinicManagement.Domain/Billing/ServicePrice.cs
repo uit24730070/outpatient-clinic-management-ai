@@ -14,13 +14,14 @@ public class ServicePrice : Entity
 
     public ServicePrice(
         string code, string name, decimal unitPrice, string? description,
-        ServiceCategory category = ServiceCategory.Other)
+        ServiceCategory category = ServiceCategory.Other, ParaclinicalGroup? group = null)
     {
         Code = code;
         Name = name;
         UnitPrice = unitPrice;
         Description = description;
         Category = category;
+        Group = category == ServiceCategory.Paraclinical ? group : null;
     }
 
     /// <summary>Mã dịch vụ duy nhất, ví dụ DV-000001.</summary>
@@ -41,14 +42,21 @@ public class ServicePrice : Entity
     /// </summary>
     public ServiceCategory Category { get; private set; }
 
+    /// <summary>
+    /// Nhóm hiển thị khi <see cref="Category"/> là Paraclinical (xét nghiệm/chẩn đoán hình ảnh/thăm dò
+    /// chức năng/nội soi) — gom nhóm màn chỉ định CLS. Luôn <c>null</c> ngoài Paraclinical.
+    /// </summary>
+    public ParaclinicalGroup? Group { get; private set; }
+
     /// <summary>Cập nhật các trường có thể chỉnh sửa của mục bảng giá.</summary>
     public void UpdateDetails(
         string name, decimal unitPrice, string? description,
-        ServiceCategory category = ServiceCategory.Other)
+        ServiceCategory category = ServiceCategory.Other, ParaclinicalGroup? group = null)
     {
         Name = name;
         UnitPrice = unitPrice;
         Description = description;
         Category = category;
+        Group = category == ServiceCategory.Paraclinical ? group : null;
     }
 }

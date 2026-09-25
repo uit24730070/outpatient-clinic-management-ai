@@ -6,7 +6,7 @@ import { useAuth } from '../store/auth'
 import { canManageBilling } from '../config/access'
 import { toastError, toastSuccess } from '../lib/toast'
 import type { PagedResult } from '../types/common'
-import { serviceCategoryLabels, type ServicePrice } from '../types/invoice'
+import { paraclinicalGroupLabels, serviceCategoryLabels, type ServicePrice } from '../types/invoice'
 import { formatVnd } from '../lib/format'
 import { TonedBadge } from '../components/StatusBadge'
 import { PageHeader } from '../components/PageHeader'
@@ -146,6 +146,11 @@ export default function ServicePricesListPage() {
                       <TonedBadge tone={s.category === 1 ? 'cyan' : s.category === 0 ? 'blue' : 'gray'}>
                         {serviceCategoryLabels[s.category] ?? '—'}
                       </TonedBadge>
+                      {s.category === 1 && (
+                        <span className="ml-1.5 text-xs text-muted-foreground">
+                          · {s.group !== null ? paraclinicalGroupLabels[s.group] : 'chưa phân nhóm'}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{s.description ?? '—'}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatVnd(s.unitPrice)}</TableCell>

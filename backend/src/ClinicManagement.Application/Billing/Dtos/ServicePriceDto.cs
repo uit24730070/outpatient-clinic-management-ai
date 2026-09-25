@@ -10,9 +10,10 @@ public sealed record ServicePriceDto(
     decimal UnitPrice,
     string? Description,
     ServiceCategory Category,
+    ParaclinicalGroup? Group,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt)
 {
     public static ServicePriceDto FromEntity(ServicePrice s) => new(
-        s.Id, s.Code, s.Name, s.UnitPrice, s.Description, s.Category, s.CreatedAt, s.UpdatedAt);
+        s.Id, s.Code, s.Name, s.UnitPrice, s.Description, s.Category, s.Group, s.CreatedAt, s.UpdatedAt);
 }

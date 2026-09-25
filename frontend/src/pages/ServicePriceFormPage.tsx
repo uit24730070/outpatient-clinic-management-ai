@@ -23,13 +23,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ServiceCategory, serviceCategoryLabels, type ServiceCategoryValue } from '../types/invoice'
+import {
+  ParaclinicalGroup,
+  ServiceCategory,
+  paraclinicalGroupLabels,
+  serviceCategoryLabels,
+  type ParaclinicalGroupValue,
+  type ServiceCategoryValue,
+} from '../types/invoice'
 
 const schema = z.object({
   name: z.string().min(1, 'Vui lòng nhập tên dịch vụ.'),
   unitPrice: z.number().min(0, 'Đơn giá không được âm.'),
   description: z.string(),
   category: z.number(),
+  group: z.number().nullable(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -41,11 +49,18 @@ export default function ServicePriceFormPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', unitPrice: 0, description: '', category: ServiceCategory.Consultation },
+    defaultValues: {
+      name: '',
+      unitPrice: 0,
+      description: '',
+      category: ServiceCategory.Consultation,
+      group: null,
+    },
   })
   const { register, handleSubmit, reset, watch, setValue, formState } = form
   const errors = formState.errors
   const category = watch('category') as ServiceCategoryValue
+  const group = watch('group') as ParaclinicalGroupValue | null
 
   useEffect(() => {
     if (!id) return
@@ -59,6 +74,7 @@ export default function ServicePriceFormPage() {
             unitPrice: s.unitPrice,
             description: s.description ?? '',
             category: s.category,
+            group: s.group,
           })
       } catch (err) {
         toastError(err)
@@ -72,11 +88,13 @@ export default function ServicePriceFormPage() {
   }, [id, reset])
 
   const onSubmit = handleSubmit(async (values) => {
+    const isParaclinical = values.category === ServiceCategory.Paraclinical
     const payload = {
       name: values.name.trim(),
       unitPrice: Number(values.unitPrice),
       description: values.description.trim() || null,
       category: values.category as ServiceCategoryValue,
+      group: isParaclinical ? (values.group as ParaclinicalGroupValue | null) : null,
     }
     try {
       if (isEdit && id) {
@@ -138,6 +156,33 @@ export default function ServicePriceFormPage() {
                 Dịch vụ loại <strong>Cận lâm sàng</strong> mới chỉ định được trong lúc khám.
               </p>
             </div>
+            {category === ServiceCategory.Paraclinical && (
+              <div className="grid gap-2">
+                <Label>Nhóm CLS</Label>
+                <Select
+                  value={group === null ? 'none' : String(group)}
+                  onValueChange={(v) =>
+                    setValue('group', v === 'none' ? null : (Number(v) as ParaclinicalGroupValue))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Chưa phân nhóm</SelectItem>
+                    {Object.values(ParaclinicalGroup).map((g) => (
+                      <SelectItem key={g} value={String(g)}>
+                        {paraclinicalGroupLabels[g]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Gom dịch vụ theo nhóm ở màn chỉ định CLS (xét nghiệm/chẩn đoán hình ảnh/thăm dò chức
+                  năng/nội soi) thay vì liệt kê phẳng.
+                </p>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="description">Mô tả</Label>
               <Textarea id="description" rows={2} {...register('description')} />

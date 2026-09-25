@@ -38,6 +38,11 @@ public sealed class ServicePriceConfiguration : IEntityTypeConfiguration<Service
             .HasMaxLength(20)
             .IsRequired();
 
+        // Nhóm CLS lưu dạng chuỗi, nullable (ADR 0024) — chỉ có giá trị khi Category = Paraclinical.
+        builder.Property(s => s.Group)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         // Seed vài dịch vụ mẫu để lập hoá đơn được ngay sau khi áp migration.
         builder.HasData(
             SeedService("22222222-3333-4444-5555-000000000001", "DV-000001",
@@ -48,16 +53,19 @@ public sealed class ServicePriceConfiguration : IEntityTypeConfiguration<Service
                 "Khám chuyên khoa", 200000m, "Công khám theo chuyên khoa", ServiceCategory.Consultation),
             // Cận lâm sàng mẫu (loại Paraclinical) để chỉ định được ngay sau khi áp migration.
             SeedService("22222222-3333-4444-5555-000000000004", "DV-CLS001",
-                "Xét nghiệm công thức máu", 80000m, "Tổng phân tích tế bào máu ngoại vi", ServiceCategory.Paraclinical),
+                "Xét nghiệm công thức máu", 80000m, "Tổng phân tích tế bào máu ngoại vi",
+                ServiceCategory.Paraclinical, ParaclinicalGroup.LabTest),
             SeedService("22222222-3333-4444-5555-000000000005", "DV-CLS002",
-                "Chụp X-quang ngực thẳng", 120000m, "X-quang ngực thẳng", ServiceCategory.Paraclinical),
+                "Chụp X-quang ngực thẳng", 120000m, "X-quang ngực thẳng",
+                ServiceCategory.Paraclinical, ParaclinicalGroup.Imaging),
             SeedService("22222222-3333-4444-5555-000000000006", "DV-CLS003",
-                "Siêu âm ổ bụng tổng quát", 150000m, "Siêu âm ổ bụng", ServiceCategory.Paraclinical));
+                "Siêu âm ổ bụng tổng quát", 150000m, "Siêu âm ổ bụng",
+                ServiceCategory.Paraclinical, ParaclinicalGroup.Imaging));
     }
 
     private static object SeedService(
         string id, string code, string name, decimal unitPrice, string? description,
-        ServiceCategory category) => new
+        ServiceCategory category, ParaclinicalGroup? group = null) => new
     {
         Id = Guid.Parse(id),
         Code = code,
@@ -65,6 +73,7 @@ public sealed class ServicePriceConfiguration : IEntityTypeConfiguration<Service
         UnitPrice = unitPrice,
         Description = description,
         Category = category,
+        Group = group,
         CreatedAt = SeedTime,
         IsDeleted = false
     };

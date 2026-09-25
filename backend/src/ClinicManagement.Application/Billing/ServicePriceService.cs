@@ -22,7 +22,8 @@ public sealed class ServicePriceService : IServicePriceService
             request.Name.Trim(),
             request.UnitPrice,
             NormalizeOptional(request.Description),
-            request.Category);
+            request.Category,
+            request.Group);
 
         _db.ServicePrices.Add(service);
         await _db.SaveChangesAsync(ct);
@@ -90,7 +91,8 @@ public sealed class ServicePriceService : IServicePriceService
             request.Name.Trim(),
             request.UnitPrice,
             NormalizeOptional(request.Description),
-            request.Category);
+            request.Category,
+            request.Group);
 
         await _db.SaveChangesAsync(ct);
         return ServicePriceDto.FromEntity(service);
