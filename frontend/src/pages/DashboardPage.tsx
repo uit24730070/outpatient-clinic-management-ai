@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Users, Stethoscope, ClipboardList, Wallet, Clock, CalendarDays } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import { toastError } from '../lib/toast'
 import { formatVnd } from '../lib/format'
 import {
@@ -20,6 +21,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +36,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+/** Bar chart 2 chuỗi (Hoàn tất/Khác) — dùng chart-1/2 đã khai ở src/index.css (theme sáng+tối sẵn). */
+const appointmentChartConfig = {
+  completed: { label: 'Hoàn tất', color: 'var(--chart-1)' },
+  other: { label: 'Khác', color: 'var(--chart-2)' },
+} satisfies ChartConfig
+
+/** Bar chart 4 chuỗi khớp đúng 4 khoản mục doanh thu (thẻ KPI bên dưới) — chart-1..4. */
+const revenueChartConfig = {
+  serviceFee: { label: 'Công khám', color: 'var(--chart-1)' },
+  medication: { label: 'Tiền thuốc', color: 'var(--chart-2)' },
+  paraclinical: { label: 'Cận lâm sàng', color: 'var(--chart-3)' },
+  other: { label: 'Khác', color: 'var(--chart-4)' },
+} satisfies ChartConfig
 
 /** Ngày local dạng yyyy-MM-dd (đầu vào <input type=date> và query báo cáo). */
 function isoDate(d: Date): string {
@@ -90,8 +113,37 @@ export default function DashboardPage() {
     void load()
   }
 
-  const maxAppt = Math.max(1, ...(appointments?.days.map((d) => d.total) ?? [0]))
-  const maxRevenue = Math.max(1, ...(revenue?.days.map((d) => d.total) ?? [0]))
+  const apptChartData = useMemo(
+    () =>
+      (appointments?.days ?? []).map((d) => ({
+        date: d.date,
+        completed: d.byStatus.completed,
+        other: d.total - d.byStatus.completed,
+      })),
+    [appointments],
+  )
+
+  const revenueChartData = useMemo(
+    () =>
+      (revenue?.days ?? []).map((d) => ({
+        date: d.date,
+        serviceFee: d.serviceFee,
+        medication: d.medication,
+        paraclinical: d.paraclinical,
+        other: d.other,
+      })),
+    [revenue],
+  )
+
+  // Top 5 bác sĩ có lịch/phiếu khám trong khoảng — bỏ bác sĩ không có số liệu, giữ bảng gọn.
+  const topDoctors = useMemo(
+    () =>
+      doctors
+        .filter((d) => d.totalAppointments > 0 || d.encounters > 0)
+        .sort((a, b) => b.totalAppointments - a.totalAppointments)
+        .slice(0, 5),
+    [doctors],
+  )
 
   return (
     <section>
@@ -135,20 +187,22 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {appointments && appointments.days.length > 0 ? (
-              <div className="flex h-48 items-end gap-2">
-                {appointments.days.map((d) => (
-                  <div key={d.date} className="flex flex-1 flex-col items-center gap-1" title={`${d.date}: ${d.total} lịch (hoàn tất ${d.byStatus.completed})`}>
-                    <span className="text-xs font-medium text-muted-foreground">{d.total}</span>
-                    <div className="flex w-full flex-1 items-end">
-                      <div
-                        className="w-full rounded-t bg-primary/80"
-                        style={{ height: `${(d.total / maxAppt) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{shortDay(d.date)}</span>
-                  </div>
-                ))}
-              </div>
+              <ChartContainer config={appointmentChartConfig} className="aspect-auto h-56 w-full">
+                <BarChart data={apptChartData} barCategoryGap={apptChartData.length > 14 ? '15%' : '30%'}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={shortDay}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => shortDay(String(p[0]?.payload.date ?? ''))} />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="other" stackId="appt" fill="var(--color-other)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="completed" stackId="appt" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
             ) : (
               <p className="py-8 text-center text-sm text-muted-foreground">Không có dữ liệu.</p>
             )}
@@ -167,19 +221,40 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {revenue && revenue.days.length > 0 ? (
-              <div className="flex h-48 items-end gap-2">
-                {revenue.days.map((d) => (
-                  <div key={d.date} className="flex flex-1 flex-col items-center gap-1" title={`${d.date}: ${formatVnd(d.total)}`}>
-                    <div className="flex w-full flex-1 items-end">
-                      <div
-                        className="w-full rounded-t bg-emerald-500/80"
-                        style={{ height: `${(d.total / maxRevenue) * 100}%` }}
+              <ChartContainer config={revenueChartConfig} className="aspect-auto h-56 w-full">
+                <BarChart data={revenueChartData} barCategoryGap={revenueChartData.length > 14 ? '15%' : '30%'}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={shortDay}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(_, p) => shortDay(String(p[0]?.payload.date ?? ''))}
+                        formatter={(value, _name, item) => (
+                          <div className="flex w-full items-center justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              {revenueChartConfig[item.dataKey as keyof typeof revenueChartConfig]?.label}
+                            </span>
+                            <span className="text-foreground font-mono font-medium tabular-nums">
+                              {formatVnd(Number(value))}
+                            </span>
+                          </div>
+                        )}
                       />
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{shortDay(d.date)}</span>
-                  </div>
-                ))}
-              </div>
+                    }
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="serviceFee" stackId="rev" fill="var(--color-serviceFee)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="medication" stackId="rev" fill="var(--color-medication)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="paraclinical" stackId="rev" fill="var(--color-paraclinical)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="other" stackId="rev" fill="var(--color-other)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
             ) : (
               <p className="py-8 text-center text-sm text-muted-foreground">Không có dữ liệu.</p>
             )}
@@ -202,10 +277,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Năng suất theo bác sĩ */}
+      {/* Năng suất theo bác sĩ — top 5, bỏ bác sĩ không có số liệu trong khoảng */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Năng suất theo bác sĩ</CardTitle>
+          <CardTitle>Năng suất theo bác sĩ (Top 5)</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -219,14 +294,14 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {doctors.length === 0 && (
+              {topDoctors.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
                     Không có dữ liệu.
                   </TableCell>
                 </TableRow>
               )}
-              {doctors.map((d) => (
+              {topDoctors.map((d) => (
                 <TableRow key={d.doctorId}>
                   <TableCell className="font-mono text-sm">{d.doctorCode}</TableCell>
                   <TableCell className="font-medium">{d.doctorName}</TableCell>
