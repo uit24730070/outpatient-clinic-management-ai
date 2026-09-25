@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Activity, ChevronDown, Microscope, MoreHorizontal, ScanLine, Search, TestTube } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import { formatVnd } from '../lib/format'
 import { ParaclinicalGroup, paraclinicalGroupLabels, ServiceCategory, type ServicePrice } from '../types/invoice'
 
@@ -23,11 +24,12 @@ const groupIcons: Record<number, typeof TestTube> = {
 const UNGROUPED_KEY = -1
 
 /**
- * Chọn nhiều dịch vụ (chip bật/tắt) kèm ô tìm kiếm lọc theo tên — dùng ở mọi màn chỉ định/đăng ký CLS
- * (`VisitForm`, `VisitDetailPage`, `LabOrderPanel`). Dịch vụ Cận lâm sàng (nhiều nhất — có thể 20-30 mục)
- * được gom theo `group` (xét nghiệm/chẩn đoán hình ảnh/thăm dò chức năng/nội soi, ADR 0024) thành từng
- * khối gấp mở được thay vì một dải chip phẳng dài — phản hồi giảng viên: liệt kê phẳng gây rối mắt khi
- * chỉ định. Dịch vụ chưa phân nhóm/loại khác vẫn hiển thị phẳng như trước (không đủ dữ liệu để gom).
+ * Chọn nhiều dịch vụ dạng bảng 2 cột (tên · đơn giá, theo gợi ý giảng viên — trước là dải chip khó
+ * so sánh giá) kèm ô tìm kiếm lọc theo tên — dùng ở mọi màn chỉ định/đăng ký CLS (`VisitForm`,
+ * `VisitDetailPage`, `LabOrderPanel`). Dịch vụ Cận lâm sàng (nhiều nhất — có thể 20-30 mục) được gom
+ * theo `group` (xét nghiệm/chẩn đoán hình ảnh/thăm dò chức năng/nội soi, ADR 0024) thành từng khối
+ * gấp mở được, mỗi khối một bảng riêng, thay vì một danh sách dài. Dịch vụ chưa phân nhóm/loại khác
+ * vẫn hiển thị một bảng phẳng như trước (không đủ dữ liệu để gom).
  */
 export function ServiceMultiPicker({
   services,
@@ -46,7 +48,7 @@ export function ServiceMultiPicker({
   }, [services, search])
 
   // Chỉ gom nhóm khi mọi dịch vụ đều là Cận lâm sàng (nơi group có ý nghĩa) — các màn khác (công
-  // khám…) vẫn hiển thị phẳng như cũ.
+  // khám…) vẫn hiển thị một bảng phẳng như cũ.
   const isParaclinicalList = services.length > 0 && services.every((s) => s.category === ServiceCategory.Paraclinical)
 
   const groups = useMemo(() => {
@@ -98,34 +100,48 @@ export function ServiceMultiPicker({
     </div>
   )
 
-  const chip = (s: ServicePrice) => {
-    const on = picked.includes(s.id)
-    return (
-      <button
-        key={s.id}
-        type="button"
-        onClick={() => onToggle(s.id)}
-        className={
-          on
-            ? 'rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm text-primary'
-            : 'rounded-full border px-3 py-1 text-sm text-muted-foreground hover:bg-muted'
-        }
-      >
-        {s.name} · {formatVnd(s.unitPrice)}
-      </button>
-    )
-  }
+  // Bảng 2 cột: Tên dịch vụ (+ checkbox) · Đơn giá — click cả dòng để bật/tắt, không chỉ ô vuông.
+  const serviceTable = (items: ServicePrice[]) => (
+    <Table>
+      <TableBody>
+        {items.map((s) => {
+          const on = picked.includes(s.id)
+          return (
+            <TableRow
+              key={s.id}
+              onClick={() => onToggle(s.id)}
+              className={`cursor-pointer ${on ? 'bg-primary/5' : ''}`}
+            >
+              <TableCell className="w-8 py-2">
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={() => onToggle(s.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="size-4 rounded border-input accent-primary"
+                  aria-label={s.name}
+                />
+              </TableCell>
+              <TableCell className={`py-2 ${on ? 'font-medium text-primary' : ''}`}>{s.name}</TableCell>
+              <TableCell className="py-2 text-right tabular-nums text-muted-foreground">
+                {formatVnd(s.unitPrice)}
+              </TableCell>
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
+  )
 
   if (!groups) {
     return (
       <div className="flex flex-col gap-2">
         {searchBox}
-        <div className="flex flex-wrap gap-2">
-          {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground">Không tìm thấy dịch vụ phù hợp.</p>
-          )}
-          {filtered.map(chip)}
-        </div>
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Không tìm thấy dịch vụ phù hợp.</p>
+        ) : (
+          <div className="rounded-md border">{serviceTable(filtered)}</div>
+        )}
       </div>
     )
   }
@@ -163,9 +179,7 @@ export function ServiceMultiPicker({
                   className={`size-4 text-muted-foreground transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                 />
               </button>
-              {!isCollapsed && (
-                <div className="flex flex-wrap gap-2 border-t px-3 py-2">{items.map(chip)}</div>
-              )}
+              {!isCollapsed && <div className="border-t">{serviceTable(items)}</div>}
             </div>
           )
         })}
