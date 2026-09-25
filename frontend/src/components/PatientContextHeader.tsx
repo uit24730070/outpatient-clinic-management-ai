@@ -32,6 +32,10 @@ interface Props {
   fallbackName?: string | null
   /** 'banner' (mặc định): dải lớn đầu trang cho 1 bệnh nhân. 'inline': gọn trong 1 dòng của danh sách nhiều bệnh nhân. */
   variant?: 'banner' | 'inline'
+  /** Ẩn nút "Lịch sử khám" ở variant banner — dùng khi đã có lối vào lịch sử khám ngay bên dưới (vd RecentEncountersCard), tránh trùng lặp. */
+  showHistoryLink?: boolean
+  /** Bỏ khung `<Card>` bọc ngoài ở variant banner — dùng khi ghép chung vào một Card khác (vd với RecentEncountersCard). */
+  bare?: boolean
   className?: string
 }
 
@@ -40,7 +44,14 @@ interface Props {
  * thay việc phải dò tên trong bảng để biết đang xử lý ai. Tự tải chi tiết (tuổi/giới tính tính từ
  * ngày sinh, mã BN) qua `getPatient` — mỗi nơi gắn component chỉ cần truyền `patientId`.
  */
-export function PatientContextHeader({ patientId, fallbackName, variant = 'banner', className }: Props) {
+export function PatientContextHeader({
+  patientId,
+  fallbackName,
+  variant = 'banner',
+  showHistoryLink = true,
+  bare = false,
+  className,
+}: Props) {
   const [patient, setPatient] = useState<Patient | null>(null)
 
   useEffect(() => {
@@ -80,25 +91,33 @@ export function PatientContextHeader({ patientId, fallbackName, variant = 'banne
     )
   }
 
-  return (
-    <Card className={className}>
-      <CardContent className="flex items-center gap-4 py-4">
-        <Avatar className="size-11">
-          <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
-            {initials(name)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <p className="text-base font-semibold">{name}</p>
-          <p className="text-sm text-muted-foreground">{details || 'Đang tải thông tin…'}</p>
-        </div>
+  const body = (
+    <>
+      <Avatar className="size-11">
+        <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+          {initials(name)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <p className="text-base font-semibold">{name}</p>
+        <p className="text-sm text-muted-foreground">{details || 'Đang tải thông tin…'}</p>
+      </div>
+      {showHistoryLink && (
         <Button asChild size="sm" variant="ghost">
           <Link to={`/patients/${patientId}/encounters`}>
             <History className="size-4" />
             Lịch sử khám
           </Link>
         </Button>
-      </CardContent>
+      )}
+    </>
+  )
+
+  if (bare) return <div className={cn('flex items-center gap-4 py-4', className)}>{body}</div>
+
+  return (
+    <Card className={className}>
+      <CardContent className="flex items-center gap-4 py-4">{body}</CardContent>
     </Card>
   )
 }

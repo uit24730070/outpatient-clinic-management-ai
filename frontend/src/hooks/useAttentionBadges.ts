@@ -59,7 +59,7 @@ async function loadBadges(role: UserRoleValue, doctorId: string | null): Promise
         status: AppointmentStatus.CheckedIn,
       })
       return res.totalCount > 0
-        ? [{ key: 'checkedin', label: 'Đã tiếp đón, chờ khám', count: res.totalCount, to: '/my-clinic' }]
+        ? [{ key: 'checkedin', label: 'Đã tiếp nhận, chờ khám', count: res.totalCount, to: '/my-clinic' }]
         : []
     }
 
