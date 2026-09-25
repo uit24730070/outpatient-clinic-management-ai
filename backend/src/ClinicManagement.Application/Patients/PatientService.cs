@@ -31,7 +31,7 @@ public sealed class PatientService : IPatientService
     }
 
     public async Task<Result<PagedResult<PatientDto>>> GetListAsync(
-        int page, int pageSize, string? search, CancellationToken ct = default)
+        int page, int pageSize, string? search, string? sortBy = null, bool sortDesc = false, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -47,9 +47,10 @@ public sealed class PatientService : IPatientService
                 (p.PhoneNumber != null && p.PhoneNumber.ToLower().Contains(term)));
         }
 
+        var ordered = ApplySort(query, sortBy, sortDesc);
+
         var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(p => p.CreatedAt)
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(p => PatientDto.FromEntity(p))
@@ -57,6 +58,17 @@ public sealed class PatientService : IPatientService
 
         return new PagedResult<PatientDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định CreatedAt desc khi không chỉ định.</summary>
+    private static IOrderedQueryable<Patient> ApplySort(IQueryable<Patient> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "code" => desc ? query.OrderByDescending(p => p.Code) : query.OrderBy(p => p.Code),
+            "fullName" => desc ? query.OrderByDescending(p => p.FullName) : query.OrderBy(p => p.FullName),
+            "dateOfBirth" => desc ? query.OrderByDescending(p => p.DateOfBirth) : query.OrderBy(p => p.DateOfBirth),
+            "phoneNumber" => desc ? query.OrderByDescending(p => p.PhoneNumber) : query.OrderBy(p => p.PhoneNumber),
+            _ => query.OrderByDescending(p => p.CreatedAt),
+        };
 
     public async Task<Result<PatientDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

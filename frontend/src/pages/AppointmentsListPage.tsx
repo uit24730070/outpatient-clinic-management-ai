@@ -23,6 +23,8 @@ import { Pager } from '../components/Pager'
 import { AppointmentStatusBadge } from '../components/StatusBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Combobox } from '../components/Combobox'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -89,6 +91,7 @@ export default function AppointmentsListPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [data, setData] = useState<PagedResult<Appointment> | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   useEffect(() => {
     void (async () => {
@@ -110,6 +113,8 @@ export default function AppointmentsListPage() {
         date: date || undefined,
         doctorId: doctorId || undefined,
         status: status === '' ? undefined : (Number(status) as Appointment['status']),
+        sortBy: sort.sortBy,
+        sortDesc: sort.sortDesc,
       })
       setData(result)
     } catch (err) {
@@ -117,7 +122,7 @@ export default function AppointmentsListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, date, doctorId, status])
+  }, [page, date, doctorId, status, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -149,7 +154,7 @@ export default function AppointmentsListPage() {
     <section>
       <PageHeader
         title="Lịch khám"
-        description="Xem & xử lý trạng thái mọi dịch vụ khám (mọi bác sĩ, mọi lượt) — tạo mới qua Lượt tiếp đón"
+        description="Xem & xử lý trạng thái mọi dịch vụ khám (mọi bác sĩ, mọi lượt) — tạo mới qua Lượt tiếp nhận"
       />
 
       <Card className="mb-4">
@@ -217,11 +222,11 @@ export default function AppointmentsListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Thời gian</TableHead>
+                <SortableTableHead field="startTime" sort={sort} onSort={toggleSort}>Thời gian</SortableTableHead>
                 <TableHead>Bệnh nhân</TableHead>
                 <TableHead>Bác sĩ</TableHead>
                 <TableHead>Lý do</TableHead>
-                <TableHead>Trạng thái</TableHead>
+                <SortableTableHead field="status" sort={sort} onSort={toggleSort}>Trạng thái</SortableTableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>

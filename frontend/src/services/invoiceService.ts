@@ -18,6 +18,8 @@ export interface ListInvoicesParams {
   status?: InvoiceStatusValue
   from?: string
   to?: string
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listInvoices(params: ListInvoicesParams): Promise<PagedResult<Invoice>> {
@@ -30,7 +32,7 @@ export async function getInvoice(id: string): Promise<Invoice> {
   return unwrap(res.data)
 }
 
-/** Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ. */
+/** Gom các hoá đơn của một lượt tiếp nhận + tổng đã lập/đã thu/còn nợ. */
 export async function getInvoicesByAppointment(appointmentId: string): Promise<AppointmentInvoices> {
   const res = await apiClient.get<ApiResponse<AppointmentInvoices>>(
     `/api/invoices/by-appointment/${appointmentId}`,
@@ -38,7 +40,7 @@ export async function getInvoicesByAppointment(appointmentId: string): Promise<A
   return unwrap(res.data)
 }
 
-/** Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (ADR 0017). */
+/** Gom các hoá đơn của một lượt tiếp nhận + tổng đã lập/đã thu/còn nợ (ADR 0017). */
 export async function getInvoicesByVisit(visitId: string): Promise<VisitInvoices> {
   const res = await apiClient.get<ApiResponse<VisitInvoices>>(`/api/invoices/by-visit/${visitId}`)
   return unwrap(res.data)

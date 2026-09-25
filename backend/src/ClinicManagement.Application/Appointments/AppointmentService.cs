@@ -93,13 +93,22 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         var total = await query.CountAsync(ct);
-        var items = await Project(query.OrderBy(a => a.StartTime))
+        var items = await Project(ApplySort(query, filter.SortBy, filter.SortDesc))
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
         return new PagedResult<AppointmentDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định StartTime asc (giữ hành vi cũ).</summary>
+    private static IOrderedQueryable<Appointment> ApplySort(IQueryable<Appointment> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "startTime" when desc => query.OrderByDescending(a => a.StartTime),
+            "status" => desc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status),
+            _ => query.OrderBy(a => a.StartTime),
+        };
 
     public async Task<Result<AppointmentDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

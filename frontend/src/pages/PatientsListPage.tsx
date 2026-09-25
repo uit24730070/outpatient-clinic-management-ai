@@ -8,6 +8,8 @@ import { genderLabels, type PagedResult, type Patient } from '../types/patient'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,6 +30,7 @@ export default function PatientsListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Patient> | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -36,6 +39,8 @@ export default function PatientsListPage() {
         page,
         pageSize: PAGE_SIZE,
         search: search.trim() || undefined,
+        sortBy: sort.sortBy,
+        sortDesc: sort.sortDesc,
       })
       setData(result)
     } catch (err) {
@@ -43,7 +48,7 @@ export default function PatientsListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -104,11 +109,11 @@ export default function PatientsListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã BN</TableHead>
-                <TableHead>Họ tên</TableHead>
+                <SortableTableHead field="code" sort={sort} onSort={toggleSort}>Mã BN</SortableTableHead>
+                <SortableTableHead field="fullName" sort={sort} onSort={toggleSort}>Họ tên</SortableTableHead>
                 <TableHead>Giới tính</TableHead>
-                <TableHead>Ngày sinh</TableHead>
-                <TableHead>Điện thoại</TableHead>
+                <SortableTableHead field="dateOfBirth" sort={sort} onSort={toggleSort}>Ngày sinh</SortableTableHead>
+                <SortableTableHead field="phoneNumber" sort={sort} onSort={toggleSort}>Điện thoại</SortableTableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>

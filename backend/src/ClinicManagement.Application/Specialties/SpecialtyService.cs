@@ -29,7 +29,7 @@ public sealed class SpecialtyService : ISpecialtyService
     }
 
     public async Task<Result<PagedResult<SpecialtyDto>>> GetListAsync(
-        int page, int pageSize, string? search, CancellationToken ct = default)
+        int page, int pageSize, string? search, string? sortBy = null, bool sortDesc = false, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -43,8 +43,7 @@ public sealed class SpecialtyService : ISpecialtyService
         }
 
         var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(s => s.Name)
+        var items = await ApplySort(query, sortBy, sortDesc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(s => SpecialtyDto.FromEntity(s))
@@ -52,6 +51,15 @@ public sealed class SpecialtyService : ISpecialtyService
 
         return new PagedResult<SpecialtyDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định theo Tên (giữ hành vi cũ).</summary>
+    private static IOrderedQueryable<Specialty> ApplySort(IQueryable<Specialty> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "name" when desc => query.OrderByDescending(s => s.Name),
+            "createdAt" => desc ? query.OrderByDescending(s => s.CreatedAt) : query.OrderBy(s => s.CreatedAt),
+            _ => query.OrderBy(s => s.Name),
+        };
 
     public async Task<Result<SpecialtyDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

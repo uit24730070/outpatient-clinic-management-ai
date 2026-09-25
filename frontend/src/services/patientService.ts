@@ -5,6 +5,8 @@ export interface ListPatientsParams {
   page: number
   pageSize: number
   search?: string
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listPatients(params: ListPatientsParams): Promise<PagedResult<Patient>> {

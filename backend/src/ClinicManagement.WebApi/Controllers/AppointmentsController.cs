@@ -33,10 +33,12 @@ public sealed class AppointmentsController : ApiControllerBase
         [FromQuery] Guid? doctorId = null,
         [FromQuery] Guid? patientId = null,
         [FromQuery] AppointmentStatus? status = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = false,
         CancellationToken ct = default)
     {
         var result = await _appointments.GetListAsync(
-            new AppointmentFilter(page, pageSize, date, doctorId, patientId, status), ct);
+            new AppointmentFilter(page, pageSize, date, doctorId, patientId, status, sortBy, sortDesc), ct);
         return ToResponse(result);
     }
 

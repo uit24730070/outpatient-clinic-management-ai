@@ -7,6 +7,8 @@ import type { PagedResult } from '../types/common'
 import type { StockReceipt } from '../types/medication'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -24,17 +26,18 @@ export default function StockReceiptsListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<StockReceipt> | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setData(await listStockReceipts({ page, pageSize: PAGE_SIZE }))
+      setData(await listStockReceipts({ page, pageSize: PAGE_SIZE, sortBy: sort.sortBy, sortDesc: sort.sortDesc }))
     } catch (err) {
       toastError(err)
     } finally {
       setLoading(false)
     }
-  }, [page])
+  }, [page, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -60,9 +63,9 @@ export default function StockReceiptsListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã phiếu</TableHead>
-                <TableHead>Nhà cung cấp</TableHead>
-                <TableHead>Ngày nhận</TableHead>
+                <SortableTableHead field="code" sort={sort} onSort={toggleSort}>Mã phiếu</SortableTableHead>
+                <SortableTableHead field="supplierName" sort={sort} onSort={toggleSort}>Nhà cung cấp</SortableTableHead>
+                <SortableTableHead field="receivedAt" sort={sort} onSort={toggleSort}>Ngày nhận</SortableTableHead>
                 <TableHead>Số dòng</TableHead>
                 <TableHead>Ghi chú</TableHead>
               </TableRow>

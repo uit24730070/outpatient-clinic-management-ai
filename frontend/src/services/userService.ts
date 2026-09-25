@@ -9,6 +9,8 @@ export interface ListUsersParams {
   search?: string
   role?: UserRoleValue
   isActive?: boolean
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listUsers(params: ListUsersParams): Promise<PagedResult<UserListItem>> {

@@ -34,7 +34,7 @@ public sealed class DoctorService : IDoctorService
     }
 
     public async Task<Result<PagedResult<DoctorDto>>> GetListAsync(
-        int page, int pageSize, string? search, CancellationToken ct = default)
+        int page, int pageSize, string? search, string? sortBy = null, bool sortDesc = false, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -51,13 +51,23 @@ public sealed class DoctorService : IDoctorService
         }
 
         var total = await query.CountAsync(ct);
-        var items = await Project(query.OrderByDescending(d => d.CreatedAt))
+        var items = await Project(ApplySort(query, sortBy, sortDesc))
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
         return new PagedResult<DoctorDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định CreatedAt desc khi không chỉ định.</summary>
+    private static IOrderedQueryable<Doctor> ApplySort(IQueryable<Doctor> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "code" => desc ? query.OrderByDescending(d => d.Code) : query.OrderBy(d => d.Code),
+            "fullName" => desc ? query.OrderByDescending(d => d.FullName) : query.OrderBy(d => d.FullName),
+            "phoneNumber" => desc ? query.OrderByDescending(d => d.PhoneNumber) : query.OrderBy(d => d.PhoneNumber),
+            _ => query.OrderByDescending(d => d.CreatedAt),
+        };
 
     public async Task<Result<DoctorDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

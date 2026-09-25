@@ -12,6 +12,8 @@ import { formatVnd } from '../lib/format'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { InvoiceStatusBadge } from '../components/StatusBadge'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -53,12 +55,13 @@ export default function InvoicesListPage() {
   const [data, setData] = useState<PagedResult<Invoice> | null>(null)
   const [summary, setSummary] = useState<AppointmentInvoices | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       if (appointmentId) {
-        // Chế độ gom theo lượt tiếp đón: danh sách + tổng tính phía server.
+        // Chế độ gom theo lượt tiếp nhận: danh sách + tổng tính phía server.
         const group = await getInvoicesByAppointment(appointmentId)
         setSummary(group)
         setData(null)
@@ -67,6 +70,8 @@ export default function InvoicesListPage() {
           page,
           pageSize: PAGE_SIZE,
           status: status === ALL ? undefined : (Number(status) as InvoiceStatusValue),
+          sortBy: sort.sortBy,
+          sortDesc: sort.sortDesc,
         })
         setData(result)
         setSummary(null)
@@ -76,7 +81,7 @@ export default function InvoicesListPage() {
     } finally {
       setLoading(false)
     }
-  }, [appointmentId, page, status])
+  }, [appointmentId, page, status, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -91,7 +96,7 @@ export default function InvoicesListPage() {
         title={appointmentId ? 'Hoá đơn của lượt khám' : 'Hoá đơn'}
         description={
           appointmentId
-            ? 'Các hoá đơn độc lập cùng một lượt tiếp đón'
+            ? 'Các hoá đơn độc lập cùng một lượt khám'
             : 'Lập hoá đơn, thu tiền và in cho bệnh nhân'
         }
         actions={
@@ -172,12 +177,36 @@ export default function InvoicesListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã</TableHead>
-                <TableHead>Ngày lập</TableHead>
+                {appointmentId ? (
+                  <TableHead>Mã</TableHead>
+                ) : (
+                  <SortableTableHead field="code" sort={sort} onSort={toggleSort}>Mã</SortableTableHead>
+                )}
+                {appointmentId ? (
+                  <TableHead>Ngày lập</TableHead>
+                ) : (
+                  <SortableTableHead field="createdAt" sort={sort} onSort={toggleSort}>Ngày lập</SortableTableHead>
+                )}
                 <TableHead>Bệnh nhân</TableHead>
-                <TableHead>Trạng thái</TableHead>
+                {appointmentId ? (
+                  <TableHead>Trạng thái</TableHead>
+                ) : (
+                  <SortableTableHead field="status" sort={sort} onSort={toggleSort}>Trạng thái</SortableTableHead>
+                )}
                 <TableHead>Thanh toán</TableHead>
-                <TableHead className="text-right">Tổng tiền</TableHead>
+                {appointmentId ? (
+                  <TableHead className="text-right">Tổng tiền</TableHead>
+                ) : (
+                  <SortableTableHead
+                    field="totalAmount"
+                    sort={sort}
+                    onSort={toggleSort}
+                    className="text-right"
+                    align="right"
+                  >
+                    Tổng tiền
+                  </SortableTableHead>
+                )}
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>

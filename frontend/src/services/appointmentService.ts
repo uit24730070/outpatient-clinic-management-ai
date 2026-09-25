@@ -9,6 +9,8 @@ export interface ListAppointmentsParams {
   doctorId?: string
   patientId?: string
   status?: AppointmentStatusValue
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listAppointments(params: ListAppointmentsParams): Promise<PagedResult<Appointment>> {

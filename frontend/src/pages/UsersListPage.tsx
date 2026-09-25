@@ -17,6 +17,8 @@ import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { RoleBadge, ActiveBadge } from '../components/StatusBadge'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -47,6 +49,7 @@ export default function UsersListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<UserListItem> | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,6 +60,8 @@ export default function UsersListPage() {
         search: search.trim() || undefined,
         role: role || undefined,
         isActive: status === '' ? undefined : status === 'active',
+        sortBy: sort.sortBy,
+        sortDesc: sort.sortDesc,
       })
       setData(result)
     } catch (err) {
@@ -64,7 +69,7 @@ export default function UsersListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, role, status])
+  }, [page, search, role, status, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -183,9 +188,9 @@ export default function UsersListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tên đăng nhập</TableHead>
-                <TableHead>Họ tên</TableHead>
-                <TableHead>Vai trò</TableHead>
+                <SortableTableHead field="username" sort={sort} onSort={toggleSort}>Tên đăng nhập</SortableTableHead>
+                <SortableTableHead field="fullName" sort={sort} onSort={toggleSort}>Họ tên</SortableTableHead>
+                <SortableTableHead field="role" sort={sort} onSort={toggleSort}>Vai trò</SortableTableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>

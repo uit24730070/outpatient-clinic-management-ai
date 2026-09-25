@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { getMedication, getMedicationBatches } from '../services/medicationService'
@@ -6,13 +6,14 @@ import { toastError } from '../lib/toast'
 import type { Medication, MedicationBatch } from '../types/medication'
 import { PageHeader } from '../components/PageHeader'
 import { TonedBadge } from '../components/StatusBadge'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
@@ -22,6 +23,27 @@ export default function MedicationBatchesPage() {
   const [medication, setMedication] = useState<Medication | null>(null)
   const [batches, setBatches] = useState<MedicationBatch[]>([])
   const [loading, setLoading] = useState(true)
+  const { sort, toggleSort } = useSort()
+
+  // Danh sách lô đã tải hết một lần (không phân trang server) — sắp xếp phía client.
+  const sortedBatches = useMemo(() => {
+    if (!sort.sortBy) return batches
+    const dir = sort.sortDesc ? -1 : 1
+    const sorted = [...batches]
+    sorted.sort((a, b) => {
+      switch (sort.sortBy) {
+        case 'batchNumber':
+          return a.batchNumber.localeCompare(b.batchNumber) * dir
+        case 'expiryDate':
+          return a.expiryDate.localeCompare(b.expiryDate) * dir
+        case 'quantityOnHand':
+          return (a.quantityOnHand - b.quantityOnHand) * dir
+        default:
+          return 0
+      }
+    })
+    return sorted
+  }, [batches, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     if (!id) return
@@ -76,9 +98,9 @@ export default function MedicationBatchesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Số lô</TableHead>
-                <TableHead>Hạn dùng</TableHead>
-                <TableHead>Tồn</TableHead>
+                <SortableTableHead field="batchNumber" sort={sort} onSort={toggleSort}>Số lô</SortableTableHead>
+                <SortableTableHead field="expiryDate" sort={sort} onSort={toggleSort}>Hạn dùng</SortableTableHead>
+                <SortableTableHead field="quantityOnHand" sort={sort} onSort={toggleSort}>Tồn</SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -89,7 +111,7 @@ export default function MedicationBatchesPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {batches.map((b) => {
+              {sortedBatches.map((b) => {
                 const expired = b.expiryDate < today
                 return (
                   <TableRow key={b.id}>

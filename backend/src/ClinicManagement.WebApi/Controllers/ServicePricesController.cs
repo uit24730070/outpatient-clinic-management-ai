@@ -31,9 +31,11 @@ public sealed class ServicePricesController : ApiControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] ServiceCategory? category = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = false,
         CancellationToken ct = default)
     {
-        var result = await _servicePrices.GetListAsync(page, pageSize, search, category, ct);
+        var result = await _servicePrices.GetListAsync(page, pageSize, search, category, sortBy, sortDesc, ct);
         return ToResponse(result);
     }
 

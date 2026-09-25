@@ -8,7 +8,8 @@ public interface IServicePriceService
 {
     Task<Result<ServicePriceDto>> CreateAsync(CreateServicePriceRequest request, CancellationToken ct = default);
     Task<Result<PagedResult<ServicePriceDto>>> GetListAsync(
-        int page, int pageSize, string? search, ServiceCategory? category, CancellationToken ct = default);
+        int page, int pageSize, string? search, ServiceCategory? category,
+        string? sortBy = null, bool sortDesc = false, CancellationToken ct = default);
     Task<Result<ServicePriceDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Result<ServicePriceDto>> UpdateAsync(Guid id, UpdateServicePriceRequest request, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);

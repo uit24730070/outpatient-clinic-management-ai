@@ -41,9 +41,11 @@ public sealed class PatientsController : ApiControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = false,
         CancellationToken ct = default)
     {
-        var result = await _patients.GetListAsync(page, pageSize, search, ct);
+        var result = await _patients.GetListAsync(page, pageSize, search, sortBy, sortDesc, ct);
         return ToResponse(result);
     }
 

@@ -9,6 +9,8 @@ import type { Room } from '../types/room'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,18 +31,25 @@ export default function RoomsListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Room> | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await listRooms({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
+      const result = await listRooms({
+        page,
+        pageSize: PAGE_SIZE,
+        search: search.trim() || undefined,
+        sortBy: sort.sortBy,
+        sortDesc: sort.sortDesc,
+      })
       setData(result)
     } catch (err) {
       toastError(err)
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -101,8 +110,8 @@ export default function RoomsListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã</TableHead>
-                <TableHead>Tên phòng</TableHead>
+                <SortableTableHead field="code" sort={sort} onSort={toggleSort}>Mã</SortableTableHead>
+                <SortableTableHead field="name" sort={sort} onSort={toggleSort}>Tên phòng</SortableTableHead>
                 <TableHead>Mô tả</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>

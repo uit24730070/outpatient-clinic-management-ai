@@ -6,6 +6,8 @@ export interface ListSpecialtiesParams {
   page: number
   pageSize: number
   search?: string
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listSpecialties(params: ListSpecialtiesParams): Promise<PagedResult<Specialty>> {

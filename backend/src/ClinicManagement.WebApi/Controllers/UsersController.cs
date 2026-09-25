@@ -32,9 +32,11 @@ public sealed class UsersController : ApiControllerBase
         [FromQuery] string? search = null,
         [FromQuery] UserRole? role = null,
         [FromQuery] bool? isActive = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = false,
         CancellationToken ct = default)
     {
-        var result = await _users.GetListAsync(page, pageSize, search, role, isActive, ct);
+        var result = await _users.GetListAsync(page, pageSize, search, role, isActive, sortBy, sortDesc, ct);
         return ToResponse(result);
     }
 

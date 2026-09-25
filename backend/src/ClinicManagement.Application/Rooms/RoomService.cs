@@ -26,7 +26,7 @@ public sealed class RoomService : IRoomService
     }
 
     public async Task<Result<PagedResult<RoomDto>>> GetListAsync(
-        int page, int pageSize, string? search, CancellationToken ct = default)
+        int page, int pageSize, string? search, string? sortBy = null, bool sortDesc = false, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -42,13 +42,22 @@ public sealed class RoomService : IRoomService
         }
 
         var total = await query.CountAsync(ct);
-        var items = await Project(query.OrderBy(r => r.Code))
+        var items = await Project(ApplySort(query, sortBy, sortDesc))
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
         return new PagedResult<RoomDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định theo Mã (giữ hành vi cũ).</summary>
+    private static IOrderedQueryable<Room> ApplySort(IQueryable<Room> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "code" when desc => query.OrderByDescending(r => r.Code),
+            "name" => desc ? query.OrderByDescending(r => r.Name) : query.OrderBy(r => r.Name),
+            _ => query.OrderBy(r => r.Code),
+        };
 
     public async Task<Result<RoomDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

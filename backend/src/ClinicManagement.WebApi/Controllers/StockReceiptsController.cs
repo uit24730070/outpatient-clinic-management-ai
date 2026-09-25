@@ -28,9 +28,11 @@ public sealed class StockReceiptsController : ApiControllerBase
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = false,
         CancellationToken ct = default)
     {
-        var result = await _receipts.GetListAsync(page, pageSize, ct);
+        var result = await _receipts.GetListAsync(page, pageSize, sortBy, sortDesc, ct);
         return ToResponse(result);
     }
 

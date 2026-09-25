@@ -49,9 +49,12 @@ public sealed class InvoicesController : ApiControllerBase
         [FromQuery] InvoiceStatus? status = null,
         [FromQuery] DateTimeOffset? from = null,
         [FromQuery] DateTimeOffset? to = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = false,
         CancellationToken ct = default)
     {
-        var result = await _invoices.GetListAsync(page, pageSize, patientId, appointmentId, status, from, to, ct);
+        var result = await _invoices.GetListAsync(
+            page, pageSize, patientId, appointmentId, status, from, to, sortBy, sortDesc, ct);
         return ToResponse(result);
     }
 
@@ -63,7 +66,7 @@ public sealed class InvoicesController : ApiControllerBase
         return ToResponse(result);
     }
 
-    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ.</summary>
+    /// <summary>Gom các hoá đơn của một lượt tiếp nhận + tổng đã lập/đã thu/còn nợ.</summary>
     [HttpGet("by-appointment/{appointmentId:guid}")]
     public async Task<IActionResult> GetByAppointment(Guid appointmentId, CancellationToken ct)
     {
@@ -71,7 +74,7 @@ public sealed class InvoicesController : ApiControllerBase
         return ToResponse(result);
     }
 
-    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (ADR 0017).</summary>
+    /// <summary>Gom các hoá đơn của một lượt tiếp nhận + tổng đã lập/đã thu/còn nợ (ADR 0017).</summary>
     [HttpGet("by-visit/{visitId:guid}")]
     public async Task<IActionResult> GetByVisit(Guid visitId, CancellationToken ct)
     {

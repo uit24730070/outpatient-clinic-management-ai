@@ -7,6 +7,8 @@ export interface ListServicePricesParams {
   pageSize: number
   search?: string
   category?: ServiceCategoryValue
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listServicePrices(

@@ -11,7 +11,9 @@ public sealed record AppointmentFilter(
     DateOnly? Date = null,
     Guid? DoctorId = null,
     Guid? PatientId = null,
-    AppointmentStatus? Status = null);
+    AppointmentStatus? Status = null,
+    string? SortBy = null,
+    bool SortDesc = false);
 
 public interface IAppointmentService
 {

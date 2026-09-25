@@ -7,7 +7,7 @@ public interface IMedicationService
 {
     Task<Result<MedicationDto>> CreateAsync(CreateMedicationRequest request, CancellationToken ct = default);
     Task<Result<PagedResult<MedicationDto>>> GetListAsync(
-        int page, int pageSize, string? search, CancellationToken ct = default);
+        int page, int pageSize, string? search, string? sortBy = null, bool sortDesc = false, CancellationToken ct = default);
     Task<Result<MedicationDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Result<MedicationDto>> UpdateAsync(Guid id, UpdateMedicationRequest request, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);

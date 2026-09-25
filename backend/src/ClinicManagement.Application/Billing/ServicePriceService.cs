@@ -31,7 +31,8 @@ public sealed class ServicePriceService : IServicePriceService
     }
 
     public async Task<Result<PagedResult<ServicePriceDto>>> GetListAsync(
-        int page, int pageSize, string? search, ServiceCategory? category, CancellationToken ct = default)
+        int page, int pageSize, string? search, ServiceCategory? category,
+        string? sortBy = null, bool sortDesc = false, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -50,8 +51,7 @@ public sealed class ServicePriceService : IServicePriceService
             query = query.Where(s => s.Category == category);
 
         var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(s => s.CreatedAt)
+        var items = await ApplySort(query, sortBy, sortDesc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(s => ServicePriceDto.FromEntity(s))
@@ -59,6 +59,17 @@ public sealed class ServicePriceService : IServicePriceService
 
         return new PagedResult<ServicePriceDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định CreatedAt desc khi không chỉ định.</summary>
+    private static IOrderedQueryable<ServicePrice> ApplySort(IQueryable<ServicePrice> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "code" => desc ? query.OrderByDescending(s => s.Code) : query.OrderBy(s => s.Code),
+            "name" => desc ? query.OrderByDescending(s => s.Name) : query.OrderBy(s => s.Name),
+            "unitPrice" => desc ? query.OrderByDescending(s => s.UnitPrice) : query.OrderBy(s => s.UnitPrice),
+            "category" => desc ? query.OrderByDescending(s => s.Category) : query.OrderBy(s => s.Category),
+            _ => query.OrderByDescending(s => s.CreatedAt),
+        };
 
     public async Task<Result<ServicePriceDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

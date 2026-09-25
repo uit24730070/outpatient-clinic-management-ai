@@ -6,6 +6,8 @@ export interface ListRoomsParams {
   page: number
   pageSize: number
   search?: string
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listRooms(params: ListRoomsParams): Promise<PagedResult<Room>> {

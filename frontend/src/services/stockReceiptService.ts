@@ -5,6 +5,8 @@ import type { StockReceipt, StockReceiptFormValues } from '../types/medication'
 export interface ListStockReceiptsParams {
   page: number
   pageSize: number
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export async function listStockReceipts(params: ListStockReceiptsParams): Promise<PagedResult<StockReceipt>> {

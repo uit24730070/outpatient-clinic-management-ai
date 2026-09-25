@@ -18,7 +18,8 @@ public interface IInvoiceService
     /// <summary>Danh sách hoá đơn có phân trang + lọc theo bệnh nhân/lượt/trạng thái/khoảng ngày lập.</summary>
     Task<Result<PagedResult<InvoiceDto>>> GetListAsync(
         int page, int pageSize, Guid? patientId, Guid? appointmentId, InvoiceStatus? status,
-        DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default);
+        DateTimeOffset? from, DateTimeOffset? to,
+        string? sortBy = null, bool sortDesc = false, CancellationToken ct = default);
 
     /// <summary>Chi tiết một hoá đơn.</summary>
     Task<Result<InvoiceDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
@@ -26,7 +27,7 @@ public interface IInvoiceService
     /// <summary>Gom các hoá đơn theo một lịch khám + tổng đã lập/đã thu/còn nợ (tính phía server).</summary>
     Task<Result<AppointmentInvoicesDto>> GetByAppointmentAsync(Guid appointmentId, CancellationToken ct = default);
 
-    /// <summary>Gom các hoá đơn của một lượt tiếp đón + tổng đã lập/đã thu/còn nợ (ADR 0017).</summary>
+    /// <summary>Gom các hoá đơn của một lượt tiếp nhận + tổng đã lập/đã thu/còn nợ (ADR 0017).</summary>
     Task<Result<VisitInvoicesDto>> GetByVisitAsync(Guid visitId, CancellationToken ct = default);
 
     /// <summary>Thu tiền toàn bộ hoá đơn còn <c>Draft</c> của một lượt (một phương thức), trả tổng sau thu.</summary>

@@ -9,6 +9,8 @@ import type { Doctor } from '../types/doctor'
 import { PageHeader } from '../components/PageHeader'
 import { Pager } from '../components/Pager'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SortableTableHead } from '../components/SortableTableHead'
+import { useSort } from '../hooks/useSort'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,18 +31,25 @@ export default function DoctorsListPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResult<Doctor> | null>(null)
   const [loading, setLoading] = useState(false)
+  const { sort, toggleSort } = useSort(() => setPage(1))
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await listDoctors({ page, pageSize: PAGE_SIZE, search: search.trim() || undefined })
+      const result = await listDoctors({
+        page,
+        pageSize: PAGE_SIZE,
+        search: search.trim() || undefined,
+        sortBy: sort.sortBy,
+        sortDesc: sort.sortDesc,
+      })
       setData(result)
     } catch (err) {
       toastError(err)
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, sort.sortBy, sort.sortDesc])
 
   useEffect(() => {
     void load()
@@ -101,10 +110,10 @@ export default function DoctorsListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã BS</TableHead>
-                <TableHead>Họ tên</TableHead>
+                <SortableTableHead field="code" sort={sort} onSort={toggleSort}>Mã BS</SortableTableHead>
+                <SortableTableHead field="fullName" sort={sort} onSort={toggleSort}>Họ tên</SortableTableHead>
                 <TableHead>Chuyên khoa</TableHead>
-                <TableHead>Điện thoại</TableHead>
+                <SortableTableHead field="phoneNumber" sort={sort} onSort={toggleSort}>Điện thoại</SortableTableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>

@@ -21,7 +21,7 @@ public sealed class InvoiceService : IInvoiceService
 
     /// <summary>
     /// Lập hoá đơn <b>thuốc</b> từ một phiếu khám đã hoàn tất (Mô hình A, ADR 0014 P2):
-    /// chỉ gồm các dòng thuốc đã kê có gắn danh mục (công khám/CLS thu qua hoá đơn riêng lúc tiếp đón).
+    /// chỉ gồm các dòng thuốc đã kê có gắn danh mục (công khám/CLS thu qua hoá đơn riêng lúc tiếp nhận).
     /// Chống lập trùng bằng cờ <see cref="Encounter.MedicationInvoicedAt"/> (đã lập → 409).
     /// </summary>
     public async Task<Result<InvoiceDto>> CreateFromEncounterAsync(Guid encounterId, CancellationToken ct = default)
@@ -75,7 +75,7 @@ public sealed class InvoiceService : IInvoiceService
 
     /// <summary>
     /// Lập hoá đơn <b>phí cận lâm sàng</b> từ một phiếu chỉ định (Mô hình A, ADR 0015): các dòng loại
-    /// <see cref="InvoiceItemType.Paraclinical"/> snapshot theo giá đã chỉ định. Gắn lượt tiếp đón suy ra
+    /// <see cref="InvoiceItemType.Paraclinical"/> snapshot theo giá đã chỉ định. Gắn lượt tiếp nhận suy ra
     /// từ phiếu khám nguồn (nếu có). Chống lập trùng bằng cờ <see cref="LabOrder.InvoicedAt"/> (đã lập → 409).
     /// </summary>
     public async Task<Result<InvoiceDto>> CreateFromLabOrderAsync(Guid labOrderId, CancellationToken ct = default)
@@ -101,7 +101,7 @@ public sealed class InvoiceService : IInvoiceService
         if (mark.IsFailure)
             return Result.Failure<InvoiceDto>(mark.Error);
 
-        // Suy ra lượt tiếp đón: ưu tiên lượt gắn trực tiếp trên phiếu chỉ định (walk-in, ADR 0016),
+        // Suy ra lượt tiếp nhận: ưu tiên lượt gắn trực tiếp trên phiếu chỉ định (walk-in, ADR 0016),
         // fallback từ phiếu khám nguồn (đường bác sĩ Sprint 15) — giữ nguyên hành vi cũ khi có encounter.
         var appointmentId = order.AppointmentId;
         if (appointmentId is null && order.EncounterId is not null)
@@ -128,7 +128,7 @@ public sealed class InvoiceService : IInvoiceService
     /// (<see cref="CreateInvoiceRequest.LabOrderId"/>) để lễ tân thu một lần cho cả công khám lẫn CLS
     /// mà vẫn giữ đúng móc thu tiền → mở cổng nhập kết quả (ADR 0021, PAY-01), thay vì phải lập 2 hoá đơn.
     /// Cũng có thể gộp <b>nhiều dịch vụ khám</b> (<see cref="CreateInvoiceRequest.AppointmentIds"/>) trong
-    /// cùng một hoá đơn khi lập ở cấp Lượt tiếp đón — mỗi dịch vụ khám chỉ lập được một lần
+    /// cùng một hoá đơn khi lập ở cấp Lượt tiếp nhận — mỗi dịch vụ khám chỉ lập được một lần
     /// (<c>Appointment.InvoicedAt</c>, chống lập trùng như <c>LabOrder.InvoicedAt</c>).
     /// </summary>
     public async Task<Result<InvoiceDto>> CreateAsync(CreateInvoiceRequest request, CancellationToken ct = default)
@@ -218,7 +218,8 @@ public sealed class InvoiceService : IInvoiceService
 
     public async Task<Result<PagedResult<InvoiceDto>>> GetListAsync(
         int page, int pageSize, Guid? patientId, Guid? appointmentId, InvoiceStatus? status,
-        DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
+        DateTimeOffset? from, DateTimeOffset? to,
+        string? sortBy = null, bool sortDesc = false, CancellationToken ct = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > MaxPageSize ? 20 : pageSize;
@@ -236,13 +237,24 @@ public sealed class InvoiceService : IInvoiceService
             query = query.Where(i => i.CreatedAt <= to);
 
         var total = await query.CountAsync(ct);
-        var items = await Project(query.OrderByDescending(i => i.CreatedAt))
+        var items = await Project(ApplySort(query, sortBy, sortDesc))
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
         return new PagedResult<InvoiceDto>(items, page, pageSize, total);
     }
+
+    /// <summary>Sắp xếp theo cột do FE chọn (danh sách trắng); mặc định CreatedAt desc khi không chỉ định.</summary>
+    private static IOrderedQueryable<Invoice> ApplySort(IQueryable<Invoice> query, string? sortBy, bool desc) =>
+        sortBy switch
+        {
+            "code" => desc ? query.OrderByDescending(i => i.Code) : query.OrderBy(i => i.Code),
+            "totalAmount" => desc ? query.OrderByDescending(i => i.TotalAmount) : query.OrderBy(i => i.TotalAmount),
+            "status" => desc ? query.OrderByDescending(i => i.Status) : query.OrderBy(i => i.Status),
+            "createdAt" => desc ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt),
+            _ => query.OrderByDescending(i => i.CreatedAt),
+        };
 
     public async Task<Result<InvoiceDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -328,7 +340,7 @@ public sealed class InvoiceService : IInvoiceService
         return new VisitInvoicesDto(visitId, invoices, billed, paid, billed - paid);
     }
 
-    /// <summary>Suy lượt tiếp đón từ lịch khám gắn hoá đơn (nếu lịch thuộc một lượt); null nếu không.</summary>
+    /// <summary>Suy lượt tiếp nhận từ lịch khám gắn hoá đơn (nếu lịch thuộc một lượt); null nếu không.</summary>
     private async Task<Guid?> ResolveVisitIdAsync(Guid? appointmentId, CancellationToken ct)
     {
         if (appointmentId is null)

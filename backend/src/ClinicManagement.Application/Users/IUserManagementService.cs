@@ -10,7 +10,8 @@ public interface IUserManagementService
     Task<Result<UserListItemDto>> CreateAsync(CreateUserRequest request, CancellationToken ct = default);
 
     Task<Result<PagedResult<UserListItemDto>>> GetListAsync(
-        int page, int pageSize, string? search, UserRole? role, bool? isActive, CancellationToken ct = default);
+        int page, int pageSize, string? search, UserRole? role, bool? isActive,
+        string? sortBy = null, bool sortDesc = false, CancellationToken ct = default);
 
     Task<Result<UserListItemDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
 
