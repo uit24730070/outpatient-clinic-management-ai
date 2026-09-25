@@ -8,9 +8,6 @@ public sealed class VisitServiceLineValidator : AbstractValidator<VisitServiceLi
     public VisitServiceLineValidator()
     {
         RuleFor(x => x.DoctorId).NotEmpty();
-        RuleFor(x => x.StartTime).NotEmpty();
-        RuleFor(x => x.EndTime).NotEmpty()
-            .GreaterThan(x => x.StartTime).WithMessage("Giờ kết thúc phải sau giờ bắt đầu.");
         RuleFor(x => x.Reason).MaximumLength(500);
     }
 }
@@ -25,7 +22,7 @@ public sealed class CreateVisitRequestValidator : AbstractValidator<CreateVisitR
         RuleFor(x => x)
             .Must(r => (r.Services is { Count: > 0 }) || (r.ParaclinicalServiceIds is { Count: > 0 }))
             .WithName("services")
-            .WithMessage("Lượt tiếp đón phải có ít nhất một dịch vụ (khám hoặc cận lâm sàng).");
+            .WithMessage("Lượt tiếp nhận phải có ít nhất một dịch vụ (khám hoặc cận lâm sàng).");
         RuleForEach(x => x.Services).SetValidator(new VisitServiceLineValidator());
     }
 }
@@ -35,9 +32,6 @@ public sealed class AddVisitServiceRequestValidator : AbstractValidator<AddVisit
     public AddVisitServiceRequestValidator()
     {
         RuleFor(x => x.DoctorId).NotEmpty();
-        RuleFor(x => x.StartTime).NotEmpty();
-        RuleFor(x => x.EndTime).NotEmpty()
-            .GreaterThan(x => x.StartTime).WithMessage("Giờ kết thúc phải sau giờ bắt đầu.");
         RuleFor(x => x.Reason).MaximumLength(500);
     }
 }

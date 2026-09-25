@@ -1,4 +1,4 @@
-// Kiểu dữ liệu miền Lượt tiếp đón (Visit), khớp API backend (ADR 0017).
+// Kiểu dữ liệu miền Lượt tiếp nhận (Visit), khớp API backend (ADR 0017).
 
 import type { Appointment } from './appointment'
 import type { LabOrderStatusValue } from './labOrder'
@@ -28,7 +28,7 @@ export interface VisitLabOrder {
   itemCount: number
 }
 
-/** Chi tiết một lượt tiếp đón: các dịch vụ khám + CLS + tổng viện phí gom cả lượt. */
+/** Chi tiết một lượt tiếp nhận: các dịch vụ khám + CLS + tổng viện phí gom cả lượt. */
 export interface Visit {
   id: string
   code: string
@@ -45,7 +45,7 @@ export interface Visit {
   updatedAt: string | null
 }
 
-/** Dòng danh sách lượt tiếp đón (nhẹ). */
+/** Dòng danh sách lượt tiếp nhận (nhẹ). */
 export interface VisitListItem {
   id: string
   code: string
@@ -57,11 +57,12 @@ export interface VisitListItem {
   createdAt: string
 }
 
-/** Một dịch vụ khám trong lượt (khi tạo/thêm). */
+/**
+ * Một dịch vụ khám trong lượt (khi tạo/thêm). Không có khung giờ — walk-in không đặt trước giờ khám,
+ * server tự lấy thời điểm tiếp nhận làm mốc; thứ tự khám do số thứ tự hàng đợi quyết định.
+ */
 export interface VisitServiceLineInput {
   doctorId: string
-  startTime: string
-  endTime: string
   reason: string | null
   servicePriceId: string | null
 }
@@ -70,7 +71,7 @@ export interface CreateVisitInput {
   patientId: string
   note: string | null
   services: VisitServiceLineInput[]
-  /** Dịch vụ CLS (loại Paraclinical) đăng ký ngay lúc tiếp đón — tạo phiếu CLS walk-in gắn lượt (ADR 0017). */
+  /** Dịch vụ CLS (loại Paraclinical) đăng ký ngay lúc tiếp nhận — tạo phiếu CLS walk-in gắn lượt (ADR 0017). */
   paraclinicalServiceIds?: string[]
 }
 

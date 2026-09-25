@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ClinicManagement.Application.Visits;
 
 /// <summary>
-/// Nghiệp vụ lượt tiếp đón: tạo một lượt kèm nhiều dịch vụ khám (mỗi dịch vụ = một
+/// Nghiệp vụ lượt tiếp nhận: tạo một lượt kèm nhiều dịch vụ khám (mỗi dịch vụ = một
 /// <see cref="Appointment"/> con), thêm dịch vụ vào lượt đang mở, và gom viện phí cả lượt
 /// (suy từ hoá đơn gắn với các lịch trong lượt — không phi chuẩn hoá cột trên Invoice, ADR 0017).
 /// </summary>
@@ -30,7 +30,7 @@ public sealed class VisitService : IVisitService
         var clsIds = (request.ParaclinicalServiceIds ?? Array.Empty<Guid>()).Distinct().ToList();
         if (lines.Count == 0 && clsIds.Count == 0)
             return Error.Validation("Visit.NoServices",
-                "Lượt tiếp đón phải có ít nhất một dịch vụ (khám hoặc cận lâm sàng).");
+                "Lượt tiếp nhận phải có ít nhất một dịch vụ (khám hoặc cận lâm sàng).");
 
         if (!await _db.Patients.AnyAsync(p => p.Id == request.PatientId, ct))
             return Error.Validation("Visit.PatientNotFound", $"Bệnh nhân với Id {request.PatientId} không tồn tại.");
@@ -49,27 +49,24 @@ public sealed class VisitService : IVisitService
         var visit = new Visit(code, request.PatientId, NormalizeOptional(request.Note));
         _db.Visits.Add(visit);
 
-        // Kiểm & dựng từng dịch vụ khám. Chống trùng giờ xét cả lịch trong CSDL lẫn các lịch vừa thêm
-        // trong cùng lượt (cùng bác sĩ) để không tạo hai dịch vụ chồng giờ cho một bác sĩ.
-        var pending = new List<Appointment>();
+        // Kiểm & dựng từng dịch vụ khám. Thứ tự khám do số thứ tự hàng đợi cấp bên dưới quyết định.
         var ticketDate = TodayLocal();
         var nextTicketNumber = await NextQueueNumberAsync(ticketDate, ct);
         foreach (var line in lines)
         {
-            var appt = await BuildAppointmentAsync(request.PatientId, visit.Id, line, pending, ct);
+            var appt = await BuildAppointmentAsync(request.PatientId, visit.Id, line, ct);
             if (appt.IsFailure)
                 return Result.Failure<VisitDto>(appt.Error);
 
-            pending.Add(appt.Value);
             _db.Appointments.Add(appt.Value);
 
-            // Cấp số hàng đợi ngay lúc tiếp đón, gán sẵn phòng khám của bác sĩ (suy từ lịch làm việc)
+            // Cấp số hàng đợi ngay lúc tiếp nhận, gán sẵn phòng khám của bác sĩ (suy từ lịch làm việc)
             // để lễ tân không phải điều phối thủ công (khép "phần nợ" ADR 0019).
             _db.QueueTickets.Add(new QueueTicket(
                 ticketDate, nextTicketNumber++, request.PatientId, appt.Value.Id, appt.Value.RoomId, line.DoctorId));
         }
 
-        // Gộp chỉ định CLS ngay lúc tiếp đón: một phiếu walk-in gắn lượt (ADR 0017).
+        // Gộp chỉ định CLS ngay lúc tiếp nhận: một phiếu walk-in gắn lượt (ADR 0017).
         if (labItems is { Count: > 0 })
         {
             var labCode = await GenerateLabCodeAsync(ct);
@@ -119,15 +116,14 @@ public sealed class VisitService : IVisitService
     {
         var visit = await _db.Visits.FirstOrDefaultAsync(v => v.Id == visitId, ct);
         if (visit is null)
-            return Error.NotFound("Visit.NotFound", $"Không tìm thấy lượt tiếp đón với Id {visitId}.");
+            return Error.NotFound("Visit.NotFound", $"Không tìm thấy lượt tiếp nhận với Id {visitId}.");
 
         if (visit.Status != VisitStatus.Open)
             return Result.Failure<VisitDto>(Error.Conflict(
                 "Visit.NotOpen", "Chỉ thêm dịch vụ được khi lượt còn đang mở (Open)."));
 
-        var line = new VisitServiceLine(
-            request.DoctorId, request.StartTime, request.EndTime, request.Reason, request.ServicePriceId);
-        var appt = await BuildAppointmentAsync(visit.PatientId, visit.Id, line, Array.Empty<Appointment>(), ct);
+        var line = new VisitServiceLine(request.DoctorId, request.Reason, request.ServicePriceId);
+        var appt = await BuildAppointmentAsync(visit.PatientId, visit.Id, line, ct);
         if (appt.IsFailure)
             return Result.Failure<VisitDto>(appt.Error);
 
@@ -186,7 +182,7 @@ public sealed class VisitService : IVisitService
     {
         var dto = await ProjectByIdAsync(id, ct);
         return dto is null
-            ? Error.NotFound("Visit.NotFound", $"Không tìm thấy lượt tiếp đón với Id {id}.")
+            ? Error.NotFound("Visit.NotFound", $"Không tìm thấy lượt tiếp nhận với Id {id}.")
             : dto;
     }
 
@@ -204,7 +200,7 @@ public sealed class VisitService : IVisitService
     {
         var visit = await _db.Visits.FirstOrDefaultAsync(v => v.Id == id, ct);
         if (visit is null)
-            return Error.NotFound("Visit.NotFound", $"Không tìm thấy lượt tiếp đón với Id {id}.");
+            return Error.NotFound("Visit.NotFound", $"Không tìm thấy lượt tiếp nhận với Id {id}.");
 
         var result = transition(visit);
         if (result.IsFailure)
@@ -215,13 +211,14 @@ public sealed class VisitService : IVisitService
     }
 
     /// <summary>
-    /// Kiểm hợp lệ một dòng dịch vụ (bác sĩ tồn tại, dịch vụ là loại Consultation, không trùng giờ bác sĩ)
-    /// rồi dựng <see cref="Appointment"/> gắn lượt (chưa lưu). <paramref name="pendingSameVisit"/> là các lịch
-    /// đã dựng trong cùng lượt (chưa lưu) để xét trùng giờ nội bộ lượt.
+    /// Kiểm hợp lệ một dòng dịch vụ (bác sĩ tồn tại, dịch vụ là loại Consultation) rồi dựng
+    /// <see cref="Appointment"/> gắn lượt (chưa lưu). Không chống trùng giờ bác sĩ ở đây — walk-in
+    /// không có khung giờ đặt trước để so, thứ tự khám đã do số thứ tự hàng đợi (<see cref="NextQueueNumberAsync"/>)
+    /// đảm nhiệm. StartTime/EndTime chỉ còn là mốc ghi nhận thời điểm tiếp nhận (dùng để suy phòng khám
+    /// theo khung làm việc, ADR 0018), không phải khung giờ hẹn thật.
     /// </summary>
     private async Task<Result<Appointment>> BuildAppointmentAsync(
-        Guid patientId, Guid visitId, VisitServiceLine line,
-        IReadOnlyCollection<Appointment> pendingSameVisit, CancellationToken ct)
+        Guid patientId, Guid visitId, VisitServiceLine line, CancellationToken ct)
     {
         if (!await _db.Doctors.AnyAsync(d => d.Id == line.DoctorId, ct))
             return Error.Validation("Visit.DoctorNotFound", $"Bác sĩ với Id {line.DoctorId} không tồn tại.");
@@ -230,22 +227,14 @@ public sealed class VisitService : IVisitService
         if (service.IsFailure)
             return Result.Failure<Appointment>(service.Error);
 
-        var overlapDb = await _db.Appointments.AnyAsync(a =>
-            a.DoctorId == line.DoctorId &&
-            Appointment.ActiveStatuses.Contains(a.Status) &&
-            a.StartTime < line.EndTime && a.EndTime > line.StartTime, ct);
-        var overlapPending = pendingSameVisit.Any(a =>
-            a.DoctorId == line.DoctorId && a.StartTime < line.EndTime && a.EndTime > line.StartTime);
-        if (overlapDb || overlapPending)
-            return Error.Conflict("Appointment.Overlap", "Bác sĩ đã có lịch khác trùng khung giờ này.");
-
-        var roomId = await ResolveRoomIdAsync(line.DoctorId, line.StartTime, ct);
+        var now = DateTimeOffset.UtcNow;
+        var roomId = await ResolveRoomIdAsync(line.DoctorId, now, ct);
 
         return new Appointment(
             patientId,
             line.DoctorId,
-            line.StartTime,
-            line.EndTime,
+            now,
+            now,
             NormalizeOptional(line.Reason),
             service.Value?.Id,
             service.Value?.Name,
@@ -343,7 +332,7 @@ public sealed class VisitService : IVisitService
         var billed = invoices.Where(x => x.Status != InvoiceStatus.Cancelled).Sum(x => x.Total);
         var paid = invoices.Where(x => x.Status == InvoiceStatus.Paid).Sum(x => x.Total);
 
-        // Phiếu CLS gắn lượt (walk-in gộp lúc tiếp đón, hoặc gắn sau).
+        // Phiếu CLS gắn lượt (walk-in gộp lúc tiếp nhận, hoặc gắn sau).
         var labOrders = await _db.LabOrders.AsNoTracking()
             .Where(o => o.VisitId == id)
             .OrderBy(o => o.CreatedAt)

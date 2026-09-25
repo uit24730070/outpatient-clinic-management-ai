@@ -19,26 +19,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 
-// Chuỗi cho input datetime-local theo GIỜ ĐỊA PHƯƠNG (không kèm timezone).
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 interface Row {
   doctorId: string
   servicePriceId: string
-  startTime: string
-  endTime: string
   reason: string
 }
 
-function defaultRow(offsetMinutes = 0): Row {
-  const start = new Date()
-  start.setMinutes(start.getMinutes() + offsetMinutes, 0, 0)
-  const end = new Date(start)
-  end.setMinutes(end.getMinutes() + 30)
-  return { doctorId: '', servicePriceId: '', startTime: toLocalInput(start), endTime: toLocalInput(end), reason: '' }
+function defaultRow(): Row {
+  return { doctorId: '', servicePriceId: '', reason: '' }
 }
 
 interface Props {
@@ -51,8 +39,8 @@ interface Props {
 }
 
 /**
- * Thân màn "Tiếp đón" (walk-in, ADR 0017): chọn bệnh nhân + đăng ký NHIỀU dịch vụ khám (mỗi dòng =
- * một bác sĩ + dịch vụ + khung giờ) → tạo một lượt gom tất cả. Dùng làm tab "Tiếp đón mới" trong
+ * Thân màn "Tiếp nhận" (walk-in, ADR 0017): chọn bệnh nhân + đăng ký NHIỀU dịch vụ khám (mỗi dòng =
+ * một bác sĩ + dịch vụ + khung giờ) → tạo một lượt gom tất cả. Dùng làm tab "Tiếp nhận mới" trong
  * workspace Lễ tân (`/front-desk`, Epic 17) — không còn route riêng.
  */
 export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
@@ -111,7 +99,7 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
   const updateRow = (idx: number, patch: Partial<Row>) =>
     setRows((cur) => cur.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
   const removeRow = (idx: number) => setRows((cur) => cur.filter((_, i) => i !== idx))
-  const addRow = () => setRows((cur) => [...cur, defaultRow(0)])
+  const addRow = () => setRows((cur) => [...cur, defaultRow()])
 
   const submit = async () => {
     if (!patientId) {
@@ -126,8 +114,6 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
     try {
       const servicesInput: VisitServiceLineInput[] = rows.map((r) => ({
         doctorId: r.doctorId,
-        startTime: new Date(r.startTime).toISOString(),
-        endTime: new Date(r.endTime).toISOString(),
         reason: r.reason.trim() || null,
         servicePriceId: r.servicePriceId || null,
       }))
@@ -137,7 +123,7 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
         services: servicesInput,
         paraclinicalServiceIds: pickedCls,
       })
-      toastSuccess(`Đã tạo lượt tiếp đón ${visit.code}.`)
+      toastSuccess(`Đã tạo lượt tiếp nhận ${visit.code}.`)
       onCreated(visit)
     } catch (err) {
       toastError(err)
@@ -150,8 +136,8 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
     <section className="flex flex-col gap-4">
       {!hideHeader && (
         <PageHeader
-          title="Tiếp đón bệnh nhân"
-          description="Đăng ký một lượt khám gồm một hoặc nhiều dịch vụ khám (nhiều bác sĩ/chuyên khoa)."
+          title="Tiếp nhận bệnh nhân"
+          description="Đăng ký một lượt tiếp nhận gồm một hoặc nhiều dịch vụ khám (nhiều bác sĩ/chuyên khoa)."
         />
       )}
 
@@ -188,7 +174,7 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
           />
 
           <div className="grid gap-2">
-            <Label>Ghi chú tiếp đón</Label>
+            <Label>Ghi chú tiếp nhận</Label>
             <Input placeholder="Tuỳ chọn" value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
         </CardContent>
@@ -231,24 +217,6 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label>Bắt đầu</Label>
-                <Input
-                  type="datetime-local"
-                  value={row.startTime}
-                  onChange={(e) => updateRow(idx, { startTime: e.target.value })}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Kết thúc</Label>
-                <Input
-                  type="datetime-local"
-                  value={row.endTime}
-                  onChange={(e) => updateRow(idx, { endTime: e.target.value })}
-                />
-              </div>
-
               <div className="grid gap-2 md:col-span-2">
                 <Label>Lý do khám</Label>
                 <div className="flex gap-2">
@@ -281,7 +249,7 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
         </div>
       </div>
 
-      {/* Cận lâm sàng đăng ký ngay lúc tiếp đón (tạo phiếu CLS walk-in gắn lượt) */}
+      {/* Cận lâm sàng đăng ký ngay lúc tiếp nhận (tạo phiếu CLS walk-in gắn lượt) */}
       <Card>
         <CardContent className="flex flex-col gap-3 p-4">
           <Label>Cận lâm sàng (tuỳ chọn)</Label>
@@ -307,7 +275,7 @@ export function VisitForm({ onCreated, onBack, hideHeader }: Props) {
           </span>
         </div>
         <Button type="button" onClick={() => void submit()} disabled={submitting}>
-          Tạo lượt tiếp đón ({rows.length} khám{pickedCls.length > 0 ? ` + ${pickedCls.length} CLS` : ''})
+          Tạo lượt tiếp nhận ({rows.length} khám{pickedCls.length > 0 ? ` + ${pickedCls.length} CLS` : ''})
         </Button>
       </div>
     </section>

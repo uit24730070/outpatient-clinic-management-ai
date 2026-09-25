@@ -13,9 +13,6 @@ namespace UnitTests.Visits;
 
 public sealed class VisitServiceTests
 {
-    private static readonly DateTimeOffset Base =
-        new(2026, 9, 1, 8, 0, 0, TimeSpan.Zero);
-
     private static VisitService CreateService(
         out TestDbContext db, out Guid patientId, out Guid doctorA, out Guid doctorB, out Guid consultId)
     {
@@ -37,8 +34,7 @@ public sealed class VisitServiceTests
         return new VisitService(db);
     }
 
-    private static VisitServiceLine Line(Guid doctorId, Guid? serviceId, DateTimeOffset? start = null) =>
-        new(doctorId, start ?? Base, (start ?? Base).AddMinutes(30), "Khám", serviceId);
+    private static VisitServiceLine Line(Guid doctorId, Guid? serviceId) => new(doctorId, "Khám", serviceId);
 
     [Fact]
     public async Task CreateAsync_ShouldCreateVisitWithMultipleConsultations()
@@ -155,16 +151,16 @@ public sealed class VisitServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_ShouldFail_WhenSameDoctorOverlapsWithinVisit()
+    public async Task CreateAsync_ShouldSucceed_WhenSameDoctorHasTwoServices()
     {
         var service = CreateService(out _, out var patientId, out var doctorA, out _, out var consultId);
 
-        // Hai dịch vụ cùng bác sĩ, cùng khung giờ trong một lượt → chống trùng.
+        // Không còn chống trùng giờ theo khung giờ đặt trước — số thứ tự hàng đợi lo việc tuần tự.
         var result = await service.CreateAsync(new CreateVisitRequest(
             patientId, null, new[] { Line(doctorA, consultId), Line(doctorA, consultId) }));
 
-        Assert.True(result.IsFailure);
-        Assert.Equal("Appointment.Overlap", result.Error.Code);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Appointments.Count);
     }
 
     [Fact]
@@ -172,7 +168,6 @@ public sealed class VisitServiceTests
     {
         var service = CreateService(out _, out var patientId, out var doctorA, out var doctorB, out var consultId);
 
-        // Hai bác sĩ khác nhau, cùng khung giờ (song song phòng) → hợp lệ.
         var result = await service.CreateAsync(new CreateVisitRequest(
             patientId, null, new[] { Line(doctorA, consultId), Line(doctorB, consultId) }));
 
@@ -188,7 +183,7 @@ public sealed class VisitServiceTests
             patientId, null, new[] { Line(doctorA, consultId) }))).Value;
 
         var result = await service.AddServiceAsync(visit.Id, new AddVisitServiceRequest(
-            doctorB, Base.AddHours(1), Base.AddHours(1).AddMinutes(30), "Khám thêm", consultId));
+            doctorB, "Khám thêm", consultId));
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Value.Appointments.Count);
@@ -203,7 +198,7 @@ public sealed class VisitServiceTests
         await service.CloseAsync(visit.Id);
 
         var result = await service.AddServiceAsync(visit.Id, new AddVisitServiceRequest(
-            doctorB, Base.AddHours(1), Base.AddHours(1).AddMinutes(30), null, consultId));
+            doctorB, null, consultId));
 
         Assert.True(result.IsFailure);
         Assert.Equal("Visit.NotOpen", result.Error.Code);
@@ -238,7 +233,7 @@ public sealed class VisitServiceTests
 
         // Mở lại rồi thì thêm dịch vụ khám lại được như bình thường.
         var added = await service.AddServiceAsync(visit.Id, new AddVisitServiceRequest(
-            doctorB, Base.AddHours(1), Base.AddHours(1).AddMinutes(30), null, consultId));
+            doctorB, null, consultId));
         Assert.True(added.IsSuccess);
     }
 
@@ -300,9 +295,11 @@ public sealed class VisitServiceTests
         var service = CreateService(out var db, out var patientId, out var doctorA, out _, out var consultId);
         var room = new Room("PK-000001", "Phòng khám 1", null);
         db.Rooms.Add(room);
-        var localDay = Base.ToOffset(TimeSpan.FromHours(7)).DayOfWeek;
+        // Dùng ngày/giờ hiện tại (server suy phòng khám từ thời điểm tiếp nhận thực, không còn khung giờ
+        // FE gửi lên) — bao trọn cả ngày để test không phụ thuộc giờ chạy.
+        var localDay = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7)).DayOfWeek;
         db.DoctorWorkSchedules.Add(
-            new DoctorWorkSchedule(doctorA, localDay, new TimeOnly(8, 0), new TimeOnly(20, 0), room.Id));
+            new DoctorWorkSchedule(doctorA, localDay, TimeOnly.MinValue, new TimeOnly(23, 59), room.Id));
         db.SaveChanges();
 
         var result = await service.CreateAsync(new CreateVisitRequest(
@@ -341,7 +338,7 @@ public sealed class VisitServiceTests
             patientId, null, new[] { Line(doctorA, consultId) }))).Value;
 
         var result = await service.AddServiceAsync(visit.Id, new AddVisitServiceRequest(
-            doctorB, Base.AddHours(1), Base.AddHours(1).AddMinutes(30), "Khám thêm", consultId));
+            doctorB, "Khám thêm", consultId));
 
         Assert.True(result.IsSuccess);
         var newAppt = result.Value.Appointments[1];

@@ -41,7 +41,6 @@ import { PatientContextHeader } from '../components/PatientContextHeader'
 import { Combobox } from '../components/Combobox'
 import { ServiceMultiPicker } from '../components/ServiceMultiPicker'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -72,11 +71,6 @@ const actionsByStatus: Record<number, { action: AppointmentAction; label: string
   [AppointmentStatus.NoShow]: [],
 }
 
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
@@ -100,7 +94,6 @@ export default function VisitDetailPage() {
   const [adding, setAdding] = useState(false)
   const [newDoctorId, setNewDoctorId] = useState('')
   const [newServiceId, setNewServiceId] = useState('')
-  const [newStart, setNewStart] = useState(toLocalInput(new Date()))
 
   // Thêm phiếu CLS cho lượt đang mở (thay cho trang /lab/walk-in cũ).
   const [addingCls, setAddingCls] = useState(false)
@@ -173,14 +166,9 @@ export default function VisitDetailPage() {
       return
     }
     try {
-      const start = new Date(newStart)
-      const end = new Date(start)
-      end.setMinutes(end.getMinutes() + 30)
       await addVisitService(id, {
         doctorId: newDoctorId,
         servicePriceId: newServiceId || null,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
         reason: null,
       })
       toastSuccess('Đã thêm dịch vụ khám vào lượt.')
@@ -280,7 +268,7 @@ export default function VisitDetailPage() {
   }
 
   if (loading && !visit) return <p className="text-muted-foreground">Đang tải…</p>
-  if (!visit) return <p className="text-muted-foreground">Không tìm thấy lượt tiếp đón.</p>
+  if (!visit) return <p className="text-muted-foreground">Không tìm thấy lượt tiếp nhận.</p>
 
   const isOpen = visit.status === VisitStatus.Open
   // Còn gì để lập hoá đơn không (dịch vụ khám chưa lập + phiếu CLS chưa lập) — quyết định hiện nút
@@ -319,8 +307,8 @@ export default function VisitDetailPage() {
               <>
                 <ConfirmDialog
                   trigger={<Button size="sm" variant="outline">Đóng lượt</Button>}
-                  title="Đóng lượt tiếp đón?"
-                  description="Xác nhận lượt khám đã hoàn tất."
+                  title="Đóng lượt tiếp nhận?"
+                  description="Xác nhận lượt tiếp nhận đã hoàn tất."
                   confirmText="Đóng lượt"
                   onConfirm={() => void onClose()}
                 />
@@ -330,7 +318,7 @@ export default function VisitDetailPage() {
                       Huỷ lượt
                     </Button>
                   }
-                  title="Huỷ lượt tiếp đón?"
+                  title="Huỷ lượt tiếp nhận?"
                   description="Hành động này không thể hoàn tác."
                   confirmText="Huỷ lượt"
                   destructive
@@ -341,7 +329,7 @@ export default function VisitDetailPage() {
             {canManage && visit.status === VisitStatus.Closed && (
               <ConfirmDialog
                 trigger={<Button size="sm" variant="outline">Mở lại lượt</Button>}
-                title="Mở lại lượt tiếp đón?"
+                title="Mở lại lượt tiếp nhận?"
                 description="Dùng khi cần thêm dịch vụ khám/CLS vào đúng lượt này thay vì tạo lượt mới."
                 confirmText="Mở lại"
                 onConfirm={() => void onReopen()}
@@ -620,7 +608,7 @@ export default function VisitDetailPage() {
                 Thêm dịch vụ khám
               </Button>
             ) : (
-              <div className="grid gap-3 md:grid-cols-4 md:items-end">
+              <div className="grid gap-3 md:grid-cols-3 md:items-end">
                 <div className="grid gap-2">
                   <Label>Bác sĩ *</Label>
                   <Combobox
@@ -646,10 +634,6 @@ export default function VisitDetailPage() {
                     searchPlaceholder="Tìm dịch vụ…"
                     emptyText="Không tìm thấy dịch vụ."
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Giờ bắt đầu</Label>
-                  <Input type="datetime-local" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => void onAddService()}>Thêm</Button>
