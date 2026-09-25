@@ -204,35 +204,50 @@ export function EncounterForm({ appointmentId, onBack, onCompleted, hideHeader }
     }),
   })
 
+  /** Lưu (tạo/cập nhật) phiếu từ giá trị form hiện tại — dùng chung cho nút "Lưu" và "Chốt phiếu". */
+  const saveValues = async (values: FormValues) => {
+    const saved = encounter
+      ? await updateEncounter(encounter.id, buildValues(values))
+      : await createEncounter({ appointmentId, ...buildValues(values) })
+    setEncounter(saved)
+    reset({
+      symptoms: saved.symptoms ?? '',
+      diagnosis: saved.diagnosis,
+      notes: saved.notes ?? '',
+      prescriptionItems: toFormItems(saved.prescriptionItems),
+    })
+    return saved
+  }
+
   const onSubmit = handleSubmit(async (values) => {
     if (!appointmentId) return
     try {
-      const saved = encounter
-        ? await updateEncounter(encounter.id, buildValues(values))
-        : await createEncounter({ appointmentId, ...buildValues(values) })
-      setEncounter(saved)
-      reset({
-        symptoms: saved.symptoms ?? '',
-        diagnosis: saved.diagnosis,
-        notes: saved.notes ?? '',
-        prescriptionItems: toFormItems(saved.prescriptionItems),
-      })
+      await saveValues(values)
       toastSuccess(encounter ? 'Đã lưu phiếu khám.' : 'Đã tạo phiếu khám.')
     } catch (err) {
       applyServerErrors(form, err)
     }
   })
 
-  const onComplete = async () => {
-    if (!encounter) return
+  // "Chốt phiếu" tự lưu form trước rồi mới chốt — trước đây chốt thẳng trên dữ liệu đã lưu lần gần
+  // nhất (không phải giá trị đang gõ), nên sửa chẩn đoán/đơn thuốc rồi bấm "Chốt phiếu" ngay (quên
+  // bấm "Lưu") sẽ chốt nhầm dữ liệu cũ, có thể bị chặn "chưa nhập chẩn đoán" dù ô đã có chữ.
+  const onComplete = handleSubmit(async (values) => {
+    let saved
     try {
-      await completeEncounter(encounter.id)
+      saved = await saveValues(values)
+    } catch (err) {
+      applyServerErrors(form, err)
+      return
+    }
+    try {
+      await completeEncounter(saved.id)
       toastSuccess('Đã chốt phiếu khám.')
       onCompleted?.()
     } catch (err) {
       toastError(err)
     }
-  }
+  })
 
   // Chọn thuốc từ danh mục: điền sẵn tên thuốc (vẫn cho sửa tay).
   const onSelectMedication = (index: number, value: string) => {
