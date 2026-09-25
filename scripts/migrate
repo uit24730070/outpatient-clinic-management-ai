@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Wrapper cho dotnet-ef migration, luôn chạy quiet trước, lỗi thì tự chạy lại
+# không quiet để in chi tiết (xem ghi chú dự án mục 7 — nguyên tắc chạy lệnh).
+#
+# Cách dùng:
+#   ./scripts/migrate <TenMigration>   # migrations add <TenMigration>
+#   ./scripts/migrate                  # database update
+
+cd "$(dirname "$0")/.."
+
+name="$1"
+proj="-p backend/src/ClinicManagement.Infrastructure -s backend/src/ClinicManagement.WebApi"
+
+if [ -n "$name" ]; then
+  cmd="dotnet ef migrations add $name $proj -o Persistence/Migrations --no-build"
+else
+  cmd="dotnet ef database update $proj --no-build"
+fi
+
+output=$($cmd -v quiet 2>&1)
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo "Lỗi, chạy lại không quiet để xem chi tiết:" >&2
+  $cmd
+  exit $?
+fi
+
+echo "$output"
+exit 0
