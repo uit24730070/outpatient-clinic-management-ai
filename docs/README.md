@@ -1,13 +1,12 @@
 # Tài liệu dự án (docs)
 
-Nơi tập trung toàn bộ tài liệu của **Clinic Management AI**. Mỗi thư mục con phục vụ một loại tài liệu riêng.
+Nơi tập trung tài liệu vận hành của **Clinic Management AI**. Tài liệu thiết kế chi tiết (kiến trúc,
+thiết kế cơ sở dữ liệu, đặc tả API, các quyết định kỹ thuật) nằm trong báo cáo tốt nghiệp của đồ án,
+không lặp lại ở đây.
 
 | Thư mục | Mục đích |
 |---------|----------|
-| [`architecture/`](./architecture) | Tài liệu kiến trúc hệ thống, Clean Architecture, luồng dữ liệu |
-| [`database/`](./database) | ERD, thiết kế CSDL, database dictionary, migration guide |
-| [`api/`](./api) | Đặc tả API, quy ước RESTful, tài liệu endpoint |
-| [`diagrams/`](./diagrams) | Biểu đồ (use case, sequence, component, deployment...) |
-| [`adr/`](./adr) | Architecture Decision Records — nhật ký quyết định kiến trúc |
+| [`deployment/`](./deployment) | Hướng dẫn triển khai bằng Docker Compose — kiến trúc container, biến môi trường, tài khoản demo |
+| [`diagrams/`](./diagrams) | Nơi đặt biểu đồ hệ thống (use case, sequence, component, deployment...) khi cần bổ sung |
+| [`assets/`](./assets) | Hình ảnh, ảnh chụp màn hình dùng trong tài liệu |
 | [`meeting/`](./meeting) | Biên bản họp nhóm / họp với giảng viên hướng dẫn |
-| [`assets/`](./assets) | Hình ảnh, ảnh chụp màn hình, tài nguyên dùng trong tài liệu |
